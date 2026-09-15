@@ -1,5 +1,10 @@
 backend/.venv/
 backend/__pycache__/
 backend/uploads/
+backend/screen_ai.db
+
+screen ai/node_modules/
+screen ai/src-tauri/target/
+
 *.pyc
 .env
