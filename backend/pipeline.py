@@ -1,4 +1,5 @@
 from observation import observe_image
+from brain import analyze_context
 from context import ContextEngine
 from task import TaskEngine
 from database import (
@@ -28,6 +29,7 @@ class ScreenPipeline:
         return self.task.set_next_step(step)
 
     def process_image(self, file_path: str):
+        # Step 1: Observe the screen image
         observation_result = observe_image(file_path)
 
         if not observation_result["success"]:
@@ -35,24 +37,35 @@ class ScreenPipeline:
 
         observation = observation_result["observation"]
 
-        # Add observation to current session context
+        # Step 2: Add observation to current session context
         context_record = self.context.add_observation(
             observation
         )
 
-        # Save observation permanently
+        # Step 3: Save observation permanently
         save_observation(observation)
 
-        # Get persistent history
+        # Step 4: Get persistent history
         stored_history = get_recent_observations()
 
+        # Step 5: Ask the mock AI brain to analyze
+        # the current screen and context
+        brain_result = analyze_context({
+            "observation": observation,
+            "context": self.context.get_recent_observations(),
+            "task": self.task.get_task_state(),
+            "history": stored_history
+        })
+
+        # Step 6: Return the complete Screen AI pipeline result
         return {
             "success": True,
             "observation": observation,
             "context_record": context_record,
             "recent_context": self.context.get_recent_observations(),
             "stored_history": stored_history,
-            "task_state": self.task.get_task_state()
+            "task_state": self.task.get_task_state(),
+            "brain": brain_result
         }
 
     def get_state(self):
