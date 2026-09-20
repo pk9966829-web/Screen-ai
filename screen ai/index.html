@@ -1,84 +1,732 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Screen AI</title>
-    <script type="module" src="/src/main.ts" defer></script>
-  </head>
+<!DOCTYPE html>
+<html lang="en" class="h-full font-sans antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen AI - Your Digital Companion</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <body>
-    <div class="app">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        space: {
+                            900: '#070913',
+                            800: '#0B0E1E',
+                            700: '#11152B',
+                            600: '#171D3A',
+                            500: '#1E2548'
+                        },
+                        neon: {
+                            blue: '#3b82f6',
+                            purple: '#8b5cf6',
+                            cyan: '#06b6d4',
+                            indigo: '#6366f1'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'spin-slow': 'spin 20s linear infinite',
+                        'spin-reverse-slow': 'spin-reverse 25s linear infinite',
+                        'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
+                        'orbit-1': 'orbit1 12s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        'spin-reverse': {
+                            '0%': { transform: 'rotate(360deg)' },
+                            '100%': { transform: 'rotate(0deg)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+                            '50%': { opacity: '0.8', transform: 'scale(1.05)' },
+                        },
+                        'star-float': {
+                            '0%, 100%': { transform: 'translateY(0) scale(1)', opacity: 0.2 },
+                            '50%': { transform: 'translateY(-20px) scale(1.5)', opacity: 0.8 },
+                        },
+                        'nebula-drift': {
+                            '0%': { transform: 'scale(1) translate(0, 0) rotate(0deg)' },
+                            '50%': { transform: 'scale(1.1) translate(5%, 5%) rotate(5deg)' },
+                            '100%': { transform: 'scale(1) translate(0, 0) rotate(0deg)' }
+                        },
+                        'cosmic-dust': {
+                            '0%': { transform: 'translateY(0) translateX(0)', opacity: 0 },
+                            '20%': { opacity: 0.6 },
+                            '80%': { opacity: 0.6 },
+                            '100%': { transform: 'translateY(-100vh) translateX(20vw)', opacity: 0 }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
-      <header class="topbar">
-        <div class="brand">
-          <div class="brand-icon">✦</div>
-          <div class="brand-name">Screen AI</div>
+    <style>
+        /* Custom scrollbar for dark UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(11, 14, 30, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.4);
+        }
+
+        /* Space Background Effects */
+        .bg-space-base {
+            background-color: #03050c; /* Deepest black/blue */
+            position: relative;
+        }
+
+        /* Starry background layer */
+        .stars-overlay {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(1px 1px at 10% 20%, #fff 100%, transparent),
+                radial-gradient(1px 1px at 30% 60%, #fff 100%, transparent),
+                radial-gradient(2px 2px at 50% 10%, #fff 100%, transparent),
+                radial-gradient(1.5px 1.5px at 70% 80%, #fff 100%, transparent),
+                radial-gradient(1px 1px at 90% 40%, #fff 100%, transparent);
+            background-size: 150px 150px;
+            opacity: 0.3;
+            animation: pulseGlow 10s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Slowly drifting nebula clouds */
+        .nebula {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+            animation: nebula-drift 30s ease-in-out infinite alternate;
+        }
+
+        /* Moving cosmic dust particles */
+        .dust-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+            z-index: 0;
+            animation: cosmic-dust linear infinite;
+        }
+
+        /* Glassmorphism panel style */
+        .glass-panel {
+            background: rgba(7, 9, 19, 0.6); /* Darker glass for space theme */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(139, 92, 246, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .glass-panel-interactive {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-panel-interactive:hover {
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 8px 32px -8px rgba(14, 165, 233, 0.2);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #ffffff 30%, #bae6fd 70%, #7dd3fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .text-gradient-purple {
+            background: linear-gradient(135deg, #67e8f9 0%, #38bdf8 50%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Glowing blue gradient action button */
+        .btn-gradient {
+            background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #3b82f6 100%);
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+            transition: all 0.2s ease;
+        }
+        .btn-gradient:hover {
+            box-shadow: 0 0 28px rgba(14, 165, 233, 0.65);
+            transform: translateY(-1px);
+        }
+
+        /* SVG Ring Orbit Effect */
+        .orbit-ellipse {
+            transform-origin: center;
+            stroke-dasharray: 8 6;
+        }
+    </style>
+</head>
+<body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans">
+
+    <!-- Space Specific Background Elements -->
+    <div class="stars-overlay"></div>
+    
+    <!-- Ambient Nebulas -->
+    <div class="nebula w-[80vw] h-[80vh] bg-indigo-900/20 top-[-20%] left-[-10%] mix-blend-screen" style="animation-duration: 40s;"></div>
+    <div class="nebula w-[60vw] h-[60vh] bg-fuchsia-900/15 bottom-[-10%] right-[-10%] mix-blend-screen" style="animation-delay: -10s; animation-direction: alternate-reverse;"></div>
+    <div class="nebula w-[50vw] h-[50vh] bg-blue-900/20 top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 25s; animation-delay: -5s;"></div>
+
+    <!-- Generating Cosmic Dust Particles dynamically via JS below -->
+    <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
+
+    <!-- Main Window Container -->
+    <div class="flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
+
+        <!-- Top Window Header Bar -->
+        <header class="flex items-center justify-between px-3 py-2 mb-2">
+            <!-- Window Title Left (Mobile friendly) -->
+            <div class="flex items-center space-x-2 md:hidden">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <i data-lucide="bot" class="w-4 h-4 text-white"></i>
+                </div>
+                <span class="font-bold text-sm tracking-wide text-white">SCREEN AI</span>
+            </div>
+
+            <div class="hidden md:block"></div>
+
+            <!-- Top Right Action Controls -->
+            <div class="flex items-center space-x-3 ml-auto">
+                <button class="relative p-2 rounded-full hover:bg-white/5 text-slate-400 hover:text-white transition-colors" title="Notifications">
+                    <i data-lucide="bell" class="w-4 h-4"></i>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full"></span>
+                </button>
+                
+                <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700/80 flex items-center justify-center text-xs font-semibold text-slate-200 shadow-inner cursor-pointer hover:border-indigo-500/50 transition-colors" title="Profile">
+                    P
+                </div>
+
+                <!-- OS Window Controls Sim -->
+                <div class="hidden sm:flex items-center space-x-3 pl-3 ml-2 border-l border-white/10 text-slate-400">
+                    <button class="hover:text-white transition-colors"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <button class="hover:text-white transition-colors"><i data-lucide="square" class="w-3 h-3"></i></button>
+                    <button class="hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content Grid -->
+        <div class="grid grid-cols-12 gap-5 flex-1 min-h-0">
+
+            <!-- LEFT SIDEBAR -->
+            <aside class="col-span-12 lg:col-span-2 flex flex-col justify-between p-4 rounded-2xl glass-panel">
+                
+                <div class="space-y-6">
+                    <!-- Brand Header -->
+                    <div class="flex items-center space-x-3 px-2 py-1">
+                        <div class="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 p-[1.5px] shadow-lg shadow-indigo-500/30">
+                            <div class="w-full h-full bg-space-900 rounded-full flex items-center justify-center">
+                                <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-sm text-white tracking-wider">SCREEN AI</h1>
+                            <p class="text-[11px] text-slate-400 tracking-tight">Your Digital Companion</p>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Links -->
+                    <nav class="space-y-1.5" id="main-nav">
+                        <a href="#" data-tab="home" class="nav-item active flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-900/60 to-purple-900/40 text-white border border-indigo-500/30 shadow-md shadow-indigo-950/50">
+                            <i data-lucide="home" class="w-4 h-4 text-indigo-300"></i>
+                            <span>Home</span>
+                        </a>
+
+                        <a href="#" data-tab="awareness" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                            <span>Screen Awareness</span>
+                        </a>
+
+                        <a href="#" data-tab="tasks" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
+                            <i data-lucide="check-square" class="w-4 h-4"></i>
+                            <span>Tasks</span>
+                        </a>
+
+                        <a href="#" data-tab="settings" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
+                            <i data-lucide="settings" class="w-4 h-4"></i>
+                            <span>Settings</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- Footer Status Bar -->
+                <div class="pt-4 border-t border-white/5 px-2">
+                    <div class="flex items-center space-x-2 text-xs font-medium text-slate-300">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
+                        <span>Local Mode</span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-0.5">v0.1.0</p>
+                </div>
+            </aside>
+
+
+            <!-- CENTER MAIN WORKSPACE -->
+            <main class="col-span-12 lg:col-span-7 flex flex-col justify-between items-center py-6 px-4 md:px-8 relative overflow-y-auto">
+
+                <!-- Top Pill Badge -->
+                <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full glass-panel border-blue-500/30 text-xs font-semibold text-blue-300 shadow-lg shadow-blue-900/20 backdrop-blur-md">
+                    <span class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_#3b82f6]"></span>
+                    <span class="tracking-wider uppercase text-[11px]">READY TO HELP</span>
+                </div>
+
+                <!-- Mascot & Orbit Rings Graphic Section -->
+                <div class="relative w-full max-w-md h-64 my-2 flex items-center justify-center">
+                    
+                    <!-- SVG Orbit Rings Backdrop -->
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" fill="none">
+                        <!-- Outer Orbit -->
+                        <ellipse cx="200" cy="150" rx="180" ry="70" stroke="rgba(56, 189, 248, 0.25)" stroke-width="1.5" class="orbit-ellipse animate-spin-slow" />
+                        <!-- Inner Glow Orbit -->
+                        <ellipse cx="200" cy="150" rx="140" ry="50" stroke="url(#orbitGradient)" stroke-width="2" class="orbit-ellipse animate-spin-reverse-slow" />
+                        
+                        <defs>
+                            <linearGradient id="orbitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
+                                <stop offset="50%" stop-color="#818cf8" stop-opacity="0.2" />
+                                <stop offset="100%" stop-color="#67e8f9" stop-opacity="0.8" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <!-- Background Soft Mascot Glow -->
+                    <div class="absolute w-44 h-44 bg-cyan-600/30 rounded-full blur-3xl animate-pulse-glow"></div>
+
+                    <!-- Glowing Robot Mascot Vector Art -->
+                    <div class="relative z-10 w-44 h-44 animate-float flex items-center justify-center">
+                        <svg viewBox="0 0 200 200" class="w-full h-full filter drop-shadow-[0_0_25px_rgba(139,92,246,0.55)]">
+                            <defs>
+                                <!-- Body Gradients -->
+                                <radialGradient id="headGlow" cx="50%" cy="30%" r="70%">
+                                    <stop offset="0%" stop-color="#bae6fd" />
+                                    <stop offset="40%" stop-color="#38bdf8" />
+                                    <stop offset="80%" stop-color="#0284c7" />
+                                    <stop offset="100%" stop-color="#082f49" />
+                                </radialGradient>
+
+                                <linearGradient id="faceGlass" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="#061226" />
+                                    <stop offset="100%" stop-color="#0c234a" />
+                                </linearGradient>
+
+                                <linearGradient id="cyanEyeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#67e8f9" />
+                                    <stop offset="100%" stop-color="#0ea5e9" />
+                                </linearGradient>
+
+                                <linearGradient id="earGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#7dd3fc" />
+                                    <stop offset="100%" stop-color="#0284c7" />
+                                </linearGradient>
+                            </defs>
+
+                            <!-- Ears / Headphone Node Left -->
+                            <ellipse cx="42" cy="95" rx="10" ry="18" fill="url(#earGlow)" filter="drop-shadow(0 0 6px #38bdf8)"/>
+                            <ellipse cx="44" cy="95" rx="4" ry="10" fill="#e0f2fe"/>
+
+                            <!-- Ears / Headphone Node Right -->
+                            <ellipse cx="158" cy="95" rx="10" ry="18" fill="url(#earGlow)" filter="drop-shadow(0 0 6px #38bdf8)"/>
+                            <ellipse cx="156" cy="95" rx="4" ry="10" fill="#e0f2fe"/>
+
+                            <!-- Robot Outer Helmet -->
+                            <rect x="48" y="50" width="104" height="90" rx="45" fill="url(#headGlow)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+
+                            <!-- Inner Glass Visor Faceplate -->
+                            <rect x="58" y="62" width="84" height="66" rx="30" fill="url(#faceGlass)" stroke="rgba(147, 197, 253, 0.3)" stroke-width="1.5"/>
+
+                            <!-- Eyes - Left -->
+                            <ellipse cx="80" cy="90" rx="9" ry="12" fill="url(#cyanEyeGlow)">
+                                <animate attributeName="ry" values="12;12;2;12;12" keyTimes="0;0.45;0.5;0.55;1" dur="4s" repeatCount="indefinite"/>
+                            </ellipse>
+                            <circle cx="77" cy="86" r="3" fill="#ffffff" />
+
+                            <!-- Eyes - Right -->
+                            <ellipse cx="120" cy="90" rx="9" ry="12" fill="url(#cyanEyeGlow)">
+                                <animate attributeName="ry" values="12;12;2;12;12" keyTimes="0;0.45;0.5;0.55;1" dur="4s" repeatCount="indefinite"/>
+                            </ellipse>
+                            <circle cx="117" cy="86" r="3" fill="#ffffff" />
+
+                            <!-- Cheerful Mouth -->
+                            <path d="M 94 106 Q 100 112 106 106" fill="transparent" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+
+                            <!-- Floating Body Torso -->
+                            <path d="M 82 145 C 82 145, 100 138, 118 145 C 122 165, 110 180, 100 182 C 90 180, 78 165, 82 145 Z" fill="url(#headGlow)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+
+                            <!-- Chest Core Power Light -->
+                            <circle cx="100" cy="160" r="6" fill="#38bdf8" filter="drop-shadow(0 0 8px #38bdf8)"/>
+                            <circle cx="100" cy="160" r="2.5" fill="#ffffff"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Main Greeting Text -->
+                <div class="text-center space-y-2 max-w-xl">
+                    <p class="text-xs tracking-widest text-sky-300 font-semibold uppercase">Your Digital Companion</p>
+                    <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+                        Hi, I'm <span class="text-gradient-purple">Screen AI.</span>
+                    </h2>
+                    <p class="text-slate-400 text-xs md:text-sm leading-relaxed px-4">
+                        I'm here to understand your screen, follow what you're doing, and help when you need me.
+                    </p>
+                </div>
+
+                <!-- Input Prompt Box & Quick Action Pills -->
+                <div class="w-full max-w-2xl mt-6 space-y-4">
+                    
+                    <!-- Search Input Bar -->
+                    <form id="ai-prompt-form" class="relative flex items-center">
+                        <div class="absolute left-4 text-indigo-400">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </div>
+                        
+                        <input 
+                            type="text" 
+                            id="user-input"
+                            placeholder="Ask Screen AI anything..." 
+                            class="w-full bg-space-800/90 hover:bg-space-800 focus:bg-space-800 text-slate-100 placeholder-slate-500 text-sm pl-12 pr-28 py-3.5 rounded-full border border-indigo-500/25 focus:border-indigo-500/60 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 transition-all shadow-xl shadow-indigo-950/40"
+                            autocomplete="off"
+                        >
+
+                        <div class="absolute right-2 flex items-center space-x-2">
+                            <!-- Mic Button -->
+                            <button type="button" id="mic-btn" class="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors" title="Voice Input">
+                                <i data-lucide="mic" class="w-4 h-4"></i>
+                            </button>
+                            
+                            <!-- Send Arrow Button -->
+                            <button type="submit" class="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-400 hover:to-blue-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/30 transition-all hover:scale-105">
+                                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Quick Suggestion Buttons -->
+                    <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
+                        <button class="quick-btn flex items-center space-x-2 px-3.5 py-2 rounded-full glass-panel glass-panel-interactive text-slate-300 hover:text-white border-white/10 text-xs">
+                            <i data-lucide="eye" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            <span>What's on my screen?</span>
+                        </button>
+
+                        <button class="quick-btn flex items-center space-x-2 px-3.5 py-2 rounded-full glass-panel glass-panel-interactive text-slate-300 hover:text-white border-white/10 text-xs">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span>Help me with this</span>
+                        </button>
+
+                        <button class="quick-btn flex items-center space-x-2 px-3.5 py-2 rounded-full glass-panel glass-panel-interactive text-slate-300 hover:text-white border-white/10 text-xs">
+                            <i data-lucide="disc" class="w-3.5 h-3.5 text-blue-400"></i>
+                            <span>Start screen awareness</span>
+                        </button>
+                    </div>
+
+                    <!-- AI Response Display Output Drawer -->
+                    <div id="response-box" class="hidden mt-4 p-4 rounded-2xl glass-panel border-indigo-500/30 text-xs text-slate-200 space-y-2 animate-fade-in">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                            <span class="flex items-center space-x-2 font-semibold text-indigo-300">
+                                <i data-lucide="bot" class="w-4 h-4"></i>
+                                <span>Screen AI Response</span>
+                            </span>
+                            <button id="close-response" class="text-slate-400 hover:text-white">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                        <p id="response-text" class="leading-relaxed text-slate-300">
+                            Thinking...
+                        </p>
+                    </div>
+
+                </div>
+
+            </main>
+
+
+            <!-- RIGHT SIDEBAR CARDS -->
+            <aside class="col-span-12 lg:col-span-3 flex flex-col space-y-4 overflow-y-auto">
+
+                <!-- CARD 1: SCREEN AWARENESS -->
+                <div class="p-4 rounded-2xl glass-panel space-y-3 relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                            <i data-lucide="eye" class="w-4 h-4 text-indigo-400"></i>
+                            <span>SCREEN AWARENESS</span>
+                        </div>
+                        <!-- Toggle Switch -->
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="awareness-toggle" class="sr-only peer">
+                            <div class="w-9 h-5 bg-space-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-2 text-[10px] font-semibold uppercase text-slate-500 peer-checked:text-blue-400" id="awareness-status-label">OFF</span>
+                        </label>
+                    </div>
+
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Screen AI can observe your screen when you ask it to.
+                    </p>
+
+                    <button id="btn-start-observing" class="w-full py-2.5 px-4 rounded-xl btn-gradient text-xs font-semibold text-white tracking-wide">
+                        Start observing
+                    </button>
+                </div>
+
+
+                <!-- CARD 2: CURRENT TASK -->
+                <div class="p-4 rounded-2xl glass-panel space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+                            <span>CURRENT TASK</span>
+                        </div>
+                        <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-space-600 text-slate-400">
+                            IDLE
+                        </span>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-semibold text-white">Nothing in progress</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed mt-1">
+                            Give Screen AI a goal and it can follow your progress.
+                        </p>
+                    </div>
+
+                    <button id="btn-start-task" class="w-full py-2 px-4 rounded-xl glass-panel border-slate-700/80 hover:border-indigo-500/40 text-xs font-semibold text-slate-200 hover:text-white transition-all text-center">
+                        Start a task
+                    </button>
+                </div>
+
+
+                <!-- CARD 3: ACTIVITY -->
+                <div class="p-4 rounded-2xl glass-panel space-y-3 flex-1 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                                <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+                                <span>ACTIVITY</span>
+                            </div>
+                            <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-space-600 text-slate-400">
+                                NOW
+                            </span>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-semibold text-white">Screen AI is waiting for you</h4>
+                        </div>
+
+                        <!-- Status Item -->
+                        <div class="flex items-start space-x-2.5 pt-1">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shadow-[0_0_8px_#3b82f6]"></span>
+                            <div class="text-xs space-y-0.5">
+                                <p class="font-medium text-slate-200">Assistant ready</p>
+                                <p class="text-slate-400 text-[11px] leading-relaxed">Ask a question or start screen awareness.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Screen Capture Live Simulation Canvas Container -->
+                    <div id="sim-screen-container" class="hidden mt-3 p-2 rounded-xl bg-space-900 border border-indigo-500/30">
+                        <p class="text-[10px] text-indigo-300 font-semibold mb-1 flex items-center justify-between">
+                            <span>LIVE SCREEN VIEW</span>
+                            <span class="text-emerald-400 animate-pulse">● ACTIVE</span>
+                        </p>
+                        <div class="w-full h-24 rounded bg-slate-950 flex flex-col items-center justify-center border border-slate-800 text-slate-500 text-[11px] space-y-1">
+                            <i data-lucide="monitor" class="w-5 h-5 text-indigo-400 animate-bounce"></i>
+                            <span>Observing Display #1</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </aside>
+
         </div>
-
-        <button class="settings" aria-label="Settings">⚙</button>
-      </header>
-
-      <main class="main">
-
-        <section class="hero">
-
-          <div class="character" id="character">
-            🤖
-          </div>
-
-          <h1>Hi, I'm Screen AI</h1>
-
-          <p>
-            I'm ready to understand what you're doing
-            and help you when you need me.
-          </p>
-
-          <div class="status">
-            <span class="status-dot"></span>
-            <span id="status-text">I'm ready to help you</span>
-          </div>
-
-          <button class="ask-button" id="ask-button">
-            Ask Screen AI
-          </button>
-
-          <p class="message" id="assistant-message">
-            Your assistant is standing by.
-          </p>
-
-        </section>
-
-        <section class="panel">
-
-          <div class="card">
-            <p class="card-title">Screen Awareness</p>
-            <p class="card-value">Ready to observe</p>
-            <p class="card-subtitle">
-              Screen AI can receive screen observations.
-            </p>
-          </div>
-
-          <div class="card">
-            <p class="card-title">Current Task</p>
-            <p class="card-value">No active task</p>
-            <p class="card-subtitle">
-              Start a task and Screen AI can follow its progress.
-            </p>
-          </div>
-
-          <div class="card">
-            <p class="card-title">Next Step</p>
-            <p class="card-value">Waiting for your task</p>
-            <p class="card-subtitle">
-              Your assistant will show the next useful step here.
-            </p>
-          </div>
-
-        </section>
-
-      </main>
-
     </div>
-  </body>
+
+    <script>
+        // Initialize Lucide icons
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupInteractivity();
+            createCosmicDust();
+        });
+
+        function createCosmicDust() {
+            const container = document.getElementById('dust-container');
+            const particleCount = 30;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'dust-particle';
+                
+                // Randomize starting position
+                const startX = Math.random() * 100;
+                const startY = Math.random() * 100 + 100; // Start below screen mostly
+                
+                // Randomize animation properties
+                const duration = Math.random() * 15 + 10; // 10s to 25s
+                const delay = Math.random() * 20; // 0s to 20s
+                
+                particle.style.left = `${startX}vw`;
+                particle.style.bottom = `-${startY}px`;
+                particle.style.animationDuration = `${duration}s`;
+                particle.style.animationDelay = `${delay}s`;
+                
+                // Varied sizes and opacities
+                const size = Math.random() * 2 + 1;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                container.appendChild(particle);
+            }
+        }
+
+        function setupInteractivity() {
+            // Navigation tabs logic
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navItems.forEach(nav => {
+                        nav.classList.remove('active', 'bg-gradient-to-r', 'from-indigo-900/60', 'to-purple-900/40', 'text-white', 'border', 'border-indigo-500/30', 'shadow-md');
+                        nav.classList.add('text-slate-400');
+                    });
+                    item.classList.add('active', 'bg-gradient-to-r', 'from-indigo-900/60', 'to-purple-900/40', 'text-white', 'border', 'border-indigo-500/30', 'shadow-md');
+                    item.classList.remove('text-slate-400');
+                });
+            });
+
+            // Quick suggestion buttons fill prompt input
+            const quickBtns = document.querySelectorAll('.quick-btn');
+            const userInput = document.getElementById('user-input');
+            quickBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const text = btn.innerText.trim();
+                    userInput.value = text;
+                    userInput.focus();
+                });
+            });
+
+            // Awareness Toggle Switch
+            const awarenessToggle = document.getElementById('awareness-toggle');
+            const awarenessStatusLabel = document.getElementById('awareness-status-label');
+            const btnStartObserving = document.getElementById('btn-start-observing');
+            const simScreenContainer = document.getElementById('sim-screen-container');
+
+            function updateObservingState(active) {
+                awarenessToggle.checked = active;
+                if (active) {
+                    awarenessStatusLabel.innerText = 'ON';
+                    awarenessStatusLabel.classList.remove('text-slate-500');
+                    awarenessStatusLabel.classList.add('text-blue-400');
+                    btnStartObserving.innerText = 'Stop observing';
+                    btnStartObserving.classList.replace('btn-gradient', 'bg-rose-600/80');
+                    simScreenContainer.classList.remove('hidden');
+                } else {
+                    awarenessStatusLabel.innerText = 'OFF';
+                    awarenessStatusLabel.classList.remove('text-blue-400');
+                    awarenessStatusLabel.classList.add('text-slate-500');
+                    btnStartObserving.innerText = 'Start observing';
+                    btnStartObserving.classList.replace('bg-rose-600/80', 'btn-gradient');
+                    simScreenContainer.classList.add('hidden');
+                }
+            }
+
+            awarenessToggle.addEventListener('change', (e) => {
+                updateObservingState(e.target.checked);
+            });
+
+            btnStartObserving.addEventListener('click', () => {
+                updateObservingState(!awarenessToggle.checked);
+            });
+
+            // Mic simulation
+            const micBtn = document.getElementById('mic-btn');
+            let isListening = false;
+            micBtn.addEventListener('click', () => {
+                isListening = !isListening;
+                if (isListening) {
+                    micBtn.classList.add('text-rose-400', 'animate-pulse');
+                    userInput.placeholder = "Listening...";
+                } else {
+                    micBtn.classList.remove('text-rose-400', 'animate-pulse');
+                    userInput.placeholder = "Ask Screen AI anything...";
+                }
+            });
+
+            // Handle Prompt Submit with Gemini API Call
+            const form = document.getElementById('ai-prompt-form');
+            const responseBox = document.getElementById('response-box');
+            const responseText = document.getElementById('response-text');
+            const closeResponse = document.getElementById('close-response');
+
+            closeResponse.addEventListener('click', () => {
+                responseBox.classList.add('hidden');
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const query = userInput.value.trim();
+                if (!query) return;
+
+                responseBox.classList.remove('hidden');
+                responseText.innerHTML = '<span class="animate-pulse">Screen AI is analyzing...</span>';
+
+                try {
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                    const systemPrompt = "You are Screen AI, an intelligent, helpful desktop digital companion. Provide concise, friendly, helpful answers formatted nicely with plain bullet points if needed.";
+
+                    const payload = {
+                        contents: [{ parts: [{ text: query }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    };
+
+                    const res = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (textResult) {
+                        responseText.innerText = textResult;
+                    } else {
+                        responseText.innerText = "Screen AI is ready to assist you. (Simulated desktop connection active)";
+                    }
+                } catch (err) {
+                    console.warn("API Call fallback:", err);
+                    responseText.innerText = `I've received your request: "${query}". I am watching your workspace and ready to assist!`;
+                }
+            });
+        }
+    </script>
+</body>
 </html>
