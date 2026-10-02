@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Screen AI Companion</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body { display: flex; align-items: center; justify-content: center; }
+
+    #companion {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #companion:active { cursor: grabbing; }
+
+    .glow {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56,189,248,0.25) 0%, transparent 70%);
+      opacity: 0.6;
+      pointer-events: none;
+      transition: opacity 0.4s, transform 0.4s;
+    }
+
+    .face {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #e0f2fe 0%, #7dd3fc 40%, #38bdf8 70%, #0284c7 100%);
+      box-shadow:
+        0 0 12px rgba(56,189,248,0.45),
+        inset 0 2px 6px rgba(255,255,255,0.5),
+        inset 0 -4px 8px rgba(2,132,199,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .eyes {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .eye {
+      width: 8px;
+      height: 10px;
+      background: #0c4a6e;
+      border-radius: 50%;
+      position: relative;
+      transition: height 0.2s, width 0.2s;
+    }
+    .eye::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 3px; height: 3px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    .mouth {
+      position: absolute;
+      bottom: 12px;
+      width: 10px;
+      height: 5px;
+      border-bottom: 2px solid #0c4a6e;
+      border-radius: 0 0 50% 50%;
+      transition: all 0.25s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    #companion.idle .face { animation: float 3.5s ease-in-out infinite; }
+
+    #companion.observing .glow {
+      opacity: 1;
+      background: radial-gradient(circle, rgba(56,189,248,0.45) 0%, transparent 70%);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    #companion.observing .eye { height: 11px; width: 7px; }
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
+
+    #companion.thinking .face { animation: think 1.2s ease-in-out infinite; }
+    #companion.thinking .mouth {
+      width: 6px; height: 6px;
+      border: 2px solid #0c4a6e;
+      border-radius: 50%;
+      bottom: 11px;
+    }
+    @keyframes think {
+      0%, 100% { transform: rotate(-4deg); }
+      50% { transform: rotate(4deg); }
+    }
+
+    #companion.working .face { animation: work 0.8s ease-in-out infinite; }
+    #companion.working .glow {
+      opacity: 0.9;
+      background: radial-gradient(circle, rgba(167,139,250,0.4) 0%, transparent 70%);
+    }
+    @keyframes work {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    #companion.attention .face { animation: bounce 0.6s ease-in-out infinite; }
+    #companion.attention .glow {
+      opacity: 1;
+      background: radial-gradient(circle, rgba(251,191,36,0.5) 0%, transparent 70%);
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-8px); }
+      60% { transform: translateY(-4px); }
+    }
+
+    #bubble {
+      position: absolute;
+      left: 70px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 200px;
+      background: rgba(7, 12, 28, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56,189,248,0.25);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 10;
+    }
+    #bubble.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(4px);
+    }
+    #bubble h4 {
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: #e0f2fe;
+      margin-bottom: 8px;
+    }
+    #bubble .status {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #bubble .status .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+    #bubble .status.observing .dot { background: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
+    #bubble button {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 6px;
+      border: none;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: system-ui, sans-serif;
+      cursor: pointer;
+      transition: background 0.15s;
+      text-align: left;
+    }
+    #bubble button.primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+    }
+    #bubble button.primary:hover { filter: brightness(1.1); }
+    #bubble button.secondary {
+      background: rgba(255,255,255,0.06);
+      color: #cbd5e1;
+    }
+    #bubble button.secondary:hover { background: rgba(255,255,255,0.12); }
+    #bubble button:last-child { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+  <div id="companion" class="idle" data-tauri-drag-region>
+    <div class="glow"></div>
+    <div class="face">
+      <div class="eyes">
+        <div class="eye"></div>
+        <div class="eye"></div>
+      </div>
+      <div class="mouth"></div>
+    </div>
+  </div>
+
+  <div id="bubble">
+    <h4>What can I help with?</h4>
+    <div class="status" id="bubble-status">
+      <span class="dot"></span>
+      <span id="status-text">Idle</span>
+    </div>
+    <button class="primary" id="btn-ask">Ask Screen AI</button>
+    <button class="secondary" id="btn-observe">Start observing</button>
+  </div>
+
+  <script type="module">
+    const { getCurrentWindow } = window.__TAURI__.window;
+    const { emit, listen } = window.__TAURI__.event;
+    const { LogicalPosition } = window.__TAURI__.dpi;
+
+    const companion = document.getElementById('companion');
+    const bubble = document.getElementById('bubble');
+    const statusEl = document.getElementById('bubble-status');
+    const statusText = document.getElementById('status-text');
+    const btnObserve = document.getElementById('btn-observe');
+    const btnAsk = document.getElementById('btn-ask');
+
+    let currentState = 'idle';
+    let isObserving = false;
+    let bubbleOpen = false;
+
+    async function restorePosition() {
+      try {
+        const saved = localStorage.getItem('companion-pos');
+        if (saved) {
+          const { x, y } = JSON.parse(saved);
+          const win = getCurrentWindow();
+          await win.setPosition(new LogicalPosition(x, y));
+        }
+      } catch (e) { console.warn('Position restore failed', e); }
+    }
+
+    async function savePosition() {
+      try {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        localStorage.setItem('companion-pos', JSON.stringify({ x: pos.x, y: pos.y }));
+      } catch (e) {}
+    }
+
+    function setState(state) {
+      currentState = state;
+      companion.className = state;
+      statusEl.className = 'status' + (state === 'observing' ? ' observing' : '');
+      const labels = {
+        idle: 'Idle',
+        observing: 'Observing screen',
+        thinking: 'Thinking…',
+        working: 'Working…',
+        attention: 'Needs attention'
+      };
+      statusText.textContent = labels[state] || state;
+      btnObserve.textContent = isObserving ? 'Stop observing' : 'Start observing';
+    }
+
+    function toggleBubble(force) {
+      bubbleOpen = force !== undefined ? force : !bubbleOpen;
+      bubble.classList.toggle('visible', bubbleOpen);
+    }
+
+    companion.addEventListener('click', (e) => {
+      toggleBubble();
+      e.stopPropagation();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (bubbleOpen && !bubble.contains(e.target) && !companion.contains(e.target)) {
+        toggleBubble(false);
+      }
+    });
+
+    btnObserve.addEventListener('click', async () => {
+      try {
+        await emit('companion-toggle-observe', { observing: !isObserving });
+      } catch (e) {
+        console.warn(e);
+      }
+      toggleBubble(false);
+    });
+
+    btnAsk.addEventListener('click', async () => {
+      try {
+        await emit('companion-ask', {});
+      } catch (e) {}
+      toggleBubble(false);
+    });
+
+    listen('companion-state', (event) => {
+      const { state, observing } = event.payload;
+      if (typeof observing === 'boolean') isObserving = observing;
+      if (state) setState(state);
+      else setState(isObserving ? 'observing' : 'idle');
+    });
+
+    listen('observation-status', (event) => {
+      isObserving = !!event.payload.active;
+      setState(isObserving ? 'observing' : 'idle');
+    });
+
+    let lastSave = 0;
+    setInterval(async () => {
+      if (Date.now() - lastSave > 2000) {
+        await savePosition();
+        lastSave = Date.now();
+      }
+    }, 1500);
+
+    restorePosition();
+    setState('idle');
+
+    (async () => {
+      try {
+        const win = getCurrentWindow();
+        await win.show();
+        await win.setAlwaysOnTop(true);
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>
