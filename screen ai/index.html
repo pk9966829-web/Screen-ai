@@ -386,7 +386,22 @@
             }
 
             async function startObserving() {
-                if (screenStream) { stopObserving(); return; }
+                if (screenStream) {
+                    stopObserving();
+                    return;
+                }
+
+                // Tell the floating character to ask first
+                try {
+                    if (window.__TAURI__) {
+                        const { emit } = window.__TAURI__.event;
+                        await emit('companion-asking', {});
+                    }
+                } catch (e) {}
+
+                // Small delay so user sees the character asking
+                await new Promise(r => setTimeout(r, 450));
+
                 try {
                     screenStream = await navigator.mediaDevices.getDisplayMedia({
                         video: { displaySurface: 'monitor', frameRate: 5 },
@@ -399,6 +414,12 @@
                 } catch (err) {
                     console.warn('Screen permission denied or cancelled:', err);
                     updateObservingState(false);
+                    try {
+                        if (window.__TAURI__) {
+                            const { emit } = window.__TAURI__.event;
+                            await emit('companion-denied', {});
+                        }
+                    } catch (e) {}
                     const statusPill = document.querySelector('.inline-flex.items-center.space-x-2');
                     if (statusPill) {
                         const original = statusPill.innerHTML;
