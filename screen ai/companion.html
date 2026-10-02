@@ -5,16 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Screen AI Companion</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; border: none !important; outline: none !important; }
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
       background: transparent !important;
+      background-color: rgba(0,0,0,0) !important;
       user-select: none;
       -webkit-user-select: none;
       font-family: system-ui, -apple-system, sans-serif;
     }
-    body { display: flex; align-items: center; justify-content: center; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding-left: 8px;
+    }
 
     #companion {
       position: relative;
@@ -23,6 +29,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      -webkit-app-region: drag;
     }
     #companion:active { cursor: grabbing; }
 
@@ -57,7 +64,7 @@
       background: #0c4a6e;
       border-radius: 50%;
       position: relative;
-      transition: height 0.2s, width 0.2s, transform 0.2s;
+      transition: height 0.2s, width 0.2s;
     }
     .eye::after {
       content: '';
@@ -145,13 +152,13 @@
 
     #speech {
       position: absolute;
-      left: 68px;
+      left: 72px;
       top: 50%;
       transform: translateY(-50%) scale(0.9);
       background: rgba(7, 12, 28, 0.95);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(56,189,248,0.35);
+      border: 1px solid rgba(56,189,248,0.35) !important;
       border-radius: 12px;
       padding: 8px 12px;
       font-size: 11px;
@@ -163,6 +170,7 @@
       pointer-events: none;
       transition: opacity 0.25s, transform 0.25s;
       z-index: 20;
+      -webkit-app-region: no-drag;
     }
     #speech::before {
       content: '';
@@ -176,18 +184,17 @@
       opacity: 1;
       transform: translateY(-50%) scale(1);
     }
-    #speech .emoji { margin-right: 4px; }
 
     #bubble {
       position: absolute;
-      left: 70px;
+      left: 74px;
       top: 50%;
       transform: translateY(-50%);
-      width: 200px;
+      width: 190px;
       background: rgba(7, 12, 28, 0.92);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(56,189,248,0.25);
+      border: 1px solid rgba(56,189,248,0.25) !important;
       border-radius: 14px;
       padding: 12px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
@@ -195,6 +202,7 @@
       pointer-events: none;
       transition: opacity 0.2s, transform 0.2s;
       z-index: 10;
+      -webkit-app-region: no-drag;
     }
     #bubble.visible {
       opacity: 1;
@@ -220,10 +228,11 @@
     #bubble button {
       display: block; width: 100%;
       padding: 7px 10px; margin-bottom: 6px;
-      border: none; border-radius: 8px;
+      border: none !important; border-radius: 8px;
       font-size: 11px; font-weight: 500;
       cursor: pointer; transition: background 0.15s;
       text-align: left;
+      -webkit-app-region: no-drag;
     }
     #bubble button.primary {
       background: linear-gradient(135deg, #0284c7, #2563eb);
@@ -239,7 +248,7 @@
   </style>
 </head>
 <body>
-  <div id="companion" class="idle" data-tauri-drag-region>
+  <div id="companion" class="idle">
     <div class="glow"></div>
     <div class="face">
       <div class="eyes">
@@ -251,7 +260,7 @@
   </div>
 
   <div id="speech">
-    <span class="emoji">👀</span>
+    <span>👀</span>
     <span id="speech-text">Can I watch your screen?</span>
   </div>
 
@@ -283,22 +292,58 @@
     let isObserving = false;
     let bubbleOpen = false;
     let speechTimeout = null;
+    let isDragging = false;
+    let dragStarted = false;
+
+    // ===== DRAG (works on Tauri) =====
+    companion.addEventListener('mousedown', async (e) => {
+      if (e.button !== 0) return;
+      dragStarted = false;
+      isDragging = true;
+      const startX = e.clientX;
+      const startY = e.clientY;
+
+      const onMove = async (ev) => {
+        if (!isDragging) return;
+        const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+        if (dist > 4 && !dragStarted) {
+          dragStarted = true;
+          try {
+            await getCurrentWindow().startDragging();
+          } catch (err) {
+            console.warn('startDragging failed', err);
+          }
+        }
+      };
+
+      const onUp = () => {
+        isDragging = false;
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        // Save position after drag
+        setTimeout(savePosition, 300);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    // Also support data-tauri-drag-region style via CSS app-region
+    companion.setAttribute('data-tauri-drag-region', '');
 
     async function restorePosition() {
       try {
         const saved = localStorage.getItem('companion-pos');
         if (saved) {
           const { x, y } = JSON.parse(saved);
-          const win = getCurrentWindow();
-          await win.setPosition(new LogicalPosition(x, y));
+          await getCurrentWindow().setPosition(new LogicalPosition(x, y));
         }
       } catch (e) {}
     }
 
     async function savePosition() {
       try {
-        const win = getCurrentWindow();
-        const pos = await win.outerPosition();
+        const pos = await getCurrentWindow().outerPosition();
         localStorage.setItem('companion-pos', JSON.stringify({ x: pos.x, y: pos.y }));
       } catch (e) {}
     }
@@ -307,9 +352,7 @@
       speechText.textContent = text;
       speech.classList.add('visible');
       if (speechTimeout) clearTimeout(speechTimeout);
-      speechTimeout = setTimeout(() => {
-        speech.classList.remove('visible');
-      }, duration);
+      speechTimeout = setTimeout(() => speech.classList.remove('visible'), duration);
     }
 
     function hideSpeech() {
@@ -340,6 +383,10 @@
     }
 
     companion.addEventListener('click', (e) => {
+      if (dragStarted) {
+        dragStarted = false;
+        return; // don't open bubble after a drag
+      }
       toggleBubble();
       e.stopPropagation();
     });
@@ -355,16 +402,12 @@
         setState('asking');
         showSpeech('Can I watch your screen?', 2800);
         await emit('companion-toggle-observe', { observing: !isObserving });
-      } catch (e) {
-        console.warn(e);
-      }
+      } catch (e) {}
       toggleBubble(false);
     });
 
     btnAsk.addEventListener('click', async () => {
-      try {
-        await emit('companion-ask', {});
-      } catch (e) {}
+      try { await emit('companion-ask', {}); } catch (e) {}
       toggleBubble(false);
     });
 
@@ -400,14 +443,6 @@
       setState('idle');
       showSpeech('Okay, I won’t look 😊', 2500);
     });
-
-    let lastSave = 0;
-    setInterval(async () => {
-      if (Date.now() - lastSave > 2000) {
-        await savePosition();
-        lastSave = Date.now();
-      }
-    }, 1500);
 
     restorePosition();
     setState('idle');
