@@ -525,6 +525,8 @@ function toggleAwareness() {
 
   updateAwarenessUI();
 
+  void notifyCompanion(awarenessEnabled);
+
 
   if (awarenessEnabled) {
 
@@ -556,6 +558,15 @@ observeBtn?.addEventListener(
   "click",
   toggleAwareness
 );
+
+if (window.__TAURI__) {
+  window.__TAURI__.event.listen("companion-toggle-observe", (event: any) => {
+    const requested = event?.payload?.observing;
+    if (typeof requested === "boolean" && requested !== awarenessEnabled) {
+      toggleAwareness();
+    }
+  });
+}
 
 
 // =========================================================
