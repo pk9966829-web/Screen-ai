@@ -357,11 +357,11 @@
                             <ellipse cx="158" cy="95" rx="10" ry="18" fill="url(#earGlow)" filter="drop-shadow(0 0 6px #38bdf8)"/>
                             <ellipse cx="156" cy="95" rx="4" ry="10" fill="#e0f2fe"/>
 
-                            <!-- Robot Outer Helmet -->
-                            <rect x="48" y="50" width="104" height="90" rx="45" fill="url(#headGlow)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+                            <!-- Head -->
+                            <ellipse cx="100" cy="95" rx="55" ry="50" fill="url(#headGlow)" filter="drop-shadow(0 0 12px #38bdf8)"/>
 
-                            <!-- Inner Glass Visor Faceplate -->
-                            <rect x="58" y="62" width="84" height="66" rx="30" fill="url(#faceGlass)" stroke="rgba(147, 197, 253, 0.3)" stroke-width="1.5"/>
+                            <!-- Face Glass -->
+                            <ellipse cx="100" cy="95" rx="42" ry="38" fill="url(#faceGlass)"/>
 
                             <!-- Eyes - Left -->
                             <ellipse cx="80" cy="90" rx="9" ry="12" fill="url(#cyanEyeGlow)">
@@ -407,82 +407,50 @@
                         <div class="absolute left-4 text-indigo-400">
                             <i data-lucide="sparkles" class="w-5 h-5"></i>
                         </div>
-                        
-                        <input 
-                            type="text" 
-                            id="user-input"
-                            placeholder="Ask Screen AI anything..." 
-                            class="w-full bg-space-800/90 hover:bg-space-800 focus:bg-space-800 text-slate-100 placeholder-slate-500 text-sm pl-12 pr-28 py-3.5 rounded-full border border-indigo-500/25 focus:border-indigo-500/60 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 transition-all shadow-xl shadow-indigo-950/40"
-                            autocomplete="off"
-                        >
-
-                        <div class="absolute right-2 flex items-center space-x-2">
-                            <!-- Mic Button -->
-                            <button type="button" id="mic-btn" class="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors" title="Voice Input">
+                        <input id="user-input" type="text" placeholder="Ask Screen AI anything..." class="w-full pl-12 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
+                        <div class="absolute right-2 flex items-center space-x-1">
+                            <button type="button" id="mic-btn" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
                                 <i data-lucide="mic" class="w-4 h-4"></i>
                             </button>
-                            
-                            <!-- Send Arrow Button -->
-                            <button type="submit" class="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-400 hover:to-blue-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/30 transition-all hover:scale-105">
+                            <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
                                 <i data-lucide="arrow-right" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </form>
 
-                    <!-- Quick Suggestion Buttons -->
-                    <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
-                        <button class="quick-btn flex items-center space-x-2 px-3.5 py-2 rounded-full glass-panel glass-panel-interactive text-slate-300 hover:text-white border-white/10 text-xs">
-                            <i data-lucide="eye" class="w-3.5 h-3.5 text-indigo-400"></i>
+                    <!-- Quick Action Chips -->
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
+                            <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                             <span>What's on my screen?</span>
                         </button>
-
-                        <button class="quick-btn flex items-center space-x-2 px-3.5 py-2 rounded-full glass-panel glass-panel-interactive text-slate-300 hover:text-white border-white/10 text-xs">
-                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
                             <span>Help me with this</span>
                         </button>
-
-                        <button class="quick-btn flex items-center space-x-2 px-3.5 py-2 rounded-full glass-panel glass-panel-interactive text-slate-300 hover:text-white border-white/10 text-xs">
-                            <i data-lucide="disc" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
+                            <i data-lucide="circle" class="w-3.5 h-3.5"></i>
                             <span>Start screen awareness</span>
                         </button>
                     </div>
-
-                    <!-- AI Response Display Output Drawer -->
-                    <div id="response-box" class="hidden mt-4 p-4 rounded-2xl glass-panel border-indigo-500/30 text-xs text-slate-200 space-y-2 animate-fade-in">
-                        <div class="flex items-center justify-between border-b border-white/10 pb-2">
-                            <span class="flex items-center space-x-2 font-semibold text-indigo-300">
-                                <i data-lucide="bot" class="w-4 h-4"></i>
-                                <span>Screen AI Response</span>
-                            </span>
-                            <button id="close-response" class="text-slate-400 hover:text-white">
-                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                        <p id="response-text" class="leading-relaxed text-slate-300">
-                            Thinking...
-                        </p>
-                    </div>
-
                 </div>
-
             </main>
 
 
-            <!-- RIGHT SIDEBAR CARDS -->
-            <aside class="col-span-12 lg:col-span-3 flex flex-col space-y-4 overflow-y-auto">
+            <!-- RIGHT SIDEBAR - Cards -->
+            <aside class="col-span-12 lg:col-span-3 flex flex-col gap-4 overflow-y-auto">
 
                 <!-- CARD 1: SCREEN AWARENESS -->
-                <div class="p-4 rounded-2xl glass-panel space-y-3 relative overflow-hidden">
+                <div class="p-4 rounded-2xl glass-panel space-y-3">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
                             <i data-lucide="eye" class="w-4 h-4 text-indigo-400"></i>
                             <span>SCREEN AWARENESS</span>
                         </div>
-                        <!-- Toggle Switch -->
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="awareness-toggle" class="sr-only peer">
-                            <div class="w-9 h-5 bg-space-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                            <span class="ml-2 text-[10px] font-semibold uppercase text-slate-500 peer-checked:text-blue-400" id="awareness-status-label">OFF</span>
+                            <div class="w-9 h-5 bg-space-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-2 text-[10px] font-bold tracking-wider uppercase text-slate-500 peer-checked:text-blue-400" id="awareness-status-label">OFF</span>
                         </label>
                     </div>
 
@@ -541,29 +509,24 @@
                         <!-- Status Item -->
                         <div class="flex items-start space-x-2.5 pt-1">
                             <span class="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shadow-[0_0_8px_#3b82f6]"></span>
-                            <div class="text-xs space-y-0.5">
-                                <p class="font-medium text-slate-200">Assistant ready</p>
-                                <p class="text-slate-400 text-[11px] leading-relaxed">Ask a question or start screen awareness.</p>
+                            <div>
+                                <p class="text-xs font-medium text-white">Assistant ready</p>
+                                <p class="text-[11px] text-slate-400">Ask a question or start screen awareness.</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Screen Capture Live Simulation Canvas Container -->
-                    <div id="sim-screen-container" class="hidden mt-3 p-2 rounded-xl bg-space-900 border border-indigo-500/30">
-                        <p class="text-[10px] text-indigo-300 font-semibold mb-1 flex items-center justify-between">
-                            <span>LIVE SCREEN VIEW</span>
-                            <span class="text-emerald-400 animate-pulse">● ACTIVE</span>
-                        </p>
-                        <div class="w-full h-24 rounded bg-slate-950 flex flex-col items-center justify-center border border-slate-800 text-slate-500 text-[11px] space-y-1">
-                            <i data-lucide="monitor" class="w-5 h-5 text-indigo-400 animate-bounce"></i>
-                            <span>Observing Display #1</span>
-                        </div>
-                    </div>
-
                 </div>
-
             </aside>
+        </div>
+    </div>
 
+    <!-- Hidden response box for AI replies -->
+    <div id="response-box" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-xl mx-auto p-4 z-50">
+        <div class="glass-panel rounded-2xl p-4 border border-indigo-500/30 shadow-2xl relative">
+            <button id="close-response" class="absolute top-3 right-3 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <p id="response-text" class="text-sm text-slate-200 pr-6"></p>
         </div>
     </div>
 
@@ -621,7 +584,7 @@
             });
 
             // Quick suggestion buttons fill prompt input
-            const quickBtns = document.querySelectorAll('.quick-btn');
+            const quickBtns = document.querySelectorAll('.chip');
             const userInput = document.getElementById('user-input');
             quickBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -631,11 +594,14 @@
                 });
             });
 
-            // Awareness Toggle Switch
+            // Awareness Toggle Switch & Start Observing button
             const awarenessToggle = document.getElementById('awareness-toggle');
             const awarenessStatusLabel = document.getElementById('awareness-status-label');
             const btnStartObserving = document.getElementById('btn-start-observing');
             const simScreenContainer = document.getElementById('sim-screen-container');
+
+            // Screen capture stream (kept alive while observing)
+            let screenStream = null;
 
             function updateObservingState(active) {
                 awarenessToggle.checked = active;
@@ -645,23 +611,94 @@
                     awarenessStatusLabel.classList.add('text-blue-400');
                     btnStartObserving.innerText = 'Stop observing';
                     btnStartObserving.classList.replace('btn-gradient', 'bg-rose-600/80');
-                    simScreenContainer.classList.remove('hidden');
+                    if (simScreenContainer) simScreenContainer.classList.remove('hidden');
                 } else {
                     awarenessStatusLabel.innerText = 'OFF';
                     awarenessStatusLabel.classList.remove('text-blue-400');
                     awarenessStatusLabel.classList.add('text-slate-500');
                     btnStartObserving.innerText = 'Start observing';
                     btnStartObserving.classList.replace('bg-rose-600/80', 'btn-gradient');
-                    simScreenContainer.classList.add('hidden');
+                    if (simScreenContainer) simScreenContainer.classList.add('hidden');
                 }
             }
 
+            async function startObserving() {
+                // Already observing → stop
+                if (screenStream) {
+                    stopObserving();
+                    return;
+                }
+
+                try {
+                    // Request real screen permission from the browser / OS
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            displaySurface: "monitor", // prefer full screen
+                            frameRate: 5               // low FPS is enough for awareness
+                        },
+                        audio: false
+                    });
+
+                    // User granted permission
+                    updateObservingState(true);
+
+                    // Optional: show a tiny live preview if the container exists
+                    const preview = document.getElementById('screen-preview');
+                    if (preview && screenStream) {
+                        preview.srcObject = screenStream;
+                        preview.play().catch(() => {});
+                    }
+
+                    // If the user stops sharing from the browser UI, clean up
+                    screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+                        stopObserving();
+                    });
+
+                    console.log('Screen awareness started – permission granted');
+                } catch (err) {
+                    console.warn('Screen permission denied or cancelled:', err);
+                    // Keep UI in OFF state
+                    updateObservingState(false);
+
+                    // Friendly feedback
+                    const statusPill = document.querySelector('.inline-flex.items-center.space-x-2');
+                    if (statusPill) {
+                        const original = statusPill.innerHTML;
+                        statusPill.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span><span class="tracking-wider uppercase text-[11px] text-rose-300">PERMISSION DENIED</span>';
+                        setTimeout(() => { statusPill.innerHTML = original; }, 3000);
+                    }
+                }
+            }
+
+            function stopObserving() {
+                if (screenStream) {
+                    screenStream.getTracks().forEach(track => track.stop());
+                    screenStream = null;
+                }
+                const preview = document.getElementById('screen-preview');
+                if (preview) {
+                    preview.srcObject = null;
+                }
+                updateObservingState(false);
+                console.log('Screen awareness stopped');
+            }
+
+            // Toggle switch
             awarenessToggle.addEventListener('change', (e) => {
-                updateObservingState(e.target.checked);
+                if (e.target.checked) {
+                    startObserving();
+                } else {
+                    stopObserving();
+                }
             });
 
+            // Big button
             btnStartObserving.addEventListener('click', () => {
-                updateObservingState(!awarenessToggle.checked);
+                if (screenStream) {
+                    stopObserving();
+                } else {
+                    startObserving();
+                }
             });
 
             // Mic simulation
