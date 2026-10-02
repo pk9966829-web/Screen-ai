@@ -1040,6 +1040,15 @@ document
 // TAURI
 // =========================================================
 
+async function notifyCompanion(show: boolean) {
+  try {
+    if (!window.__TAURI__) return;
+    await window.__TAURI__.event.emit("show-companion", { show });
+  } catch (error) {
+    console.warn("Companion visibility update failed:", error);
+  }
+}
+
 async function setupTauriControls() {
 
   if (!window.__TAURI__) {
