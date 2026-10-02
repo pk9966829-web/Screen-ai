@@ -279,9 +279,53 @@
       btnObserve.textContent = isObserving ? 'Stop observing' : 'Start observing';
     }
 
-    function toggleBubble(force) {
-      bubbleOpen = force !== undefined ? force : !bubbleOpen;
+    const COMPACT_SIZE = 80;
+    const OPEN_WIDTH = 290;
+    const OPEN_HEIGHT = 120;
+
+    async function resizeCompanion(open) {
+      try {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+
+        // Keep the character in exactly the same place while the window
+        // expands to make room for the speech bubble.
+        const anchorX = pos.x + COMPACT_SIZE / 2;
+        const anchorY = pos.y + COMPACT_SIZE / 2;
+
+        if (open) {
+          await win.setSize({ type: 'Physical', width: OPEN_WIDTH, height: OPEN_HEIGHT });
+          await win.setPosition(new LogicalPosition(
+            Math.round(anchorX - COMPACT_SIZE / 2),
+            Math.round(anchorY - OPEN_HEIGHT / 2)
+          ));
+        } else {
+          await win.setSize({ type: 'Physical', width: COMPACT_SIZE, height: COMPACT_SIZE });
+          await win.setPosition(new LogicalPosition(
+            Math.round(anchorX - COMPACT_SIZE / 2),
+            Math.round(anchorY - COMPACT_SIZE / 2)
+          ));
+        }
+      } catch (e) {
+        console.warn('Companion resize failed:', e);
+      }
+    }
+
+    async function toggleBubble(force) {
+      const nextOpen = force !== undefined ? force : !bubbleOpen;
+      bubbleOpen = nextOpen;
+
+      if (bubbleOpen) {
+        // Expand the native window BEFORE showing the bubble so it is not clipped.
+        await resizeCompanion(true);
+      }
+
       bubble.classList.toggle('visible', bubbleOpen);
+
+      if (!bubbleOpen) {
+        // Give the fade-out a moment, then return to the tiny character-only window.
+        setTimeout(() => resizeCompanion(false), 180);
+      }
     }
 
     // Native Tauri dragging with a small movement threshold.
@@ -363,14 +407,14 @@
       } catch (e) {
         console.warn(e);
       }
-      toggleBubble(false);
+      await toggleBubble(false);
     });
 
     btnAsk.addEventListener('click', async () => {
       try {
         await emit('companion-ask', {});
       } catch (e) {}
-      toggleBubble(false);
+      await toggleBubble(false);
     });
 
     listen('companion-state', (event) => {
