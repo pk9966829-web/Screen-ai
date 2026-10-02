@@ -76,8 +76,8 @@
     listen('companion-state',event=>{const{state,observing}=event.payload;if(typeof observing==='boolean')isObserving=observing;if(state)setState(state);else setState(isObserving?'observing':'idle');});
     listen('observation-status',event=>{isObserving=!!event.payload.active;setState(isObserving?'observing':'idle');});
     let lastSave=0;setInterval(async()=>{if(Date.now()-lastSave>2000){await savePosition();lastSave=Date.now();}},1500);
+    listen('show-companion', async (event) => { if (event.payload?.show) { try { await getCurrentWindow().show(); await getCurrentWindow().setAlwaysOnTop(true); } catch (e) {} } else { try { await getCurrentWindow().hide(); } catch (e) {} } });
     restorePosition();setState('idle');
-    (async()=>{try{const win=getCurrentWindow();await win.show();await win.setAlwaysOnTop(true);}catch(e){}})();
   </script>
 </body>
 </html>
