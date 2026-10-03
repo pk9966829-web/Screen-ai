@@ -227,6 +227,7 @@
             </main>
 
             <aside class="col-span-12 lg:col-span-3 flex flex-col gap-4 overflow-y-auto">
+                <!-- The rest of the original HTML body content is preserved in structure; full interactive script is below -->
                 <div class="p-4 rounded-2xl glass-panel space-y-3">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -242,56 +243,57 @@
                     <button id="btn-start-observing" class="w-full py-2.5 px-4 rounded-xl btn-gradient text-xs font-semibold text-white tracking-wide">Start observing</button>
                 </div>
 
-                <div class="p-4 rounded-2xl glass-panel space-y-3">
+                <div class="p-4 rounded-2xl glass-panel space-y-3" id="response-box" class="hidden">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                            <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i><span>CURRENT TASK</span>
+                            <i data-lucide="message-circle" class="w-4 h-4 text-cyan-400"></i><span>RESPONSE</span>
                         </div>
-                        <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-space-600 text-slate-400">IDLE</span>
+                        <button id="close-response" class="text-slate-500 hover:text-white text-xs">✕</button>
                     </div>
-                    <div>
-                        <h4 class="text-sm font-semibold text-white">Nothing in progress</h4>
-                        <p class="text-xs text-slate-400 leading-relaxed mt-1">Give Screen AI a goal and it can follow your progress.</p>
-                    </div>
-                    <button id="btn-start-task" class="w-full py-2 px-4 rounded-xl glass-panel border-slate-700/80 hover:border-indigo-500/40 text-xs font-semibold text-slate-200 hover:text-white transition-all text-center">Start a task</button>
-                </div>
-
-                <div class="p-4 rounded-2xl glass-panel space-y-3 flex-1 flex flex-col justify-between">
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                                <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i><span>ACTIVITY</span>
-                            </div>
-                            <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-space-600 text-slate-400">NOW</span>
-                        </div>
-                        <div><h4 class="text-sm font-semibold text-white">Screen AI is waiting for you</h4></div>
-                        <div class="flex items-start space-x-2.5 pt-1">
-                            <span class="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shadow-[0_0_8px_#3b82f6]"></span>
-                            <div>
-                                <p class="text-xs font-medium text-white">Assistant ready</p>
-                                <p class="text-[11px] text-slate-400">Ask a question or start screen awareness.</p>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="response-text" class="text-sm text-slate-200 leading-relaxed"></div>
                 </div>
             </aside>
         </div>
     </div>
 
-    <div id="response-box" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-xl mx-auto p-4 z-50">
-        <div class="glass-panel rounded-2xl p-4 border border-indigo-500/30 shadow-2xl relative">
-            <button id="close-response" class="absolute top-3 right-3 text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
-            <p id="response-text" class="text-sm text-slate-200 pr-6"></p>
-        </div>
-    </div>
+<script>
+        const API_BASE = "http://127.0.0.1:8001";
 
-    <script>
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             setupInteractivity();
             createCosmicDust();
             initCompanion();
+            checkBackend();
         });
+
+        async function checkBackend() {
+            try {
+                const res = await fetch(API_BASE + "/");
+                const data = await res.json();
+                if (data.success) {
+                    console.log("Screen AI backend connected:", data.message);
+                    const statusEl = document.querySelector('.inline-flex.items-center.space-x-2 span.tracking-wider');
+                    if (statusEl) statusEl.textContent = "BACKEND CONNECTED";
+                }
+            } catch (e) {
+                console.warn("Backend not reachable at " + API_BASE + " – UI will still work with local fallbacks");
+            }
+        }
+
+        async function apiPost(path, body) {
+            const res = await fetch(API_BASE + path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            return res.json();
+        }
+
+        async function apiGet(path) {
+            const res = await fetch(API_BASE + path);
+            return res.json();
+        }
 
         async function initCompanion() {
             if (!window.__TAURI__) {
@@ -326,6 +328,7 @@
 
         function createCosmicDust() {
             const container = document.getElementById('dust-container');
+            if (!container) return;
             for (let i = 0; i < 30; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'dust-particle';
@@ -358,8 +361,10 @@
             const userInput = document.getElementById('user-input');
             quickBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    userInput.value = btn.innerText.trim();
+                    const text = btn.innerText.trim();
+                    userInput.value = text;
                     userInput.focus();
+                    document.getElementById('ai-prompt-form').dispatchEvent(new Event('submit', { cancelable: true }));
                 });
             });
 
@@ -369,116 +374,203 @@
             let screenStream = null;
 
             function updateObservingState(active) {
-                awarenessToggle.checked = active;
-                if (active) {
-                    awarenessStatusLabel.innerText = 'ON';
-                    awarenessStatusLabel.classList.remove('text-slate-500');
-                    awarenessStatusLabel.classList.add('text-blue-400');
-                    btnStartObserving.innerText = 'Stop observing';
-                    btnStartObserving.classList.replace('btn-gradient', 'bg-rose-600/80');
-                } else {
-                    awarenessStatusLabel.innerText = 'OFF';
-                    awarenessStatusLabel.classList.remove('text-blue-400');
-                    awarenessStatusLabel.classList.add('text-slate-500');
-                    btnStartObserving.innerText = 'Start observing';
-                    btnStartObserving.classList.replace('bg-rose-600/80', 'btn-gradient');
+                if (awarenessToggle) awarenessToggle.checked = active;
+                if (awarenessStatusLabel) {
+                    if (active) {
+                        awarenessStatusLabel.innerText = 'ON';
+                        awarenessStatusLabel.classList.remove('text-slate-500');
+                        awarenessStatusLabel.classList.add('text-blue-400');
+                    } else {
+                        awarenessStatusLabel.innerText = 'OFF';
+                        awarenessStatusLabel.classList.remove('text-blue-400');
+                        awarenessStatusLabel.classList.add('text-slate-500');
+                    }
+                }
+                if (btnStartObserving) {
+                    if (active) {
+                        btnStartObserving.innerText = 'Stop observing';
+                        btnStartObserving.classList.replace('btn-gradient', 'bg-rose-600/80');
+                    } else {
+                        btnStartObserving.innerText = 'Start observing';
+                        btnStartObserving.classList.replace('bg-rose-600/80', 'btn-gradient');
+                    }
+                }
+                const statusEl = document.querySelector('.inline-flex.items-center.space-x-2 span.tracking-wider');
+                if (statusEl) {
+                    statusEl.textContent = active ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP";
                 }
             }
 
             async function startObserving() {
-                if (screenStream) {
-                    stopObserving();
-                    return;
-                }
-
-                // Tell the floating character to ask first
                 try {
-                    if (window.__TAURI__) {
-                        const { emit } = window.__TAURI__.event;
-                        await emit('companion-asking', {});
-                    }
-                } catch (e) {}
+                    await apiPost("/awareness", { enabled: true });
 
-                // Small delay so user sees the character asking
-                await new Promise(r => setTimeout(r, 450));
-
-                try {
                     screenStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { displaySurface: 'monitor', frameRate: 5 },
+                        video: { cursor: "always" },
                         audio: false
                     });
+
                     updateObservingState(true);
                     if (window.notifyCompanionObserving) window.notifyCompanionObserving(true);
-                    screenStream.getVideoTracks()[0].addEventListener('ended', () => stopObserving());
-                    console.log('Screen awareness started – permission granted');
+
+                    const video = document.createElement("video");
+                    video.srcObject = screenStream;
+                    video.muted = true;
+                    await video.play();
+
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+
+                    const captureAndSend = async () => {
+                        if (!screenStream) return;
+                        canvas.width = video.videoWidth || 1280;
+                        canvas.height = video.videoHeight || 720;
+                        ctx.drawImage(video, 0, 0);
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) return;
+                            const formData = new FormData();
+                            formData.append("file", blob, `screen_${Date.now()}.png`);
+                            try {
+                                const res = await fetch(API_BASE + "/screen", { method: "POST", body: formData });
+                                const data = await res.json();
+                                console.log("Screen processed:", data);
+                                if (data.brain) {
+                                    showResponse(
+                                        data.brain.understanding || "Screen observed",
+                                        data.brain.suggestion || ""
+                                    );
+                                }
+                            } catch (err) {
+                                console.warn("Failed to send screen frame", err);
+                            }
+                        }, "image/png");
+                    };
+
+                    setTimeout(captureAndSend, 1500);
+                    window._screenInterval = setInterval(captureAndSend, 8000);
+
+                    screenStream.getVideoTracks()[0].onended = () => stopObserving();
+                    console.log("Screen awareness started");
                 } catch (err) {
-                    console.warn('Screen permission denied or cancelled:', err);
+                    console.error("Could not start screen capture:", err);
                     updateObservingState(false);
-                    try {
-                        if (window.__TAURI__) {
-                            const { emit } = window.__TAURI__.event;
-                            await emit('companion-denied', {});
-                        }
-                    } catch (e) {}
-                    const statusPill = document.querySelector('.inline-flex.items-center.space-x-2');
-                    if (statusPill) {
-                        const original = statusPill.innerHTML;
-                        statusPill.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span><span class="tracking-wider uppercase text-[11px] text-rose-300">PERMISSION DENIED</span>';
-                        setTimeout(() => { statusPill.innerHTML = original; }, 3000);
-                    }
+                    showResponse("Permission needed", "Please allow screen sharing to enable awareness.");
                 }
             }
 
             function stopObserving() {
+                if (window._screenInterval) {
+                    clearInterval(window._screenInterval);
+                    window._screenInterval = null;
+                }
                 if (screenStream) {
                     screenStream.getTracks().forEach(track => track.stop());
                     screenStream = null;
                 }
                 updateObservingState(false);
                 if (window.notifyCompanionObserving) window.notifyCompanionObserving(false);
-                console.log('Screen awareness stopped');
+                apiPost("/awareness", { enabled: false }).catch(() => {});
+                console.log("Screen awareness stopped");
             }
 
-            awarenessToggle.addEventListener('change', (e) => {
-                if (e.target.checked) startObserving();
-                else stopObserving();
-            });
-            btnStartObserving.addEventListener('click', () => {
-                if (screenStream) stopObserving();
-                else startObserving();
-            });
+            if (awarenessToggle) {
+                awarenessToggle.addEventListener('change', (e) => {
+                    if (e.target.checked) startObserving();
+                    else stopObserving();
+                });
+            }
+            if (btnStartObserving) {
+                btnStartObserving.addEventListener('click', () => {
+                    if (screenStream) stopObserving();
+                    else startObserving();
+                });
+            }
 
             const micBtn = document.getElementById('mic-btn');
             let isListening = false;
-            micBtn.addEventListener('click', () => {
-                isListening = !isListening;
-                if (isListening) {
-                    micBtn.classList.add('text-rose-400', 'animate-pulse');
-                    userInput.placeholder = 'Listening...';
-                } else {
-                    micBtn.classList.remove('text-rose-400', 'animate-pulse');
-                    userInput.placeholder = 'Ask Screen AI anything...';
-                }
-            });
+            if (micBtn) {
+                micBtn.addEventListener('click', () => {
+                    isListening = !isListening;
+                    if (isListening) {
+                        micBtn.classList.add('text-rose-400', 'animate-pulse');
+                        if (userInput) userInput.placeholder = 'Listening...';
+                    } else {
+                        micBtn.classList.remove('text-rose-400', 'animate-pulse');
+                        if (userInput) userInput.placeholder = 'Ask Screen AI anything...';
+                    }
+                });
+            }
 
-            const form = document.getElementById('ai-prompt-form');
             const responseBox = document.getElementById('response-box');
             const responseText = document.getElementById('response-text');
             const closeResponse = document.getElementById('close-response');
-            closeResponse.addEventListener('click', () => responseBox.classList.add('hidden'));
+            if (closeResponse) {
+                closeResponse.addEventListener('click', () => responseBox.classList.add('hidden'));
+            }
 
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const query = userInput.value.trim();
-                if (!query) return;
+            function showResponse(title, body) {
+                if (!responseBox || !responseText) return;
                 responseBox.classList.remove('hidden');
-                responseText.innerHTML = '<span class="animate-pulse">Screen AI is analyzing...</span>';
-                try {
-                    responseText.innerText = `I've received your request: "${query}". I am watching your workspace and ready to assist!`;
-                } catch (err) {
-                    responseText.innerText = `I've received your request: "${query}". I am watching your workspace and ready to assist!`;
-                }
-            });
+                responseText.innerHTML = `<strong>${escapeHtml(title)}</strong><br><span class="text-slate-300 text-sm">${escapeHtml(body || "")}</span>`;
+            }
+
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, "&")
+                    .replace(/</g, "<")
+                    .replace(/>/g, ">")
+                    .replace(/"/g, """);
+            }
+
+            const form = document.getElementById('ai-prompt-form');
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const query = (userInput?.value || "").trim();
+                    if (!query) return;
+
+                    showResponse("Thinking...", "Screen AI is analyzing your request...");
+                    userInput.value = "";
+
+                    try {
+                        const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                        if (data.success && data.brain) {
+                            showResponse(
+                                data.brain.understanding || "Understood",
+                                data.brain.suggestion || "How else can I help?"
+                            );
+                        } else {
+                            showResponse("Reply", data.error || "Something went wrong");
+                        }
+                    } catch (err) {
+                        showResponse(
+                            `You asked: "${query}"`,
+                            "Backend is offline. Start the FastAPI server on port 8001 to get real answers."
+                        );
+                    }
+                });
+            }
+
+            const taskBtn = document.getElementById('taskBtn') || document.querySelector('[data-action="task"]');
+            if (taskBtn) {
+                let taskActive = false;
+                taskBtn.addEventListener('click', async () => {
+                    taskActive = !taskActive;
+                    try {
+                        if (taskActive) {
+                            const data = await apiPost("/task", { action: "start", task_name: "User task" });
+                            showResponse("Task started", data.task_state?.task || "Task is now active");
+                            taskBtn.textContent = "Stop task";
+                        } else {
+                            const data = await apiPost("/task", { action: "stop" });
+                            showResponse("Task stopped", "No active task");
+                            taskBtn.textContent = "Start a task";
+                        }
+                    } catch (err) {
+                        showResponse("Task", "Could not reach backend");
+                    }
+                });
+            }
         }
     </script>
 </body>
