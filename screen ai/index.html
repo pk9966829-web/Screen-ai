@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen AI - Your Digital Companion</title>
+    <title>VOSI - Your Digital Screen Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -87,10 +87,8 @@
     <div class="flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
             <div class="flex items-center space-x-2 md:hidden">
-                <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
-                    <i data-lucide="bot" class="w-4 h-4 text-white"></i>
-                </div>
-                <span class="font-bold text-sm tracking-wide text-white">SCREEN AI</span>
+                <img src="./src/assets/logo.svg" alt="VOSI" class="w-7 h-7 rounded-full object-cover">
+                <span class="font-bold text-sm tracking-wide text-white">VOSI</span>
             </div>
             <div class="hidden md:block"></div>
             <div class="flex items-center space-x-3 ml-auto">
@@ -112,14 +110,12 @@
             <aside class="col-span-12 lg:col-span-2 flex flex-col justify-between p-4 rounded-2xl glass-panel">
                 <div class="space-y-6">
                     <div class="flex items-center space-x-3 px-2 py-1">
-                        <div class="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 p-[1.5px] shadow-lg shadow-indigo-500/30">
-                            <div class="w-full h-full bg-space-900 rounded-full flex items-center justify-center">
-                                <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
-                            </div>
+                        <div class="relative flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-black shadow-lg shadow-indigo-500/30">
+                            <img src="./src/assets/logo.svg" alt="VOSI logo" class="w-full h-full object-cover">
                         </div>
                         <div>
-                            <h1 class="font-bold text-sm text-white tracking-wider">SCREEN AI</h1>
-                            <p class="text-[11px] text-slate-400 tracking-tight">Your Digital Companion</p>
+                            <h1 class="font-bold text-sm text-white tracking-wider">VOSI</h1>
+                            <p class="text-[11px] text-slate-400 tracking-tight">Your Digital Screen Assistant</p>
                         </div>
                     </div>
                     <nav class="space-y-1.5" id="main-nav">
@@ -207,7 +203,7 @@
                 <div class="text-center space-y-2 max-w-xl">
                     <p class="text-xs tracking-widest text-sky-300 font-semibold uppercase">Your Digital Companion</p>
                     <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-                        Hi, I'm <span class="text-gradient-purple">Screen AI.</span>
+                        Hi, I'm <span class="text-gradient-purple">VOSI.</span>
                     </h2>
                     <p class="text-slate-400 text-xs md:text-sm leading-relaxed px-4">
                         I'm here to understand your screen, follow what you're doing, and help when you need me.
@@ -217,7 +213,7 @@
                 <div class="w-full max-w-2xl mt-6 space-y-4">
                     <form id="ai-prompt-form" class="relative flex items-center">
                         <div class="absolute left-4 text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
-                        <input id="user-input" type="text" placeholder="Ask Screen AI anything..." class="w-full pl-12 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
+                        <input id="user-input" type="text" placeholder="Ask VOSI anything..." class="w-full pl-12 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
                         <div class="absolute right-2 flex items-center space-x-1">
                             <button type="button" id="mic-btn" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
