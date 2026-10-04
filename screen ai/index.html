@@ -570,7 +570,8 @@
                                 data.brain.suggestion || "How else can I help?"
                             );
                         } else {
-                            showResponse("Reply", data.error || "Something went wrong");
+                            showResponse("AI Error", data?.brain?.error || data?.error || "Something went wrong");
+                            console.error("VOSI AI error:", data);
                         }
                     } catch (err) {
                         showResponse(
