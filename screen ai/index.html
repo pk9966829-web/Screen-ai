@@ -470,9 +470,10 @@
                     console.log("Screen awareness started – companion should now be visible");
                     try {
                         const { getCurrentWindow } = window.__TAURI__.window;
-                        await getCurrentWindow().hide();
+                        // Minimize VOSI instead of hiding it, so it stays available in the Windows taskbar.
+                        await getCurrentWindow().minimize();
                     } catch (e) {
-                        console.warn("Could not hide main window:", e);
+                        console.warn("Could not minimize main window:", e);
                     }
                 } catch (err) {
                     console.error("Could not start screen capture:", err);
