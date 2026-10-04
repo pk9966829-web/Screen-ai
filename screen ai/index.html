@@ -465,6 +465,7 @@
                         }, "image/png");
                     };
 
+                    window.captureLatestScreen = captureAndSend;
                     setTimeout(captureAndSend, 1500);
                     window._screenInterval = setInterval(captureAndSend, 2000);
 
@@ -492,6 +493,7 @@
                     screenStream.getTracks().forEach(track => track.stop());
                     screenStream = null;
                 }
+                window.captureLatestScreen = null;
                 updateObservingState(false);
                 if (window.notifyCompanionObserving) window.notifyCompanionObserving(false);
 
@@ -573,6 +575,10 @@
                 try {
                     // The background observer keeps the latest screen frame fresh.
                     // The backend uses that latest frame for the answer.
+                    if (window.captureLatestScreen) {
+                        await window.captureLatestScreen();
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                    }
                     const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
                     if (data.success && data.brain) {
                         const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
