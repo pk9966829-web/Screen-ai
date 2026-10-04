@@ -419,22 +419,19 @@
                 try {
                     await apiPost("/awareness", { enabled: true });
 
-                    // Show the floating companion character on the live screen
-                    try {
-                        if (window.__TAURI__ && window.__TAURI__.core) {
-                            await window.__TAURI__.core.invoke("show_companion");
-                        } else if (window.__TAURI__ && window.__TAURI__.invoke) {
-                            await window.__TAURI__.invoke("show_companion");
-                        }
-                    } catch (e) {
-                        console.warn("Could not show companion window:", e);
-                    }
-
+                    // Ask for screen permission first. Only show the companion after permission succeeds.
                     screenStream = await navigator.mediaDevices.getDisplayMedia({
                         video: { cursor: "always" },
                         audio: false
                     });
 
+                    try {
+                        if (window.__TAURI__?.core?.invoke) {
+                            await window.__TAURI__.core.invoke("show_companion");
+                        }
+                    } catch (e) {
+                        console.warn("Could not show companion window:", e);
+                    }
                     updateObservingState(true);
                     if (window.notifyCompanionObserving) window.notifyCompanionObserving(true);
 
@@ -570,7 +567,9 @@
 
             async function answerFromCompanion(query) {
                 try {
-                    await emit('companion-state', { state: 'thinking', observing: !!screenStream });
+                    if (window.__TAURI__?.event?.emit) {
+                        await window.__TAURI__.event.emit('companion-state', { state: 'thinking', observing: !!screenStream });
+                    }
                 } catch (e) {}
                 try {
                     // The background observer keeps the latest screen frame fresh.
@@ -583,33 +582,39 @@
                     if (data.success && data.brain) {
                         const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
                         try {
-                            await emit('companion-answer', {
-                                success: true,
-                                title: "VOSI",
-                                answer: answer,
-                                observing: !!screenStream
-                            });
+                            if (window.__TAURI__?.event?.emit) {
+                                await window.__TAURI__.event.emit('companion-answer', {
+                                    success: true,
+                                    title: "VOSI",
+                                    answer: answer,
+                                    observing: !!screenStream
+                                });
+                            }
                         } catch (e) {}
                         showResponse("VOSI", answer);
                     } else {
                         const error = data?.brain?.error || data?.error || "Something went wrong";
                         try {
-                            await emit('companion-answer', {
-                                success: false,
-                                title: "VOSI",
-                                answer: error,
-                                observing: !!screenStream
-                            });
+                            if (window.__TAURI__?.event?.emit) {
+                                await window.__TAURI__.event.emit('companion-answer', {
+                                    success: false,
+                                    title: "VOSI",
+                                    answer: error,
+                                    observing: !!screenStream
+                                });
+                            }
                         } catch (e) {}
                     }
                 } catch (err) {
                     try {
-                        await emit('companion-answer', {
-                            success: false,
-                            title: "VOSI",
-                            answer: "I couldn't reach the VOSI brain. Check the backend.",
-                            observing: !!screenStream
-                        });
+                        if (window.__TAURI__?.event?.emit) {
+                            await window.__TAURI__.event.emit('companion-answer', {
+                                success: false,
+                                title: "VOSI",
+                                answer: "I couldn't reach the VOSI brain. Check the backend.",
+                                observing: !!screenStream
+                            });
+                        }
                     } catch (e) {}
                 }
             }
