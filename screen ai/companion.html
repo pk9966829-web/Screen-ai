@@ -190,7 +190,7 @@
       left: 74px;
       top: 50%;
       transform: translateY(-50%);
-      width: 190px;
+      width: 270px;
       background: rgba(7, 12, 28, 0.92);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -387,7 +387,10 @@
     function toggleBubble(force) {
       bubbleOpen = force !== undefined ? force : !bubbleOpen;
       bubble.classList.toggle('visible', bubbleOpen);
-      if (bubbleOpen) hideSpeech();
+      if (bubbleOpen) {
+        hideSpeech();
+        setTimeout(() => askInput?.focus(), 60);
+      }
     }
 
     companion.addEventListener('click', (e) => {
