@@ -5,7 +5,7 @@ from typing import Dict, Any
 
 from openai import OpenAI
 
-MODEL = os.getenv("VOSI_MODEL", "gpt-5.6-luna")
+MODEL = os.getenv("VOSI_MODEL", "gpt-6-luna")
 
 def _data_url(image_path: str) -> str:
     path = Path(image_path)
