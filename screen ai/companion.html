@@ -270,8 +270,13 @@
       <span class="dot"></span>
       <span id="status-text">Idle</span>
     </div>
-    <button class="primary" id="btn-ask">Ask Screen AI</button>
-    <button class="secondary" id="btn-observe">Start observing</button>
+    <div id="answer" style="display:none;max-height:150px;overflow:auto;margin:8px 0;padding:9px;border-radius:9px;background:rgba(255,255,255,0.05);color:#dbeafe;font-size:10px;line-height:1.5;white-space:pre-wrap;"></div>
+    <form id="ask-form" style="display:flex;gap:6px;margin-bottom:6px;">
+      <input id="ask-input" type="text" placeholder="Ask about this screen..." autocomplete="off"
+        style="flex:1;min-width:0;padding:8px 9px;border-radius:8px;background:rgba(255,255,255,.07);color:#fff;font-size:10px;border:1px solid rgba(56,189,248,.2)!important;">
+      <button class="primary" id="btn-ask" type="submit" style="width:auto;margin:0;padding:8px 10px;text-align:center;">Ask</button>
+    </form>
+    <button class="secondary" id="btn-observe">Stop observing</button>
   </div>
 
   <script type="module">
@@ -287,6 +292,9 @@
     const statusText = document.getElementById('status-text');
     const btnObserve = document.getElementById('btn-observe');
     const btnAsk = document.getElementById('btn-ask');
+    const askForm = document.getElementById('ask-form');
+    const askInput = document.getElementById('ask-input');
+    const answerEl = document.getElementById('answer');
 
     let currentState = 'idle';
     let isObserving = false;
@@ -406,9 +414,19 @@
       toggleBubble(false);
     });
 
-    btnAsk.addEventListener('click', async () => {
-      try { await emit('companion-ask', {}); } catch (e) {}
-      toggleBubble(false);
+    askForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = (askInput.value || '').trim();
+      if (!question) return;
+      answerEl.style.display = 'block';
+      answerEl.textContent = 'VOSI is looking at your current screen…';
+      setState('thinking');
+      try {
+        await emit('companion-ask', { question });
+      } catch (e) {
+        answerEl.textContent = 'I could not send that question to VOSI.';
+        setState(isObserving ? 'observing' : 'idle');
+      }
     });
 
     listen('companion-asking', () => {
@@ -442,6 +460,17 @@
     listen('companion-denied', () => {
       setState('idle');
       showSpeech('Okay, I won’t look 😊', 2500);
+    });
+
+    listen('companion-answer', (event) => {
+      const payload = event.payload || {};
+      isObserving = !!payload.observing;
+      answerEl.style.display = 'block';
+      answerEl.textContent = payload.answer || 'No answer received.';
+      setState(isObserving ? 'observing' : 'idle');
+      showSpeech(payload.success ? 'Here’s what I found 👀' : 'I need a little help with that.', 2600);
+      bubbleOpen = true;
+      bubble.classList.add('visible');
     });
 
     restorePosition();
