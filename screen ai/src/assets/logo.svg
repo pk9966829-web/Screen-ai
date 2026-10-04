@@ -1,18 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
   <rect width="500" height="500" fill="#000000"/>
-  <defs>
-    <clipPath id="circleClip">
-      <circle cx="250" cy="250" r="200"/>
-    </clipPath>
-  </defs>
   <circle cx="250" cy="250" r="200" fill="#FFFFFF"/>
-  <g clip-path="url(#circleClip)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round">
-    <!-- Three parallel wavy bands forming the S-like flow -->
-    <path d="M 100,180 C 160,140 200,140 250,180 C 300,220 340,220 400,180"/>
-    <path d="M 100,250 C 160,210 200,210 250,250 C 300,290 340,290 400,250"/>
-    <path d="M 100,320 C 160,280 200,280 250,320 C 300,360 340,360 400,320"/>
-    <!-- Connecting curves to make continuous S -->
-    <path d="M 100,180 C 80,220 80,280 100,320"/>
-    <path d="M 400,180 C 420,220 420,280 400,320"/>
+  <g fill="none" stroke="#000000" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120,160 C160,120 200,130 250,170 C300,210 340,200 380,160"/>
+    <path d="M110,250 C160,200 200,210 250,250 C300,290 340,280 390,250"/>
+    <path d="M120,340 C160,300 200,310 250,340 C300,370 340,360 380,340"/>
+    <path d="M120,160 C90,200 90,300 120,340"/>
+    <path d="M380,160 C410,200 410,300 380,340"/>
   </g>
 </svg>
