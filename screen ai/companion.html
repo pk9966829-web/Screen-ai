@@ -421,14 +421,38 @@
       e.preventDefault();
       const question = (askInput.value || '').trim();
       if (!question) return;
+
       answerEl.style.display = 'block';
       answerEl.textContent = 'VOSI is looking at your current screen…';
       setState('thinking');
+
       try {
-        await emit('companion-ask', { question });
-      } catch (e) {
-        answerEl.textContent = 'I could not send that question to VOSI.';
+        // Ask the backend directly from the floating companion.
+        // This keeps working even when the main VOSI window is hidden.
+        const response = await fetch('http://127.0.0.1:8001/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: question, include_screen: true })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.brain) {
+          const answer = data.brain.understanding || data.brain.suggestion || 'I understood your request.';
+          answerEl.textContent = answer;
+          setState(isObserving ? 'observing' : 'idle');
+          showSpeech('Here’s what I found 👀', 2600);
+        } else {
+          const error = data?.brain?.error || data?.error || 'VOSI could not answer that.';
+          answerEl.textContent = error;
+          setState(isObserving ? 'observing' : 'idle');
+          showSpeech('I need a little help with that.', 2600);
+        }
+      } catch (err) {
+        console.error('Companion AI request failed:', err);
+        answerEl.textContent = 'I could not reach the VOSI brain. Make sure the backend is running on port 8001.';
         setState(isObserving ? 'observing' : 'idle');
+        showSpeech('The AI brain is offline.', 2600);
       }
     });
 
