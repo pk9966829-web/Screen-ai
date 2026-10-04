@@ -331,9 +331,10 @@
                     const btn = document.getElementById('btn-start-observing');
                     if (btn) btn.click();
                 });
-                await listen('companion-ask', () => {
-                    const input = document.getElementById('user-input');
-                    if (input) { input.focus(); window.focus(); }
+                await listen('companion-ask', async (event) => {
+                    const question = (event?.payload?.question || '').trim();
+                    if (!question) return;
+                    await answerFromCompanion(question);
                 });
             } catch (err) { console.warn('Companion init error:', err); }
         }
@@ -469,6 +470,12 @@
 
                     screenStream.getVideoTracks()[0].onended = () => stopObserving();
                     console.log("Screen awareness started – companion should now be visible");
+                    try {
+                        const { getCurrentWindow } = window.__TAURI__.window;
+                        await getCurrentWindow().hide();
+                    } catch (e) {
+                        console.warn("Could not hide main window:", e);
+                    }
                 } catch (err) {
                     console.error("Could not start screen capture:", err);
                     updateObservingState(false);
@@ -501,6 +508,13 @@
 
                 apiPost("/awareness", { enabled: false }).catch(() => {});
                 console.log("Screen awareness stopped");
+                try {
+                    const { getCurrentWindow } = window.__TAURI__.window;
+                    await getCurrentWindow().show();
+                    await getCurrentWindow().setFocus();
+                } catch (e) {
+                    console.warn("Could not restore main window:", e);
+                }
             }
 
             if (awarenessToggle) {
@@ -550,6 +564,48 @@
                     .replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;")
                     .replace(/"/g, "&quot;");
+            }
+
+            async function answerFromCompanion(query) {
+                try {
+                    await emit('companion-state', { state: 'thinking', observing: !!screenStream });
+                } catch (e) {}
+                try {
+                    // The background observer keeps the latest screen frame fresh.
+                    // The backend uses that latest frame for the answer.
+                    const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                    if (data.success && data.brain) {
+                        const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
+                        try {
+                            await emit('companion-answer', {
+                                success: true,
+                                title: "VOSI",
+                                answer: answer,
+                                observing: !!screenStream
+                            });
+                        } catch (e) {}
+                        showResponse("VOSI", answer);
+                    } else {
+                        const error = data?.brain?.error || data?.error || "Something went wrong";
+                        try {
+                            await emit('companion-answer', {
+                                success: false,
+                                title: "VOSI",
+                                answer: error,
+                                observing: !!screenStream
+                            });
+                        } catch (e) {}
+                    }
+                } catch (err) {
+                    try {
+                        await emit('companion-answer', {
+                            success: false,
+                            title: "VOSI",
+                            answer: "I couldn't reach the VOSI brain. Check the backend.",
+                            observing: !!screenStream
+                        });
+                    } catch (e) {}
+                }
             }
 
             const form = document.getElementById('ai-prompt-form');
