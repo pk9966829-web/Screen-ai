@@ -64,6 +64,17 @@
         .btn-gradient { background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #3b82f6 100%); box-shadow: 0 0 20px rgba(14,165,233,0.4); transition: all 0.2s ease; }
         .btn-gradient:hover { box-shadow: 0 0 28px rgba(14,165,233,0.65); transform: translateY(-1px); }
         .orbit-ellipse { transform-origin: center; stroke-dasharray: 8 6; }
+        .tab-overlay { display:none; width:100%; max-width:720px; margin:auto; padding:18px; }
+        .tab-overlay.active { display:block; }
+        .tab-card { background:rgba(7,9,19,.62); backdrop-filter:blur(20px); border:1px solid rgba(139,92,246,.16); border-radius:20px; padding:22px; box-shadow:0 8px 32px rgba(0,0,0,.35); }
+        .tab-card h2 { color:#fff; font-size:24px; font-weight:800; margin-bottom:8px; }
+        .tab-card p { color:#94a3b8; font-size:13px; line-height:1.6; }
+        .tab-action { margin-top:16px; width:100%; padding:11px 16px; border-radius:12px; background:linear-gradient(135deg,#0284c7,#2563eb); color:white; font-size:12px; font-weight:700; }
+        .tab-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid rgba(255,255,255,.07); }
+        .tab-row:last-child { border-bottom:0; }
+        .tab-label { color:#e2e8f0; font-size:13px; font-weight:600; }
+        .tab-value { color:#64748b; font-size:11px; }
+        .task-state { display:inline-flex; padding:5px 9px; border-radius:999px; background:rgba(59,130,246,.12); color:#60a5fa; font-size:10px; font-weight:800; letter-spacing:.08em; }
     </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans">
@@ -224,6 +235,12 @@
                         </button>
                     </div>
                 </div>
+                <div id="tab-overlay" class="tab-overlay">
+                    <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
+                    <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>Let VOSI watch your screen and send captured frames to the local AI backend.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div class="tab-value">Screen capture permission is required</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><button id="awareness-page-button" class="tab-action">Start observing</button></div>
+                    <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Tasks</h2><p>Start a task and keep track of what VOSI is helping you accomplish.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">VOSI task assistant</div></div><span id="task-page-state" class="task-state">IDLE</span></div><button id="task-page-button" class="tab-action">Start a task</button></div>
+                    <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>Basic VOSI application settings.</p><div class="tab-row"><span class="tab-label">Backend</span><span class="tab-value">127.0.0.1:8001</span></div><div class="tab-row"><span class="tab-label">Screen capture</span><span class="tab-value">Windows permission</span></div><div class="tab-row"><span class="tab-label">Version</span><span class="tab-value">0.1.0</span></div></div>
+                </div>
             </main>
 
             <aside class="col-span-12 lg:col-span-3 flex flex-col gap-4 overflow-y-auto">
@@ -340,17 +357,18 @@
 
         function setupInteractivity() {
             const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    navItems.forEach(nav => {
-                        nav.classList.remove('active', 'bg-gradient-to-r', 'from-indigo-900/60', 'to-purple-900/40', 'text-white', 'border', 'border-indigo-500/30', 'shadow-md');
-                        nav.classList.add('text-slate-400');
-                    });
-                    item.classList.add('active', 'bg-gradient-to-r', 'from-indigo-900/60', 'to-purple-900/40', 'text-white', 'border', 'border-indigo-500/30', 'shadow-md');
-                    item.classList.remove('text-slate-400');
-                });
-            });
+            const main = document.querySelector('main');
+            const overlay = document.getElementById('tab-overlay');
+            const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), settings: document.getElementById('tab-page-settings') };
+            if (main && overlay) Array.from(main.children).forEach(child => { if (child.id !== 'tab-overlay') child.classList.add('home-content'); });
+            function openTab(tab) {
+                navItems.forEach(nav => { const active = nav.dataset.tab === tab; nav.classList.toggle('active',active); nav.classList.toggle('text-slate-400',!active); nav.classList.toggle('text-white',active); nav.classList.toggle('bg-gradient-to-r',active); nav.classList.toggle('from-indigo-900/60',active); nav.classList.toggle('to-purple-900/40',active); nav.classList.toggle('border',active); nav.classList.toggle('border-indigo-500/30',active); nav.classList.toggle('shadow-md',active); });
+                Object.values(pages).forEach(page => { if(page) page.style.display='none'; }); if(pages[tab]) pages[tab].style.display='block';
+                if(tab==='home'){ overlay?.classList.remove('active'); main?.querySelectorAll('.home-content').forEach(el=>el.removeAttribute('style')); } else { main?.querySelectorAll('.home-content').forEach(el=>el.setAttribute('style','display:none')); overlay?.classList.add('active'); }
+            }
+            navItems.forEach(item => item.addEventListener('click',e=>{e.preventDefault();openTab(item.dataset.tab||'home');}));
+            document.getElementById('awareness-page-button')?.addEventListener('click',()=>document.getElementById('btn-start-observing')?.click());
+            document.getElementById('task-page-button')?.addEventListener('click',()=>{const running=document.getElementById('task-page-state')?.textContent==='ACTIVE';const state=document.getElementById('task-page-state');const title=document.getElementById('task-page-title');const btn=document.getElementById('task-page-button');if(running){state.textContent='IDLE';title.textContent='No active task';btn.textContent='Start a task';}else{state.textContent='ACTIVE';title.textContent='Understanding your goal';btn.textContent='Stop task';}});
 
             const quickBtns = document.querySelectorAll('.chip');
             const userInput = document.getElementById('user-input');
