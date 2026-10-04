@@ -457,13 +457,7 @@
                             try {
                                 const res = await fetch(API_BASE + "/screen", { method: "POST", body: formData });
                                 const data = await res.json();
-                                console.log("Screen processed:", data);
-                                if (data.brain) {
-                                    showResponse(
-                                        data.brain.understanding || "Screen observed",
-                                        data.brain.suggestion || ""
-                                    );
-                                }
+                                console.log("Live screen frame stored:", data.success);
                             } catch (err) {
                                 console.warn("Failed to send screen frame", err);
                             }
@@ -471,7 +465,7 @@
                     };
 
                     setTimeout(captureAndSend, 1500);
-                    window._screenInterval = setInterval(captureAndSend, 8000);
+                    window._screenInterval = setInterval(captureAndSend, 2000);
 
                     screenStream.getVideoTracks()[0].onended = () => stopObserving();
                     console.log("Screen awareness started – companion should now be visible");
