@@ -481,7 +481,7 @@
                 }
             }
 
-            function stopObserving() {
+            async function stopObserving() {
                 if (window._screenInterval) {
                     clearInterval(window._screenInterval);
                     window._screenInterval = null;
