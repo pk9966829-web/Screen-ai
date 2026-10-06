@@ -27,9 +27,9 @@
       width: 64px; height: 64px;
       cursor: grab;
       display: flex;
+      touch-action: none;
       align-items: center;
       justify-content: center;
-      -webkit-app-region: drag;
     }
     #companion:active { cursor: grabbing; }
 
@@ -303,41 +303,23 @@
     let isDragging = false;
     let dragStarted = false;
 
-    // ===== DRAG (works on Tauri) =====
+    // ===== DRAG WINDOW =====
+    // Use Tauri's native window dragging. This is more reliable for a
+    // transparent, undecorated companion window than browser mouse tracking.
+    // See Tauri's manual startDragging API.
     companion.addEventListener('mousedown', async (e) => {
       if (e.button !== 0) return;
-      dragStarted = false;
-      isDragging = true;
-      const startX = e.clientX;
-      const startY = e.clientY;
 
-      const onMove = async (ev) => {
-        if (!isDragging) return;
-        const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
-        if (dist > 4 && !dragStarted) {
-          dragStarted = true;
-          try {
-            await getCurrentWindow().startDragging();
-          } catch (err) {
-            console.warn('startDragging failed', err);
-          }
-        }
-      };
-
-      const onUp = () => {
-        isDragging = false;
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-        // Save position after drag
-        setTimeout(savePosition, 300);
-      };
-
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+      try {
+        await getCurrentWindow().startDragging();
+      } catch (err) {
+        console.warn('VOSI companion drag failed', err);
+      }
     });
 
-    // Also support data-tauri-drag-region style via CSS app-region
-    companion.setAttribute('data-tauri-drag-region', '');
+    companion.addEventListener('mouseup', () => {
+      setTimeout(savePosition, 250);
+    });
 
     async function restorePosition() {
       try {
