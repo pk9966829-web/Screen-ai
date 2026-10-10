@@ -388,6 +388,8 @@
           const guide = data?.brain?.guidance;
           if (guide && Number(guide.confidence) >= 0.68) {
             await window.__TAURI__.core.invoke('show_guide');
+            // Allow the transparent guide webview a moment to become visible before emitting.
+            await new Promise(resolve => setTimeout(resolve, 300));
             await emit('vosi-guidance', guide);
           } else {
             await window.__TAURI__.core.invoke('hide_guide');
