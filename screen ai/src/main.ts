@@ -118,6 +118,9 @@ const restoreChip =
 // =========================================================
 
 let awarenessEnabled = false;
+let screenStream: MediaStream | null = null;
+let captureTimer: number | null = null;
+let captureInProgress = false;
 
 let taskRunning = false;
 
@@ -517,53 +520,123 @@ function updateAwarenessUI() {
 // TOGGLE SCREEN AWARENESS
 // =========================================================
 
-function toggleAwareness() {
+async function startScreenCapture() {
+  if (screenStream) return;
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    throw new Error("Screen sharing is not available in this environment.");
+  }
 
-  awarenessEnabled =
-    !awarenessEnabled;
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: { ideal: 2, max: 5 } },
+    audio: false
+  });
+  screenStream = stream;
 
+  const video = document.createElement("video");
+  video.srcObject = stream;
+  video.muted = true;
+  await video.play();
 
-  updateAwarenessUI();
+  const canvas = document.createElement("canvas");
+  const sendFrame = async () => {
+    if (!screenStream || captureInProgress || !video.videoWidth || !video.videoHeight) return;
+    captureInProgress = true;
+    try {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+      if (!blob || !screenStream) return;
+      const form = new FormData();
+      form.append("file", blob, "screen.jpg");
+      const response = await fetch("http://127.0.0.1:8001/screen", { method: "POST", body: form });
+      if (!response.ok) throw new Error(`Screen upload failed (${response.status})`);
+    } catch (error) {
+      console.warn("VOSI screen frame upload failed:", error);
+    } finally {
+      captureInProgress = false;
+    }
+  };
 
-  void notifyCompanion(awarenessEnabled);
+  void sendFrame();
+  captureTimer = window.setInterval(() => { void sendFrame(); }, 2000);
+  stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+    void setAwareness(false, true);
+  });
+}
 
+function stopScreenCapture() {
+  if (captureTimer !== null) {
+    window.clearInterval(captureTimer);
+    captureTimer = null;
+  }
+  const oldStream = screenStream;
+  screenStream = null;
+  oldStream?.getTracks().forEach((track) => track.stop());
+}
 
-  if (awarenessEnabled) {
+async function setAwareness(enabled: boolean, fromEndedTrack = false) {
+  if (enabled === awarenessEnabled && (enabled ? !!screenStream : !screenStream)) return;
 
-    addTimelineItem(
-      "Screen awareness started",
-      "Screen AI can now observe your screen.",
-      "green"
-    );
-
+  if (enabled) {
+    try {
+      await startScreenCapture();
+      awarenessEnabled = true;
+      try {
+        await fetch("http://127.0.0.1:8001/awareness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: true })
+        });
+      } catch (error) {
+        console.warn("Could not update VOSI backend awareness state:", error);
+      }
+      updateAwarenessUI();
+      void notifyCompanion(true);
+      if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: true });
+      addTimelineItem("Screen awareness started", "VOSI is capturing the screen you selected.", "green");
+    } catch (error) {
+      awarenessEnabled = false;
+      stopScreenCapture();
+      updateAwarenessUI();
+      setStatus("SCREEN SHARING NOT STARTED");
+      addTimelineItem("Screen awareness not started", "Choose a screen in the sharing dialog and allow access. " + String(error), "violet");
+      console.warn("VOSI could not start screen capture:", error);
+      if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: false });
+    }
   } else {
-
-    addTimelineItem(
-      "Screen awareness stopped",
-      "Screen AI is no longer observing your screen.",
-      "violet"
-    );
-
+    awarenessEnabled = false;
+    stopScreenCapture();
+    try {
+      await fetch("http://127.0.0.1:8001/awareness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: false })
+      });
+    } catch (error) {
+      console.warn("Could not update VOSI backend awareness state:", error);
+    }
+    updateAwarenessUI();
+    void notifyCompanion(false);
+    if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: false });
+    if (!fromEndedTrack) addTimelineItem("Screen awareness stopped", "VOSI is no longer observing your screen.", "violet");
   }
 }
 
+function toggleAwareness() {
+  void setAwareness(!awarenessEnabled);
+}
 
-awarenessToggle?.addEventListener(
-  "click",
-  toggleAwareness
-);
-
-
-observeBtn?.addEventListener(
-  "click",
-  toggleAwareness
-);
+awarenessToggle?.addEventListener("click", toggleAwareness);
+observeBtn?.addEventListener("click", toggleAwareness);
 
 if (window.__TAURI__) {
   window.__TAURI__.event.listen("companion-toggle-observe", (event: any) => {
     const requested = event?.payload?.observing;
     if (typeof requested === "boolean" && requested !== awarenessEnabled) {
-      toggleAwareness();
+      void setAwareness(requested);
     }
   });
 }
