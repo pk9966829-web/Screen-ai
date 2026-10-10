@@ -663,6 +663,21 @@
                     .replace(/"/g, "&quot;");
             }
 
+            async function updateClickGuide(guidance) {
+                try {
+                    if (!window.__TAURI__?.core?.invoke || !window.__TAURI__?.event?.emit) return;
+                    if (guidance && Number(guidance.confidence) >= 0.68) {
+                        await window.__TAURI__.core.invoke("show_guide");
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        await window.__TAURI__.event.emit("vosi-guidance", guidance);
+                    } else {
+                        await window.__TAURI__.event.emit("vosi-guidance-clear");
+                    }
+                } catch (error) {
+                    console.warn("VOSI click guide error:", error);
+                }
+            }
+
             async function answerFromCompanion(query) {
                 try {
                     if (window.__TAURI__?.event?.emit) {
@@ -677,6 +692,7 @@
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
                     const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                    await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                     if (data.success && data.brain) {
                         const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
