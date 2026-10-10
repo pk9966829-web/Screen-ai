@@ -57,7 +57,7 @@ If the question is unrelated to the screen, answer normally.
 If the screen and history do not provide enough information, say what is missing and ask one focused follow-up question.
 When useful for an ongoing workflow, briefly state the likely current step and one sensible next step; distinguish observations from assumptions.
 
-At the end of your answer, append a final line beginning exactly with VOSI_WORKFLOW_JSON: followed by one valid JSON object with keys task_name, current_step, confirmed_completed_steps, next_step. Use null for unknown values and [] for confirmed_completed_steps unless completion is explicitly confirmed by the user or clearly visible on screen. Never count your own recommendations as completed steps. Put no text after the JSON footer.
+When the user asks where to click, seems unsure how to proceed, or has an active workflow with a clear next action, identify one visible clickable target if the screenshot supports it. Append a line beginning exactly with VOSI_GUIDANCE_JSON: followed by one valid JSON object with keys target_x, target_y, target_label, instruction, confidence. target_x and target_y are integers from 0 to 1000 representing the center of the target as percentages of the full newest screenshot width and height. target_label is a short visible control name; instruction is a short imperative such as "Click Next to continue". confidence is 0 to 1. Only provide coordinates for a control actually visible in the newest screenshot; if uncertain, set target_x and target_y to null and confidence below 0.5. Never guess a target, never guide a destructive or irreversible action without the user explicitly asking for it, and never imply VOSI clicked it for the user. If the question is unrelated to screen guidance, return null coordinates. After that line, append a final line beginning exactly with VOSI_WORKFLOW_JSON: followed by one valid JSON object with keys task_name, current_step, confirmed_completed_steps, next_step. Use null for unknown values and [] for confirmed_completed_steps unless completion is explicitly confirmed by the user or clearly visible on screen. Never count your own recommendations as completed steps. Put no text after the workflow JSON footer.
 
 User question:
 {question}
@@ -96,6 +96,7 @@ Number of recent screen images attached: {len(usable_paths)}
         )
         raw_answer = (response.output_text or "").strip() or "I couldn't generate an answer from the current screen."
         workflow_update = {}
+        guidance = {}
         marker = "VOSI_WORKFLOW_JSON:"
         if marker in raw_answer:
             visible_answer, footer = raw_answer.rsplit(marker, 1)
@@ -106,11 +107,39 @@ Number of recent screen images attached: {len(usable_paths)}
                     raw_answer = visible_answer.strip()
             except (json.JSONDecodeError, TypeError):
                 pass
+        guidance_marker = "VOSI_GUIDANCE_JSON:"
+        if guidance_marker in raw_answer:
+            visible_answer, guidance_footer = raw_answer.rsplit(guidance_marker, 1)
+            try:
+                parsed_guidance = json.loads(guidance_footer.strip())
+                if isinstance(parsed_guidance, dict):
+                    try:
+                        confidence = float(parsed_guidance.get("confidence", 0))
+                    except (TypeError, ValueError):
+                        confidence = 0
+                    x = parsed_guidance.get("target_x")
+                    y = parsed_guidance.get("target_y")
+                    valid_point = (
+                        isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= 1000
+                        and isinstance(y, (int, float)) and not isinstance(y, bool) and 0 <= y <= 1000
+                    )
+                    if valid_point and confidence >= 0.68:
+                        guidance = {
+                            "target_x": int(x),
+                            "target_y": int(y),
+                            "target_label": str(parsed_guidance.get("target_label") or "Next step")[:100],
+                            "instruction": str(parsed_guidance.get("instruction") or "Click the highlighted control")[:180],
+                            "confidence": max(0, min(1, confidence)),
+                        }
+                    raw_answer = visible_answer.strip()
+            except (json.JSONDecodeError, TypeError):
+                pass
         answer = raw_answer
         return {
             "success": True,
             "understanding": answer,
             "workflow_update": workflow_update,
+            "guidance": guidance,
             "suggestion": "",
             "action": "answer",
             "confidence": 0.95 if usable_paths else 0.85,
