@@ -55,13 +55,12 @@
       targetLabel.textContent = String(guide.target_label || 'Next step').slice(0, 100);
       target.classList.add('visible');
       if (hideTimer) clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => { target.classList.remove('visible'); guideWindow.hide().catch(() => {}); }, 9000);
+      hideTimer = setTimeout(() => target.classList.remove('visible'), 9000);
     });
 
     listen('vosi-guidance-clear', () => {
       target.classList.remove('visible');
       if (hideTimer) clearTimeout(hideTimer);
-      guideWindow.hide().catch(() => {});
     });
   </script>
 </body>
