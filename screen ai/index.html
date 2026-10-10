@@ -439,6 +439,10 @@
                 if (tab === 'tasks') void refreshWorkflow();
             }
             navItems.forEach(item => item.addEventListener('click',e=>{e.preventDefault();openTab(item.dataset.tab||'home');}));
+            // Keep the Tasks view in sync while screen awareness is running.
+            setInterval(() => {
+                if (pages.tasks && pages.tasks.style.display !== 'none') void refreshWorkflow();
+            }, 3000);
             document.getElementById('awareness-page-button')?.addEventListener('click',()=>document.getElementById('btn-start-observing')?.click());
             document.getElementById('task-page-button')?.addEventListener('click', async () => {
                 const running = document.getElementById('task-page-state')?.textContent === 'ACTIVE';
