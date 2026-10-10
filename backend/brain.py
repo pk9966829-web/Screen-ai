@@ -21,6 +21,7 @@ def analyze_screen_question(
     context: list | None = None,
     task: Dict[str, Any] | None = None,
     image_paths: list[str] | None = None,
+    interactions: list | None = None,
 ) -> Dict[str, Any]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -35,33 +36,35 @@ def analyze_screen_question(
 
     client = OpenAI(api_key=api_key)
     recent_context = context[-5:] if context else []
+    recent_interactions = interactions[-8:] if interactions else []
     task_state = task or {}
 
-    # Use the rolling screen history when available, falling back to the
-    # previous single-image behavior for existing callers.
     selected_paths = image_paths if image_paths is not None else ([image_path] if image_path else [])
     usable_paths = [str(path) for path in selected_paths if path and Path(path).is_file()]
     if len(usable_paths) > 4:
         usable_paths = usable_paths[-4:]
 
-    prompt = f"""You are VOSI, a friendly screen-aware AI assistant.
+    prompt = f"""You are VOSI, a friendly screen-aware AI assistant that helps users through multi-step workflows.
 
-Answer the user's question using the screen images provided, which are ordered from oldest to newest.
-Use the sequence to understand what changed between recent screens, but prioritize the newest image for the current state.
-Do not pretend you can see something that is not visible.
-Give practical, direct instructions based on what is actually visible.
+Use the recent interaction history to maintain continuity: remember what the user asked, what guidance you gave, and what they were trying to accomplish. Treat older answers as context, not as proof that the current screen is unchanged. The newest screen is authoritative for the current visible state.
+Use screen images in oldest-to-newest order to understand transitions.
+Do not claim a task step was completed unless the screen or user confirms it.
+Give practical, direct instructions based on what is visible. If the user asks what to click, identify the control precisely.
 If the question is unrelated to the screen, answer normally.
-If the user asks what to click, identify the visible control as precisely as possible.
-If the images do not provide enough context, say what is missing and ask a focused follow-up question.
+If the screen and history do not provide enough information, say what is missing and ask one focused follow-up question.
+When useful for an ongoing workflow, briefly state the likely current step and one sensible next step; distinguish observations from assumptions.
 
 User question:
 {question}
 
-Current task:
+Current task tracker:
 {task_state}
 
-Recent observation records:
+Recent screen observation records:
 {recent_context}
+
+Recent VOSI interaction history (oldest to newest):
+{recent_interactions}
 
 Number of recent screen images attached: {len(usable_paths)}
 """.strip()
@@ -91,6 +94,7 @@ Number of recent screen images attached: {len(usable_paths)}
             "action": "answer",
             "confidence": 0.95 if usable_paths else 0.85,
             "screens_considered": len(usable_paths),
+            "interactions_considered": len(recent_interactions),
         }
     except Exception as exc:
         return {
