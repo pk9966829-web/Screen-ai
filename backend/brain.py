@@ -1,5 +1,6 @@
 import base64
 import os
+import json
 from pathlib import Path
 from typing import Dict, Any
 
@@ -54,6 +55,8 @@ If the question is unrelated to the screen, answer normally.
 If the screen and history do not provide enough information, say what is missing and ask one focused follow-up question.
 When useful for an ongoing workflow, briefly state the likely current step and one sensible next step; distinguish observations from assumptions.
 
+At the end of your answer, append a final line beginning exactly with VOSI_WORKFLOW_JSON: followed by one valid JSON object with keys task_name, current_step, confirmed_completed_steps, next_step. Use null for unknown values and [] for confirmed_completed_steps unless completion is explicitly confirmed by the user or clearly visible on screen. Never count your own recommendations as completed steps. Put no text after the JSON footer.
+
 User question:
 {question}
 
@@ -86,10 +89,23 @@ Number of recent screen images attached: {len(usable_paths)}
             model=MODEL,
             input=[{"role": "user", "content": content}],
         )
-        answer = (response.output_text or "").strip() or "I couldn't generate an answer from the current screen."
+        raw_answer = (response.output_text or "").strip() or "I couldn't generate an answer from the current screen."
+        workflow_update = {}
+        marker = "VOSI_WORKFLOW_JSON:"
+        if marker in raw_answer:
+            visible_answer, footer = raw_answer.rsplit(marker, 1)
+            try:
+                parsed = json.loads(footer.strip())
+                if isinstance(parsed, dict):
+                    workflow_update = {key: parsed.get(key) for key in ("task_name", "current_step", "confirmed_completed_steps", "next_step")}
+                    raw_answer = visible_answer.strip()
+            except (json.JSONDecodeError, TypeError):
+                pass
+        answer = raw_answer
         return {
             "success": True,
             "understanding": answer,
+            "workflow_update": workflow_update,
             "suggestion": "",
             "action": "answer",
             "confidence": 0.95 if usable_paths else 0.85,
@@ -104,6 +120,7 @@ Number of recent screen images attached: {len(usable_paths)}
             "suggestion": "Check the API key, model name, internet connection, and backend terminal.",
             "action": "error",
             "confidence": 0.0,
+            "workflow_update": {},
         }
 
 
