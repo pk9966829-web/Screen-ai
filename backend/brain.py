@@ -140,3 +140,74 @@ def analyze_context(context: Dict[str, Any]) -> Dict[str, Any]:
         "confidence": 0.80,
         "screens_in_memory": len(screens),
     }
+
+
+def analyze_screen_transition(previous_path: str, current_path: str, task: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Infer a workflow step from a screen transition without answering a user question."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return {"success": False, "error": "OPENAI_API_KEY is not configured."}
+    if not previous_path or not current_path or not Path(previous_path).is_file() or not Path(current_path).is_file():
+        return {"success": False, "error": "Screen frame unavailable for comparison."}
+
+    task_state = task or {}
+    prompt = f"""You are VOSI's conservative workflow-transition detector.
+Compare the BEFORE and AFTER screenshots for the user's active task.
+
+Active task state:
+{task_state}
+
+Return ONLY one valid JSON object with these keys:
+- current_step: short string or null. Set only when the AFTER screenshot gives evidence of what the user is currently doing.
+- next_step: short actionable string or null. Suggest the next reasonable action based on visible UI and task.
+- confirmed_completed_steps: array of strings. Include only steps visibly completed in the AFTER screen or unambiguously confirmed by the transition. If uncertain, return [].
+- evidence: short string explaining the visible evidence, or null.
+- confidence: number from 0 to 1.
+
+Do not infer completion from a visual change alone. Do not invent buttons, dialogs, progress, or user actions. If the task and screenshots do not provide enough evidence, return null for current_step and next_step, [] for completed steps, and low confidence. Do not rename or restart the active task. Keep strings concise."""
+    try:
+        client = OpenAI(api_key=api_key)
+        response = client.responses.create(
+            model=MODEL,
+            input=[{"role": "user", "content": [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_text", "text": "BEFORE screenshot"},
+                {"type": "input_image", "image_url": _data_url(previous_path), "detail": "low"},
+                {"type": "input_text", "text": "AFTER screenshot"},
+                {"type": "input_image", "image_url": _data_url(current_path), "detail": "auto"},
+            ]}],
+        )
+        raw = (response.output_text or "").strip()
+        if raw.startswith("```"):
+            raw = raw.strip("`").strip()
+            if raw.lower().startswith("json"):
+                raw = raw[4:].strip()
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            raise ValueError("Transition response was not a JSON object")
+        try:
+            confidence = float(parsed.get("confidence", 0))
+        except (TypeError, ValueError):
+            confidence = 0
+        update = {}
+        if confidence >= 0.65:
+            current_step = parsed.get("current_step")
+            next_step = parsed.get("next_step")
+            completed = parsed.get("confirmed_completed_steps")
+            if isinstance(current_step, str) and current_step.strip():
+                update["current_step"] = current_step.strip()[:300]
+            if isinstance(next_step, str) and next_step.strip():
+                update["next_step"] = next_step.strip()[:300]
+            if isinstance(completed, list):
+                update["confirmed_completed_steps"] = [
+                    item.strip()[:300] for item in completed
+                    if isinstance(item, str) and item.strip()
+                ][:10]
+        return {
+            "success": True,
+            "confidence": max(0, min(1, confidence)),
+            "evidence": str(parsed.get("evidence") or "")[:500],
+            "workflow_update": update,
+        }
+    except Exception as exc:
+        return {"success": False, "error": f"Transition analysis failed: {exc}"}
