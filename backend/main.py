@@ -56,6 +56,7 @@ def get_workflow():
         "success": True,
         "task_state": pipeline.task.get_task_state(),
         "recent_screens": pipeline.get_state().get("recent_screens", []),
+        "screen_changes": pipeline.get_recent_screen_changes(limit=10),
         "recent_interactions": pipeline.context.get_recent_interactions(limit=20),
         "note": "Workflow interaction history is temporary and resets when the backend restarts.",
     }
@@ -91,6 +92,7 @@ def ask_screen_ai(req: AskRequest):
         state.get("task") or {},
         image_paths=recent_paths if req.include_screen else [],
         interactions=prior_interactions,
+        screen_changes=pipeline.get_recent_screen_changes(limit=10),
     )
     progress_data = result.get("workflow_update") or {}
     if result.get("success") and progress_data:
@@ -112,6 +114,7 @@ def ask_screen_ai(req: AskRequest):
         "task_state": state.get("task") or {},
         "recent_context": state.get("recent_context") or [],
         "recent_screens": state.get("recent_screens") or [],
+        "screen_changes": pipeline.get_recent_screen_changes(limit=10),
         "recent_interactions": pipeline.context.get_recent_interactions(limit=8),
         "interaction_recorded": bool(interaction),
         "screen_used": bool(latest_path and req.include_screen),
