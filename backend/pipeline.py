@@ -1,7 +1,9 @@
 from pathlib import Path
 from PIL import Image, ImageChops, ImageStat
+from threading import Lock, Thread
+import time
 from observation import observe_image
-from brain import analyze_context
+from brain import analyze_context, analyze_screen_transition
 from context import ContextEngine
 from task import TaskEngine
 from database import initialize_database, save_observation, get_recent_observations
@@ -32,6 +34,9 @@ class ScreenPipeline:
         self.latest_screen_path = None
         self.recent_screen_frames = []
         self.screen_change_history = []
+        self._transition_lock = Lock()
+        self._transition_worker_active = False
+        self._last_transition_analysis_at = 0.0
         initialize_database()
 
     def start_task(self, task_name): return self.task.start_task(task_name)
@@ -78,6 +83,7 @@ class ScreenPipeline:
                 "note": "Visual difference detected; this alone does not confirm a task step is complete.",
             })
             self.screen_change_history = self.screen_change_history[-MAX_SCREEN_CHANGE_EVENTS:]
+            self._maybe_schedule_transition_analysis(previous_path, str(path))
 
         # Keep only a small rolling window so screen awareness does not
         # accumulate screenshots indefinitely.
@@ -111,6 +117,55 @@ class ScreenPipeline:
             "task_state": self.task.get_task_state(),
             "brain": brain_result,
         }
+
+    def _maybe_schedule_transition_analysis(self, previous_path, current_path):
+        # Only run vision inference for an active task, at most once every 15 seconds.
+        if not self.task.task or not previous_path or not Path(previous_path).is_file():
+            return
+        now = time.monotonic()
+        with self._transition_lock:
+            if self._transition_worker_active or now - self._last_transition_analysis_at < 15:
+                return
+            self._transition_worker_active = True
+            self._last_transition_analysis_at = now
+        task_snapshot = self.task.get_task_state()
+        Thread(
+            target=self._run_transition_analysis,
+            args=(previous_path, current_path, task_snapshot),
+            daemon=True,
+            name="vosi-screen-transition",
+        ).start()
+
+    def _run_transition_analysis(self, previous_path, current_path, task_snapshot):
+        try:
+            result = analyze_screen_transition(previous_path, current_path, task_snapshot)
+            if not result.get("success"):
+                return
+            update = result.get("workflow_update") or {}
+            # Do not apply a late result to a different task or a task that was stopped.
+            if self.task.task != task_snapshot.get("task"):
+                return
+            if update:
+                self.task.apply_workflow_update(update)
+            event = {
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "filename": Path(current_path).name,
+                "change_score": None,
+                "status": "transition_interpreted",
+                "confidence": result.get("confidence", 0),
+                "evidence": result.get("evidence", ""),
+                "current_step": update.get("current_step"),
+                "next_step": update.get("next_step"),
+                "note": "AI interpretation of visible screen evidence; verify if uncertain.",
+            }
+            self.screen_change_history.append(event)
+            self.screen_change_history = self.screen_change_history[-MAX_SCREEN_CHANGE_EVENTS:]
+        except Exception:
+            # Background inference must never interrupt screen capture.
+            pass
+        finally:
+            with self._transition_lock:
+                self._transition_worker_active = False
 
     def _public_recent_screens(self):
         return [
