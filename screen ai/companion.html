@@ -384,6 +384,19 @@
 
         const data = await response.json();
 
+        try {
+          const guide = data?.brain?.guidance;
+          if (guide && Number(guide.confidence) >= 0.68) {
+            await window.__TAURI__.core.invoke('show_guide');
+            await emit('vosi-guidance', guide);
+          } else {
+            await window.__TAURI__.core.invoke('hide_guide');
+            await emit('vosi-guidance-clear');
+          }
+        } catch (guideError) {
+          console.warn('Could not display VOSI click guide:', guideError);
+        }
+
         if (data.success && data.brain) {
           const answer = data.brain.understanding || data.brain.suggestion || 'I understood your request.';
           answerEl.textContent = answer;
