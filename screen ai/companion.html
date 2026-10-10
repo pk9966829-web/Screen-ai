@@ -300,16 +300,26 @@
     let isObserving = false;
     let bubbleOpen = false;
     let speechTimeout = null;
-    let isDragging = false;
     let dragStarted = false;
+    let pointerStartX = 0;
+    let pointerStartY = 0;
+    let dragInProgress = false;
 
-    // ===== DRAG WINDOW =====
-    // Use Tauri's native window dragging. This is more reliable for a
-    // transparent, undecorated companion window than browser mouse tracking.
-    // See Tauri's manual startDragging API.
-    companion.addEventListener('mousedown', async (e) => {
+    // Distinguish a click (open chat) from a drag (move the character).
+    // Start native dragging only after the pointer actually moves.
+    companion.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
+      pointerStartX = e.screenX;
+      pointerStartY = e.screenY;
+      dragStarted = false;
+      dragInProgress = true;
+    });
 
+    window.addEventListener('mousemove', async (e) => {
+      if (!dragInProgress || dragStarted) return;
+      const distance = Math.hypot(e.screenX - pointerStartX, e.screenY - pointerStartY);
+      if (distance < 6) return;
+      dragStarted = true;
       try {
         await getCurrentWindow().startDragging();
       } catch (err) {
@@ -317,8 +327,12 @@
       }
     });
 
-    companion.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', () => {
+      if (!dragInProgress) return;
+      dragInProgress = false;
       setTimeout(savePosition, 250);
+      // Keep dragStarted true until the following click handler suppresses it.
+      setTimeout(() => { dragStarted = false; }, 0);
     });
 
     async function restorePosition() {
