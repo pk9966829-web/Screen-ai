@@ -357,15 +357,82 @@
             const main = document.querySelector('main');
             const overlay = document.getElementById('tab-overlay');
             const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), settings: document.getElementById('tab-page-settings') };
+            async function refreshWorkflow() {
+                const title = document.getElementById('task-page-title');
+                const state = document.getElementById('task-page-state');
+                const current = document.getElementById('task-current-step');
+                const next = document.getElementById('task-next-step');
+                const completedList = document.getElementById('task-completed-steps');
+                const button = document.getElementById('task-page-button');
+                const note = document.getElementById('task-sync-note');
+                try {
+                    const response = await fetch(API_BASE + '/workflow');
+                    if (!response.ok) throw new Error('Workflow request failed');
+                    const data = await response.json();
+                    const task = data.task_state || {};
+                    const active = !!task.task;
+                    if (title) title.textContent = task.task || 'No active task';
+                    if (state) {
+                        state.textContent = active ? 'ACTIVE' : 'IDLE';
+                        state.classList.toggle('text-emerald-300', active);
+                    }
+                    if (current) current.textContent = task.current_step || 'Not detected yet';
+                    if (next) next.textContent = task.next_step || 'Ask VOSI for guidance to begin';
+                    if (button) button.textContent = active ? 'Stop task' : 'Start a task';
+                    if (completedList) {
+                        completedList.replaceChildren();
+                        const steps = Array.isArray(task.completed_steps) ? task.completed_steps : [];
+                        if (!steps.length) {
+                            const item = document.createElement('li');
+                            item.className = 'text-slate-500';
+                            item.textContent = 'No completed steps recorded yet';
+                            completedList.appendChild(item);
+                        } else {
+                            steps.forEach(step => {
+                                const item = document.createElement('li');
+                                item.className = 'flex items-start gap-2 rounded-lg bg-emerald-400/[0.06] px-3 py-2';
+                                const mark = document.createElement('span');
+                                mark.className = 'text-emerald-400';
+                                mark.textContent = '✓';
+                                const label = document.createElement('span');
+                                label.textContent = String(step);
+                                item.append(mark, label);
+                                completedList.appendChild(item);
+                            });
+                        }
+                    }
+                    if (note) note.textContent = 'Synced just now · history resets when backend restarts';
+                } catch (error) {
+                    if (note) note.textContent = 'Cannot sync workflow. Check that the VOSI backend is running.';
+                    console.warn('Workflow sync failed:', error);
+                }
+            }
             if (main && overlay) Array.from(main.children).forEach(child => { if (child.id !== 'tab-overlay') child.classList.add('home-content'); });
             function openTab(tab) {
                 navItems.forEach(nav => { const active = nav.dataset.tab === tab; nav.classList.toggle('active',active); nav.classList.toggle('text-slate-400',!active); nav.classList.toggle('text-white',active); nav.classList.toggle('bg-gradient-to-r',active); nav.classList.toggle('from-indigo-900/60',active); nav.classList.toggle('to-purple-900/40',active); nav.classList.toggle('border',active); nav.classList.toggle('border-indigo-500/30',active); nav.classList.toggle('shadow-md',active); });
                 Object.values(pages).forEach(page => { if(page) page.style.display='none'; }); if(pages[tab]) pages[tab].style.display='block';
                 if(tab==='home'){ overlay?.classList.remove('active'); main?.querySelectorAll('.home-content').forEach(el=>el.removeAttribute('style')); } else { main?.querySelectorAll('.home-content').forEach(el=>el.setAttribute('style','display:none')); overlay?.classList.add('active'); }
+                if (tab === 'tasks') void refreshWorkflow();
             }
             navItems.forEach(item => item.addEventListener('click',e=>{e.preventDefault();openTab(item.dataset.tab||'home');}));
             document.getElementById('awareness-page-button')?.addEventListener('click',()=>document.getElementById('btn-start-observing')?.click());
-            document.getElementById('task-page-button')?.addEventListener('click',()=>{const running=document.getElementById('task-page-state')?.textContent==='ACTIVE';const state=document.getElementById('task-page-state');const title=document.getElementById('task-page-title');const btn=document.getElementById('task-page-button');if(running){state.textContent='IDLE';title.textContent='No active task';btn.textContent='Start a task';}else{state.textContent='ACTIVE';title.textContent='Understanding your goal';btn.textContent='Stop task';}});
+            document.getElementById('task-page-button')?.addEventListener('click', async () => {
+                const running = document.getElementById('task-page-state')?.textContent === 'ACTIVE';
+                try {
+                    if (running) {
+                        await apiPost('/task', { action: 'stop' });
+                    } else {
+                        const suggested = window.prompt('What would you like VOSI to help you accomplish?');
+                        if (!suggested || !suggested.trim()) return;
+                        await apiPost('/task', { action: 'start', task_name: suggested.trim() });
+                    }
+                    await refreshWorkflow();
+                } catch (error) {
+                    const note = document.getElementById('task-sync-note');
+                    if (note) note.textContent = 'Could not update task. Check the VOSI backend.';
+                    console.warn('Task update failed:', error);
+                }
+            });
 
             const quickBtns = document.querySelectorAll('.chip');
             const userInput = document.getElementById('user-input');
