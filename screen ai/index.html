@@ -746,6 +746,7 @@
 
                     try {
                         const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                        await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                         if (data.success && data.brain) {
                             showResponse(
