@@ -38,9 +38,9 @@ def root():
     return {
         "success": True,
         "message": "VOSI backend is running",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "POST /screen", "POST /ask", "POST /task", "POST /awareness"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "POST /screen", "POST /ask", "POST /task", "POST /awareness"],
     }
 
 
@@ -49,11 +49,21 @@ def get_state():
     return {"success": True, **pipeline.get_state()}
 
 
+@app.get("/workflow")
+def get_workflow():
+    """Return recent screen context, task tracker state, and recent Q&A for this backend session."""
+    return {
+        "success": True,
+        "task_state": pipeline.task.get_task_state(),
+        "recent_screens": pipeline.get_state().get("recent_screens", []),
+        "recent_interactions": pipeline.context.get_recent_interactions(limit=20),
+        "note": "Workflow interaction history is temporary and resets when the backend restarts.",
+    }
+
+
 @app.post("/screen")
 async def receive_screen(file: UploadFile = File(...)):
-    # Give every frame a unique, server-generated name. Never trust the
-    # client-supplied filename as a filesystem path, and avoid overwriting
-    # the previous frame before the rolling history can retain it.
+    # Generate a server-side filename so client filenames cannot become paths.
     suffix = ".png" if file.content_type == "image/png" else ".jpg"
     file_path = UPLOAD_DIR / f"screen_{uuid4().hex}{suffix}"
     file_path.write_bytes(await file.read())
@@ -72,6 +82,7 @@ def ask_screen_ai(req: AskRequest):
     latest_path = recent_paths[-1] if recent_paths else (
         pipeline.latest_screen_path if req.include_screen else None
     )
+    prior_interactions = pipeline.context.get_recent_interactions(limit=8)
 
     result = analyze_screen_question(
         message,
@@ -79,7 +90,17 @@ def ask_screen_ai(req: AskRequest):
         state.get("recent_context") or [],
         state.get("task") or {},
         image_paths=recent_paths if req.include_screen else [],
+        interactions=prior_interactions,
     )
+    answer = result.get("understanding", "")
+    # Save both successful answers and failures so follow-up questions retain context.
+    interaction = pipeline.context.add_interaction(
+        message,
+        answer,
+        screens_considered=result.get("screens_considered", 0),
+        task=state.get("task") or {},
+    )
+
     return {
         "success": result.get("success", False),
         "message": message,
@@ -87,6 +108,8 @@ def ask_screen_ai(req: AskRequest):
         "task_state": state.get("task") or {},
         "recent_context": state.get("recent_context") or [],
         "recent_screens": state.get("recent_screens") or [],
+        "recent_interactions": pipeline.context.get_recent_interactions(limit=8),
+        "interaction_recorded": bool(interaction),
         "screen_used": bool(latest_path and req.include_screen),
     }
 
