@@ -29,6 +29,7 @@ export default defineConfig(() => ({
       input: {
         main: resolve(__dirname, "index.html"),
         companion: resolve(__dirname, "companion.html"),
+        screenGuide: resolve(__dirname, "screen-guide.html"),
       },
     },
   },
