@@ -40,6 +40,27 @@
         "maximizable": false,
         "minimizable": false,
         "closable": false
+      },
+      {
+        "label": "guide",
+        "title": "VOSI Click Guide",
+        "url": "screen-guide.html",
+        "width": 1280,
+        "height": 720,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false,
+        "center": false,
+        "x": 0,
+        "y": 0,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false
       }
     ],
     "security": {
