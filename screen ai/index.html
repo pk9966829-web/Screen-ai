@@ -643,6 +643,7 @@
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
                     const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                    await refreshWorkflow();
                     if (data.success && data.brain) {
                         const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
                         try {
@@ -695,6 +696,7 @@
 
                     try {
                         const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                    await refreshWorkflow();
                         if (data.success && data.brain) {
                             showResponse(
                                 data.brain.understanding || "Understood",
