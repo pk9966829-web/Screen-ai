@@ -78,8 +78,11 @@ pub fn run() {
                 let _ = window.set_always_on_top(true);
             }
             if let Some(window) = app.get_webview_window("guide") {
-                let _ = window.hide();
+                // Keep the transparent overlay loaded so its event listener is ready
+                // before VOSI emits the first click-guidance event.
                 let _ = window.set_always_on_top(true);
+                let _ = window.set_ignore_cursor_events(true);
+                let _ = window.show();
             }
             Ok(())
         })
