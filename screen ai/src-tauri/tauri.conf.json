@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "screen-ai",
+  "productName": "VOSI",
   "version": "0.1.0",
-  "identifier": "com.pb7.screen-ai",
+  "identifier": "com.pb7.vosi",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Screen AI",
+        "title": "VOSI",
         "width": 1100,
         "height": 720,
         "resizable": true,
@@ -22,7 +22,7 @@
       },
       {
         "label": "companion",
-        "title": "Screen AI Companion",
+        "title": "VOSI Companion",
         "url": "companion.html",
         "width": 360,
         "height": 220,
