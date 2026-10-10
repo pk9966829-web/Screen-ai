@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Screen AI Companion</title>
+  <title>VOSI Companion</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; border: none !important; outline: none !important; }
     html, body {
@@ -42,63 +42,32 @@
       transition: opacity 0.35s, transform 0.35s;
     }
 
-    .face {
+    .logo-mark {
       width: 52px; height: 52px;
+      display: block;
+      object-fit: contain;
       border-radius: 50%;
-      background: linear-gradient(145deg, #e0f2fe 0%, #7dd3fc 40%, #38bdf8 70%, #0284c7 100%);
-      box-shadow:
-        0 0 14px rgba(56,189,248,0.5),
-        inset 0 2px 6px rgba(255,255,255,0.55),
-        inset 0 -4px 8px rgba(2,132,199,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: transparent;
       position: relative;
       z-index: 2;
-      transition: transform 0.3s, box-shadow 0.3s;
+      filter: drop-shadow(0 0 9px rgba(56,189,248,0.42));
+      transition: transform 0.3s, filter 0.3s;
+      -webkit-user-drag: none;
+      user-select: none;
+      pointer-events: none;
     }
 
-    .eyes { display: flex; gap: 10px; align-items: center; }
-    .eye {
-      width: 8px; height: 10px;
-      background: #0c4a6e;
-      border-radius: 50%;
-      position: relative;
-      transition: height 0.2s, width 0.2s;
-    }
-    .eye::after {
-      content: '';
-      position: absolute; top: 2px; left: 2px;
-      width: 3px; height: 3px;
-      background: #fff; border-radius: 50%;
-    }
-
-    .mouth {
-      position: absolute; bottom: 12px;
-      width: 10px; height: 5px;
-      border-bottom: 2px solid #0c4a6e;
-      border-radius: 0 0 50% 50%;
-      transition: all 0.25s;
-    }
 
     @keyframes float {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-5px); }
     }
-    #companion.idle .face { animation: float 3.5s ease-in-out infinite; }
+    #companion.idle .logo-mark { animation: float 3.5s ease-in-out infinite; }
 
-    #companion.asking .face { animation: ask-bounce 0.7s ease-in-out infinite; }
+    #companion.asking .logo-mark { animation: ask-bounce 0.7s ease-in-out infinite; }
     #companion.asking .glow {
       opacity: 1;
       background: radial-gradient(circle, rgba(251,191,36,0.45) 0%, transparent 70%);
-    }
-    #companion.asking .eye { height: 11px; width: 7px; }
-    #companion.asking .mouth {
-      width: 8px; height: 8px;
-      border: 2px solid #0c4a6e;
-      border-radius: 50%;
-      bottom: 11px;
-      background: transparent;
     }
     @keyframes ask-bounce {
       0%, 100% { transform: translateY(0) scale(1); }
@@ -111,25 +80,14 @@
       background: radial-gradient(circle, rgba(56,189,248,0.5) 0%, transparent 70%);
       animation: pulse-glow 2s ease-in-out infinite;
     }
-    #companion.observing .eye { height: 11px; width: 7px; }
-    @keyframes pulse-glow {
-      0%, 100% { transform: scale(1); opacity: 0.7; }
-      50% { transform: scale(1.18); opacity: 1; }
-    }
 
-    #companion.thinking .face { animation: think 1.2s ease-in-out infinite; }
-    #companion.thinking .mouth {
-      width: 6px; height: 6px;
-      border: 2px solid #0c4a6e;
-      border-radius: 50%;
-      bottom: 11px;
-    }
+    #companion.thinking .logo-mark { animation: think 1.2s ease-in-out infinite; }
     @keyframes think {
       0%, 100% { transform: rotate(-4deg); }
       50% { transform: rotate(4deg); }
     }
 
-    #companion.working .face { animation: work 0.8s ease-in-out infinite; }
+    #companion.working .logo-mark { animation: work 0.8s ease-in-out infinite; }
     #companion.working .glow {
       opacity: 0.9;
       background: radial-gradient(circle, rgba(167,139,250,0.45) 0%, transparent 70%);
@@ -139,7 +97,7 @@
       50% { transform: scale(1.07); }
     }
 
-    #companion.attention .face { animation: bounce 0.55s ease-in-out infinite; }
+    #companion.attention .logo-mark { animation: bounce 0.55s ease-in-out infinite; }
     #companion.attention .glow {
       opacity: 1;
       background: radial-gradient(circle, rgba(251,191,36,0.55) 0%, transparent 70%);
@@ -250,17 +208,10 @@
 <body>
   <div id="companion" class="idle">
     <div class="glow"></div>
-    <div class="face">
-      <div class="eyes">
-        <div class="eye"></div>
-        <div class="eye"></div>
-      </div>
-      <div class="mouth"></div>
-    </div>
+    <img class="logo-mark" src="./src/assets/logo.svg" alt="VOSI logo" draggable="false" />
   </div>
 
   <div id="speech">
-    <span>👀</span>
     <span id="speech-text">Can I watch your screen?</span>
   </div>
 
@@ -437,7 +388,7 @@
           const answer = data.brain.understanding || data.brain.suggestion || 'I understood your request.';
           answerEl.textContent = answer;
           setState(isObserving ? 'observing' : 'idle');
-          showSpeech('Here’s what I found 👀', 2600);
+          showSpeech('Here’s what I found', 2600);
         } else {
           const error = data?.brain?.error || data?.error || 'VOSI could not answer that.';
           answerEl.textContent = error;
@@ -464,7 +415,7 @@
       else setState(isObserving ? 'observing' : 'idle');
       if (state === 'observing' || isObserving) {
         hideSpeech();
-        showSpeech('Watching your screen 👀', 2200);
+        showSpeech('Watching your screen', 2200);
       }
     });
 
@@ -473,7 +424,7 @@
       if (isObserving) {
         setState('observing');
         hideSpeech();
-        showSpeech('Watching your screen 👀', 2200);
+        showSpeech('Watching your screen', 2200);
       } else {
         setState('idle');
         hideSpeech();
@@ -482,7 +433,7 @@
 
     listen('companion-denied', () => {
       setState('idle');
-      showSpeech('Okay, I won’t look 😊', 2500);
+      showSpeech('Okay, I won’t look', 2500);
     });
 
     listen('companion-answer', (event) => {
@@ -491,7 +442,7 @@
       answerEl.style.display = 'block';
       answerEl.textContent = payload.answer || 'No answer received.';
       setState(isObserving ? 'observing' : 'idle');
-      showSpeech(payload.success ? 'Here’s what I found 👀' : 'I need a little help with that.', 2600);
+      showSpeech(payload.success ? 'Here’s what I found' : 'I need a little help with that.', 2600);
       bubbleOpen = true;
       bubble.classList.add('visible');
     });
