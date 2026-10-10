@@ -23,6 +23,7 @@ def analyze_screen_question(
     task: Dict[str, Any] | None = None,
     image_paths: list[str] | None = None,
     interactions: list | None = None,
+    screen_changes: list | None = None,
 ) -> Dict[str, Any]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -38,6 +39,7 @@ def analyze_screen_question(
     client = OpenAI(api_key=api_key)
     recent_context = context[-5:] if context else []
     recent_interactions = interactions[-8:] if interactions else []
+    recent_screen_changes = screen_changes[-10:] if screen_changes else []
     task_state = task or {}
 
     selected_paths = image_paths if image_paths is not None else ([image_path] if image_path else [])
@@ -49,7 +51,7 @@ def analyze_screen_question(
 
 Use the recent interaction history to maintain continuity: remember what the user asked, what guidance you gave, and what they were trying to accomplish. Treat older answers as context, not as proof that the current screen is unchanged. The newest screen is authoritative for the current visible state.
 Use screen images in oldest-to-newest order to understand transitions.
-Do not claim a task step was completed unless the screen or user confirms it.
+The screen-change log reports visual differences between captured frames. Use it to notice likely transitions, but do not treat a visual change by itself as proof of a completed step. Do not claim a task step was completed unless the screen or user confirms it.
 Give practical, direct instructions based on what is visible. If the user asks what to click, identify the control precisely.
 If the question is unrelated to the screen, answer normally.
 If the screen and history do not provide enough information, say what is missing and ask one focused follow-up question.
@@ -68,6 +70,9 @@ Recent screen observation records:
 
 Recent VOSI interaction history (oldest to newest):
 {recent_interactions}
+
+Recent detected screen transitions (visual difference only; not proof of completion):
+{recent_screen_changes}
 
 Number of recent screen images attached: {len(usable_paths)}
 """.strip()
