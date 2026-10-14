@@ -129,7 +129,7 @@ Number of recent screen images attached: {len(usable_paths)}
                         isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= 1000
                         and isinstance(y, (int, float)) and not isinstance(y, bool) and 0 <= y <= 1000
                     )
-                    if valid_point and confidence >= 0.68:
+                    if valid_point and confidence >= 0.75:
                         guidance = {
                             "target_x": int(x),
                             "target_y": int(y),
