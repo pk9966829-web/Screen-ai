@@ -272,7 +272,7 @@
         function applyVosiTheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
         function prepareVosiPrompt(message) {
             const instructions = []; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + ".");
-            return instructions.length ? "[User preferences: " + instructions.join(" ") + "]\\n\\n" + message : message;
+            return instructions.length ? "[User preferences: " + instructions.join(" ") + "] " + message : message;
         }
         function updateSettingsObservation(active) { const el = document.getElementById("setting-observation-status"); if (el) { el.textContent = active ? "ON" : "OFF"; el.classList.toggle("text-emerald-300", active); } }
         async function refreshSettingsBackendStatus() {
