@@ -71,7 +71,7 @@ def get_workflow():
         "task_state": pipeline.task.get_task_state(),
         "recent_screens": pipeline.get_state().get("recent_screens", []),
         "screen_changes": pipeline.get_recent_screen_changes(limit=10),
-        "recent_interactions": pipeline.context.get_recent_interactions(limit=20),
+        "recent_interactions": get_recent_interactions(limit=20),
         "note": "Chat interactions and task progress are persisted in the local SQLite database.",
     }
 
