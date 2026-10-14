@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from pipeline import ScreenPipeline
 from brain import analyze_screen_question
+from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
 app = FastAPI(title="VOSI Screen AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -40,13 +41,26 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "POST /screen", "POST /ask", "POST /task", "POST /awareness"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /task", "POST /awareness"],
     }
 
 
 @app.get("/state")
 def get_state():
     return {"success": True, **pipeline.get_state()}
+
+
+@app.get("/history")
+def get_history(limit: int = 20):
+    """Return persisted VOSI chat interactions, task history, and screen observation metadata."""
+    safe_limit = max(1, min(limit, 100))
+    return {
+        "success": True,
+        "interactions": get_recent_interactions(safe_limit),
+        "tasks": get_recent_tasks(safe_limit),
+        "observations": get_recent_observations(safe_limit),
+        "privacy_note": "The database stores chat text, task progress, and screenshot metadata; image files themselves are not stored in SQLite.",
+    }
 
 
 @app.get("/workflow")
@@ -58,7 +72,7 @@ def get_workflow():
         "recent_screens": pipeline.get_state().get("recent_screens", []),
         "screen_changes": pipeline.get_recent_screen_changes(limit=10),
         "recent_interactions": pipeline.context.get_recent_interactions(limit=20),
-        "note": "Workflow interaction history is temporary and resets when the backend restarts.",
+        "note": "Chat interactions and task progress are persisted in the local SQLite database.",
     }
 
 
@@ -83,7 +97,7 @@ def ask_screen_ai(req: AskRequest):
     latest_path = recent_paths[-1] if recent_paths else (
         pipeline.latest_screen_path if req.include_screen else None
     )
-    prior_interactions = pipeline.context.get_recent_interactions(limit=8)
+    prior_interactions = get_recent_interactions(limit=8)
 
     result = analyze_screen_question(
         message,
@@ -106,6 +120,12 @@ def ask_screen_ai(req: AskRequest):
         screens_considered=result.get("screens_considered", 0),
         task=state.get("task") or {},
     )
+    persisted_interaction = save_interaction(
+        message,
+        answer,
+        screens_considered=result.get("screens_considered", 0),
+        task=state.get("task") or {},
+    )
 
     return {
         "success": result.get("success", False),
@@ -115,8 +135,8 @@ def ask_screen_ai(req: AskRequest):
         "recent_context": state.get("recent_context") or [],
         "recent_screens": state.get("recent_screens") or [],
         "screen_changes": pipeline.get_recent_screen_changes(limit=10),
-        "recent_interactions": pipeline.context.get_recent_interactions(limit=8),
-        "interaction_recorded": bool(interaction),
+        "recent_interactions": get_recent_interactions(limit=8),
+        "interaction_recorded": bool(interaction) and bool(persisted_interaction),
         "screen_used": bool(latest_path and req.include_screen),
     }
 
@@ -125,26 +145,32 @@ def ask_screen_ai(req: AskRequest):
 def manage_task(req: TaskRequest):
     action = (req.action or "").lower().strip()
     if action == "start":
-        return {"success": True, "action": "start", "task_state": pipeline.start_task(req.task_name or "Untitled task")}
+        state = pipeline.start_task(req.task_name or "Untitled task")
+        save_task_state(state, status="active")
+        return {"success": True, "action": "start", "task_state": state}
     if action == "stop":
+        previous_state = pipeline.task.get_task_state()
+        if previous_state.get("task"):
+            save_task_state(previous_state, status="stopped")
         pipeline.task.task = None
         pipeline.task.current_step = None
         pipeline.task.completed_steps = []
         pipeline.task.next_step = None
         pipeline.task.created_at = None
+        pipeline.task.task_key = None
         return {"success": True, "action": "stop", "task_state": pipeline.task.get_task_state()}
-    if action == "set_step":
+    if action in {"set_step", "complete_step", "next_step"}:
         if not req.step:
             return {"success": False, "error": "step is required"}
-        return {"success": True, "action": "set_step", "task_state": pipeline.set_current_step(req.step)}
-    if action == "complete_step":
-        if not req.step:
-            return {"success": False, "error": "step is required"}
-        return {"success": True, "action": "complete_step", "task_state": pipeline.complete_step(req.step)}
-    if action == "next_step":
-        if not req.step:
-            return {"success": False, "error": "step is required"}
-        return {"success": True, "action": "next_step", "task_state": pipeline.set_next_step(req.step)}
+        if action == "set_step":
+            state = pipeline.set_current_step(req.step)
+        elif action == "complete_step":
+            state = pipeline.complete_step(req.step)
+        else:
+            state = pipeline.set_next_step(req.step)
+        if state.get("task"):
+            save_task_state(state, status="active")
+        return {"success": True, "action": action, "task_state": state}
     return {"success": False, "error": "Unknown action. Use start|stop|set_step|complete_step|next_step"}
 
 
