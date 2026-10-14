@@ -648,7 +648,7 @@
             async function updateClickGuide(guidance) {
                 try {
                     if (!window.__TAURI__?.core?.invoke || !window.__TAURI__?.event?.emit) return;
-                    if (guidance && Number(guidance.confidence) >= 0.68) {
+                    if (guidance && Number(guidance.confidence) >= 0.75) {
                         await window.__TAURI__.core.invoke("show_guide");
                         await new Promise(resolve => setTimeout(resolve, 300));
                         await window.__TAURI__.event.emit("vosi-guidance", guidance);
