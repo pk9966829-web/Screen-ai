@@ -519,6 +519,8 @@
                 if (awarenessFrameStatus && !active) awarenessFrameStatus.textContent = "Waiting for screen share";
             }
 
+            updateAwarenessPageState();
+
             async function refreshAwarenessBackendStatus() {
                 const badge = document.getElementById("awareness-backend-state");
                 const detail = document.getElementById("awareness-backend-detail");
@@ -859,7 +861,7 @@
                         if (screenStream && window.captureLatestScreen) {
                             await window.captureLatestScreen();
                         }
-                        const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
+                        const data = await apiPost("/ask", { message: query, include_screen: !!screenStream && !observationPaused });
                         await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                         if (data.success && data.brain) {
