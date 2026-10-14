@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import uuid4
 
 
 class TaskEngine:
@@ -8,13 +9,27 @@ class TaskEngine:
         self.completed_steps = []
         self.next_step = None
         self.created_at = None
+        self.task_key = None
 
     def start_task(self, task_name):
+        self.task_key = uuid4().hex
         self.task = task_name
         self.current_step = None
         self.completed_steps = []
         self.next_step = None
         self.created_at = datetime.now().isoformat()
+        return self.get_task_state()
+
+    def restore_task_state(self, state):
+        """Restore the last persisted active task after a backend restart."""
+        if not isinstance(state, dict) or not state.get("task"):
+            return self.get_task_state()
+        self.task_key = state.get("task_key")
+        self.task = state.get("task")
+        self.current_step = state.get("current_step")
+        self.completed_steps = list(state.get("completed_steps") or [])[-30:]
+        self.next_step = state.get("next_step")
+        self.created_at = state.get("created_at")
         return self.get_task_state()
 
     def set_current_step(self, step):
@@ -55,6 +70,7 @@ class TaskEngine:
 
     def get_task_state(self):
         return {
+            'task_key': self.task_key,
             'task': self.task,
             'current_step': self.current_step,
             'completed_steps': self.completed_steps,
