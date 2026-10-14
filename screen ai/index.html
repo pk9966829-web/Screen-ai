@@ -510,8 +510,13 @@
                     // Resolve only after the frame has actually reached the backend.
                     // This prevents a question from being answered using an older screenshot.
                     const captureAndSend = async () => {
-                        if (!screenStream || captureInProgress) return;
-                        if (!video.videoWidth || !video.videoHeight || !ctx) return;
+                        if (!screenStream) return;
+                        // If the timer is already uploading, wait for it and then capture
+                        // again so a user question never races an older frame.
+                        while (captureInProgress && screenStream) {
+                            await new Promise(resolve => setTimeout(resolve, 40));
+                        }
+                        if (!screenStream || !video.videoWidth || !video.videoHeight || !ctx) return;
                         captureInProgress = true;
                         try {
                             canvas.width = video.videoWidth;
@@ -722,6 +727,10 @@
                     userInput.value = "";
 
                     try {
+                        // Refresh and finish uploading the current frame before asking the AI.
+                        if (screenStream && window.captureLatestScreen) {
+                            await window.captureLatestScreen();
+                        }
                         const data = await apiPost("/ask", { message: query, include_screen: !!screenStream });
                         await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
