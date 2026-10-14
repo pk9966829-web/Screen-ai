@@ -6,7 +6,7 @@ from observation import observe_image
 from brain import analyze_context, analyze_screen_transition
 from context import ContextEngine
 from task import TaskEngine
-from database import initialize_database, save_observation, get_recent_observations
+from database import initialize_database, save_observation, get_recent_observations, get_active_task, save_task_state
 
 
 MAX_RECENT_SCREEN_FRAMES = 4
@@ -38,6 +38,10 @@ class ScreenPipeline:
         self._transition_worker_active = False
         self._last_transition_analysis_at = 0.0
         initialize_database()
+        # Resume an unfinished task so progress is not lost when the API restarts.
+        saved_task = get_active_task()
+        if saved_task:
+            self.task.restore_task_state(saved_task)
 
     def start_task(self, task_name): return self.task.start_task(task_name)
     def set_current_step(self, step): return self.task.set_current_step(step)
@@ -147,6 +151,7 @@ class ScreenPipeline:
                 return
             if update:
                 self.task.apply_workflow_update(update)
+                save_task_state(self.task.get_task_state(), status="active")
             event = {
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 "filename": Path(current_path).name,
