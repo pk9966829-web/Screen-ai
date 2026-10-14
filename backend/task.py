@@ -35,9 +35,10 @@ class TaskEngine:
         if not isinstance(update, dict):
             return self.get_task_state()
         task_name = update.get('task_name')
-        if isinstance(task_name, str) and task_name.strip():
-            if not self.task or task_name.strip().lower() != self.task.strip().lower():
-                self.start_task(task_name.strip()[:200])
+        # AI inference may suggest a task label, but must never silently replace
+        # an active user-created task. Only initialize an empty tracker.
+        if not self.task and isinstance(task_name, str) and task_name.strip():
+            self.start_task(task_name.strip()[:200])
         current = update.get('current_step')
         if isinstance(current, str) and current.strip():
             self.current_step = current.strip()[:300]
