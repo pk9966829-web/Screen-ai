@@ -505,24 +505,35 @@
 
                     const canvas = document.createElement("canvas");
                     const ctx = canvas.getContext("2d");
+                    let captureInProgress = false;
 
+                    // Resolve only after the frame has actually reached the backend.
+                    // This prevents a question from being answered using an older screenshot.
                     const captureAndSend = async () => {
-                        if (!screenStream) return;
-                        canvas.width = video.videoWidth || 1280;
-                        canvas.height = video.videoHeight || 720;
-                        ctx.drawImage(video, 0, 0);
-                        canvas.toBlob(async (blob) => {
-                            if (!blob) return;
+                        if (!screenStream || captureInProgress) return;
+                        if (!video.videoWidth || !video.videoHeight || !ctx) return;
+                        captureInProgress = true;
+                        try {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const blob = await new Promise((resolve) => {
+                                canvas.toBlob(resolve, "image/jpeg", 0.9);
+                            });
+                            if (!blob || !screenStream) return;
                             const formData = new FormData();
-                            formData.append("file", blob, `screen_${Date.now()}.png`);
-                            try {
-                                const res = await fetch(API_BASE + "/screen", { method: "POST", body: formData });
-                                const data = await res.json();
-                                console.log("Live screen frame stored:", data.success);
-                            } catch (err) {
-                                console.warn("Failed to send screen frame", err);
-                            }
-                        }, "image/png");
+                            formData.append("file", blob, `screen_${Date.now()}.jpg`);
+                            const res = await fetch(API_BASE + "/screen", { method: "POST", body: formData });
+                            if (!res.ok) throw new Error(`Screen upload failed (${res.status})`);
+                            const data = await res.json();
+                            if (!data.success) throw new Error(data.error || "Backend did not accept the screen frame");
+                            console.log("Live screen frame stored:", data.success);
+                        } catch (err) {
+                            console.warn("Failed to capture/send current screen frame:", err);
+                            throw err;
+                        } finally {
+                            captureInProgress = false;
+                        }
                     };
 
                     window.captureLatestScreen = captureAndSend;
