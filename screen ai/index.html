@@ -87,7 +87,7 @@
     <div class="flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
             <div class="flex items-center space-x-2 md:hidden">
-                <img src="./src/assets/logo.png" alt="VOSI" class="w-7 h-7 rounded-full object-cover">
+                <img src="./src/assets/logo.png" alt="VOSI" class="w-7 h-7 rounded-full object-contain">
                 <span class="font-bold text-sm tracking-wide text-white">VOSI</span>
             </div>
             <div class="hidden md:block"></div>
@@ -111,7 +111,7 @@
                 <div class="space-y-6">
                     <div class="flex items-center space-x-3 px-2 py-1">
                         <div class="relative flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-black shadow-lg shadow-indigo-500/30">
-                            <img src="./src/assets/logo.png" alt="VOSI logo" class="w-full h-full object-cover">
+                            <img src="./src/assets/logo.png" alt="VOSI logo" class="w-full h-full object-contain">
                         </div>
                         <div>
                             <h1 class="font-bold text-sm text-white tracking-wider">VOSI</h1>
@@ -162,41 +162,7 @@
                     </svg>
                     <div class="absolute w-44 h-44 bg-cyan-600/30 rounded-full blur-3xl animate-pulse-glow"></div>
                     <div class="relative z-10 w-44 h-44 animate-float flex items-center justify-center">
-                        <svg viewBox="0 0 200 200" class="w-full h-full filter drop-shadow-[0_0_25px_rgba(139,92,246,0.55)]">
-                            <defs>
-                                <radialGradient id="headGlow" cx="50%" cy="30%" r="70%">
-                                    <stop offset="0%" stop-color="#bae6fd" /><stop offset="40%" stop-color="#38bdf8" />
-                                    <stop offset="80%" stop-color="#0284c7" /><stop offset="100%" stop-color="#082f49" />
-                                </radialGradient>
-                                <linearGradient id="faceGlass" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" stop-color="#061226" /><stop offset="100%" stop-color="#0c234a" />
-                                </linearGradient>
-                                <linearGradient id="cyanEyeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#67e8f9" /><stop offset="100%" stop-color="#0ea5e9" />
-                                </linearGradient>
-                                <linearGradient id="earGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#7dd3fc" /><stop offset="100%" stop-color="#0284c7" />
-                                </linearGradient>
-                            </defs>
-                            <ellipse cx="42" cy="95" rx="10" ry="18" fill="url(#earGlow)" filter="drop-shadow(0 0 6px #38bdf8)"/>
-                            <ellipse cx="44" cy="95" rx="4" ry="10" fill="#e0f2fe"/>
-                            <ellipse cx="158" cy="95" rx="10" ry="18" fill="url(#earGlow)" filter="drop-shadow(0 0 6px #38bdf8)"/>
-                            <ellipse cx="156" cy="95" rx="4" ry="10" fill="#e0f2fe"/>
-                            <ellipse cx="100" cy="95" rx="55" ry="50" fill="url(#headGlow)" filter="drop-shadow(0 0 12px #38bdf8)"/>
-                            <ellipse cx="100" cy="95" rx="42" ry="38" fill="url(#faceGlass)"/>
-                            <ellipse cx="80" cy="90" rx="9" ry="12" fill="url(#cyanEyeGlow)">
-                                <animate attributeName="ry" values="12;12;2;12;12" keyTimes="0;0.45;0.5;0.55;1" dur="4s" repeatCount="indefinite"/>
-                            </ellipse>
-                            <circle cx="77" cy="86" r="3" fill="#ffffff" />
-                            <ellipse cx="120" cy="90" rx="9" ry="12" fill="url(#cyanEyeGlow)">
-                                <animate attributeName="ry" values="12;12;2;12;12" keyTimes="0;0.45;0.5;0.55;1" dur="4s" repeatCount="indefinite"/>
-                            </ellipse>
-                            <circle cx="117" cy="86" r="3" fill="#ffffff" />
-                            <path d="M 94 106 Q 100 112 106 106" fill="transparent" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
-                            <path d="M 82 145 C 82 145, 100 138, 118 145 C 122 165, 110 180, 100 182 C 90 180, 78 165, 82 145 Z" fill="url(#headGlow)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-                            <circle cx="100" cy="160" r="6" fill="#38bdf8" filter="drop-shadow(0 0 8px #38bdf8)"/>
-                            <circle cx="100" cy="160" r="2.5" fill="#ffffff"/>
-                        </svg>
+                        <img src="./src/assets/logo.png" alt="VOSI logo" class="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(255,255,255,0.25)]" draggable="false">
                     </div>
                 </div>
 
