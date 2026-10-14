@@ -111,6 +111,8 @@ def ask_screen_ai(req: AskRequest):
     progress_data = result.get("workflow_update") or {}
     if result.get("success") and progress_data:
         state["task"] = pipeline.task.apply_workflow_update(progress_data)
+        if state["task"].get("task"):
+            save_task_state(state["task"], status="active")
 
     answer = result.get("understanding", "")
     # Save both successful answers and failures so follow-up questions retain context.
