@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime
 
@@ -9,11 +10,16 @@ from datetime import datetime
 DATABASE_PATH = Path(__file__).resolve().parent / "screen_ai.db"
 
 
+@contextmanager
 def get_connection():
     connection = sqlite3.connect(DATABASE_PATH, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA busy_timeout = 10000")
-    return connection
+    try:
+        with connection:
+            yield connection
+    finally:
+        connection.close()
 
 
 def initialize_database():
