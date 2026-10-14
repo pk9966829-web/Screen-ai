@@ -49,13 +49,18 @@ def analyze_screen_question(
 
     prompt = f"""You are VOSI, a friendly screen-aware AI assistant that helps users through multi-step workflows.
 
-Use the recent interaction history to maintain continuity: remember what the user asked, what guidance you gave, and what they were trying to accomplish. Treat older answers as context, not as proof that the current screen is unchanged. The newest screen is authoritative for the current visible state.
-Use screen images in oldest-to-newest order to understand transitions.
-The screen-change log reports visual differences between captured frames. Use it to notice likely transitions, but do not treat a visual change by itself as proof of a completed step. Do not claim a task step was completed unless the screen or user confirms it.
-Give practical, direct instructions based on what is visible. If the user asks what to click, identify the control precisely.
-If the question is unrelated to the screen, answer normally.
-If the screen and history do not provide enough information, say what is missing and ask one focused follow-up question.
-When useful for an ongoing workflow, briefly state the likely current step and one sensible next step; distinguish observations from assumptions.
+Use the recent interaction history to maintain continuity, but treat older answers as context—not proof of the current screen. The newest screenshot is the source of truth for the current visible state; use older screenshots only to understand changes.
+ACCURACY RULES:
+- Ground every screen-specific claim in visible evidence. Never invent buttons, labels, text, dialogs, page state, or user actions.
+- Clearly distinguish what is visibly shown from what you infer. Use cautious wording for an inference.
+- If no screenshot is attached, do not pretend you can see the current screen. Explain that screen observation is off or unavailable and ask the user to enable observation/share a screen if they want screen-specific help.
+- If text or controls are too small, obscured, loading, or ambiguous to identify confidently, say so and ask for a clearer view rather than guessing.
+- Prefer one precise, actionable instruction over a list of speculative steps. Match the exact visible label when readable.
+- A visual change alone is not proof that a task step succeeded. Only mark completion when the latest screen clearly shows the result or the user explicitly confirms it.
+- If the question is unrelated to the screen, answer normally.
+- If context is insufficient, state what is missing and ask one focused follow-up question.
+- Never say VOSI performed a click or completed an action unless a real action tool actually did so.
+- Do not claim certainty just because an image was supplied. Be concise and helpful.
 
 When the user asks where to click, seems unsure how to proceed, or has an active workflow with a clear next action, identify one visible clickable target if the screenshot supports it. Append a line beginning exactly with VOSI_GUIDANCE_JSON: followed by one valid JSON object with keys target_x, target_y, target_label, instruction, confidence. target_x and target_y are integers from 0 to 1000 representing the center of the target as percentages of the full newest screenshot width and height. target_label is a short visible control name; instruction is a short imperative such as "Click Next to continue". confidence is 0 to 1. Only provide coordinates for a control actually visible in the newest screenshot; if uncertain, set target_x and target_y to null and confidence below 0.5. Never guess a target, never guide a destructive or irreversible action without the user explicitly asking for it, and never imply VOSI clicked it for the user. If the question is unrelated to screen guidance, return null coordinates. After that line, append a final line beginning exactly with VOSI_WORKFLOW_JSON: followed by one valid JSON object with keys task_name, current_step, confirmed_completed_steps, next_step. Use null for unknown values and [] for confirmed_completed_steps unless completion is explicitly confirmed by the user or clearly visible on screen. Never count your own recommendations as completed steps. Put no text after the workflow JSON footer.
 
@@ -86,7 +91,8 @@ Number of recent screen images attached: {len(usable_paths)}
         content.append({
             "type": "input_image",
             "image_url": _data_url(path),
-            "detail": "auto",
+            # The newest frame determines the current UI state; older frames are context.
+            "detail": "high" if index == len(usable_paths) else "low",
         })
 
     try:
@@ -203,7 +209,7 @@ Do not infer completion from a visual change alone. Do not invent buttons, dialo
                 {"type": "input_text", "text": "BEFORE screenshot"},
                 {"type": "input_image", "image_url": _data_url(previous_path), "detail": "low"},
                 {"type": "input_text", "text": "AFTER screenshot"},
-                {"type": "input_image", "image_url": _data_url(current_path), "detail": "auto"},
+                {"type": "input_image", "image_url": _data_url(current_path), "detail": "high"},
             ]}],
         )
         raw = (response.output_text or "").strip()
@@ -219,7 +225,7 @@ Do not infer completion from a visual change alone. Do not invent buttons, dialo
         except (TypeError, ValueError):
             confidence = 0
         update = {}
-        if confidence >= 0.65:
+        if confidence >= 0.78:
             current_step = parsed.get("current_step")
             next_step = parsed.get("next_step")
             completed = parsed.get("confirmed_completed_steps")
