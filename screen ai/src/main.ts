@@ -318,72 +318,63 @@ function addTimelineItem(
 // ASK SCREEN AI
 // =========================================================
 
-function askScreenAI(
-  message?: string
-) {
-
-  const text =
-    (
-      message ??
-      askInput?.value ??
-      ""
-    ).trim();
-
+async function askScreenAI(message?: string) {
+  const text = (message ?? askInput?.value ?? "").trim();
 
   if (!text) {
-
     askInput?.focus();
-
     return;
   }
 
+  setStatus("THINKING...");
+  mascot?.classList.add("thinking");
+  addTimelineItem("You asked VOSI", text, "violet");
+  if (askInput) askInput.value = "";
 
-  setStatus(
-    "THINKING..."
-  );
+  try {
+    const response = await fetch("http://127.0.0.1:8001/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
 
+    if (!response.ok) {
+      throw new Error(
+        response.status === 429
+          ? "The AI service is rate-limited. Please check your API quota and try again."
+          : `VOSI backend returned HTTP ${response.status}.`
+      );
+    }
 
-  mascot?.classList.add(
-    "thinking"
-  );
+    const data: unknown = await response.json();
+    let answer = "";
 
+    if (typeof data === "string") {
+      answer = data;
+    } else if (data && typeof data === "object") {
+      const result = data as Record<string, unknown>;
+      const candidate = result.answer ?? result.response ?? result.message ?? result.reply;
+      if (typeof candidate === "string") answer = candidate;
+    }
 
-  addTimelineItem(
-    "You asked Screen AI",
-    text,
-    "violet"
-  );
+    if (!answer) {
+      throw new Error("VOSI received an unexpected response from the AI backend.");
+    }
 
-
-  if (askInput) {
-
-    askInput.value = "";
+    addTimelineItem("VOSI", answer, "cyan");
+    setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const messageForUser = detail.includes("Failed to fetch")
+      ? "Cannot reach the VOSI backend. Start the backend on http://127.0.0.1:8001 and try again."
+      : detail;
+    addTimelineItem("VOSI could not answer", messageForUser, "violet");
+    setStatus("AI CONNECTION ISSUE");
+    console.warn("VOSI chat request failed:", error);
+  } finally {
+    mascot?.classList.remove("thinking");
   }
-
-
-  setTimeout(() => {
-
-    setStatus(
-      awarenessEnabled
-        ? "SCREEN AWARENESS ACTIVE"
-        : "READY TO HELP"
-    );
-
-
-    mascot?.classList.remove(
-      "thinking"
-    );
-
-
-    addTimelineItem(
-      "Screen AI is ready",
-      "Your request has been received. The real AI brain will be connected here next.",
-      "cyan"
-    );
-
-  }, 900);
 }
-
 
 // =========================================================
 // SEND BUTTON
