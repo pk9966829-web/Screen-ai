@@ -11,7 +11,7 @@
   #target { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
   #target.visible { display: block; }
   .ring {
-    width: 62px; height: 62px; border-radius: 50%;
+    width: 150px; height: 64px; border-radius: 14px;
     border: 3px solid #38bdf8;
     box-shadow: 0 0 0 5px rgba(56,189,248,.17), 0 0 28px rgba(56,189,248,.85), inset 0 0 16px rgba(56,189,248,.2);
     animation: pulse 1.15s ease-in-out infinite;
@@ -37,31 +37,40 @@
     <div class="label"><div id="instruction">Click the highlighted control</div><div id="target-label">Next step</div></div>
   </div>
   <script type="module">
-    const { listen } = window.__TAURI__.event;
-    const guideWindow = window.__TAURI__.window.getCurrentWindow();
+    const { listen, emit } = window.__TAURI__.event;
     const target = document.getElementById('target');
     const instruction = document.getElementById('instruction');
     const targetLabel = document.getElementById('target-label');
     let hideTimer = null;
 
-    listen('vosi-guidance', (event) => {
-      const guide = event.payload || {};
-      const x = Number(guide.target_x);
-      const y = Number(guide.target_y);
-      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1000 || y < 0 || y > 1000) return;
-      target.style.left = (x / 10) + '%';
-      target.style.top = (y / 10) + '%';
-      instruction.textContent = String(guide.instruction || 'Click the highlighted control').slice(0, 180);
-      targetLabel.textContent = String(guide.target_label || 'Next step').slice(0, 100);
-      target.classList.add('visible');
-      if (hideTimer) clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => target.classList.remove('visible'), 9000);
-    });
+    async function initializeGuideEvents() {
+      // Await registration so the first guidance event cannot be lost on a slow PC.
+      await listen('vosi-guidance', (event) => {
+        const guide = event.payload || {};
+        const x = Number(guide.target_x);
+        const y = Number(guide.target_y);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1000 || y < 0 || y > 1000) {
+          console.warn('VOSI guide received invalid target coordinates:', guide);
+          return;
+        }
+        target.style.left = (x / 10) + '%';
+        target.style.top = (y / 10) + '%';
+        instruction.textContent = String(guide.instruction || 'Click the highlighted control').slice(0, 180);
+        targetLabel.textContent = String(guide.target_label || 'Next step').slice(0, 100);
+        target.classList.add('visible');
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => target.classList.remove('visible'), 12000);
+      });
 
-    listen('vosi-guidance-clear', () => {
-      target.classList.remove('visible');
-      if (hideTimer) clearTimeout(hideTimer);
-    });
+      await listen('vosi-guidance-clear', () => {
+        target.classList.remove('visible');
+        if (hideTimer) clearTimeout(hideTimer);
+      });
+
+      await emit('vosi-guide-ready', { ready: true });
+    }
+
+    initializeGuideEvents().catch((error) => console.error('VOSI guide event setup failed:', error));
   </script>
 </body>
 </html>
