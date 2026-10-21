@@ -297,7 +297,6 @@ function addTimelineItem(
     <span class="t-dot"></span>
 
     <div class="t-content">
-
       <strong>
         ${escapeHtml(title)}
       </strong>
@@ -318,70 +317,103 @@ function addTimelineItem(
 // ASK SCREEN AI
 // =========================================================
 
-function askScreenAI(
-  message?: string
-) {
-
-  const text =
-    (
-      message ??
-      askInput?.value ??
-      ""
-    ).trim();
-
-
-  if (!text) {
-
+async function askScreenAI(message?: string) {
+  const question = (message ?? askInput?.value ?? "").trim();
+  if (!question) {
     askInput?.focus();
-
     return;
   }
 
+  setStatus("THINKING...");
+  mascot?.classList.add("thinking");
+  addTimelineItem("You asked VOSI", question, "violet");
+  if (askInput) askInput.value = "";
 
-  setStatus(
-    "THINKING..."
-  );
+  try {
+    const response = await fetch("http://127.0.0.1:8001/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: question, include_screen: true })
+    });
+    if (!response.ok) {
+      throw new Error(`VOSI backend returned HTTP ${response.status}`);
+    }
 
-
-  mascot?.classList.add(
-    "thinking"
-  );
-
-
-  addTimelineItem(
-    "You asked Screen AI",
-    text,
-    "violet"
-  );
-
-
-  if (askInput) {
-
-    askInput.value = "";
-  }
-
-
-  setTimeout(() => {
-
-    setStatus(
-      awarenessEnabled
-        ? "SCREEN AWARENESS ACTIVE"
-        : "READY TO HELP"
-    );
-
-
-    mascot?.classList.remove(
-      "thinking"
-    );
-
+    const data: any = await response.json();
+    const brain = data?.brain ?? {};
+    const answer = brain.understanding || brain.suggestion || brain.error ||
+      data?.error || "VOSI could not answer that question.";
 
     addTimelineItem(
-      "Screen AI is ready",
-      "Your request has been received. The real AI brain will be connected here next.",
-      "cyan"
+      data.success && brain.success !== false ? "VOSI response" : "VOSI needs attention",
+      answer,
+      data.success && brain.success !== false ? "cyan" : "violet"
     );
 
-  }, 900);
+    const guide = brain.guidance;
+    const validGuidance = guide &&
+      Number(guide.confidence) >= 0.60 &&
+      Number.isFinite(Number(guide.target_x)) &&
+      Number.isFinite(Number(guide.target_y)) &&
+      Number(guide.target_x) >= 0 && Number(guide.target_x) <= 1000 &&
+      Number(guide.target_y) >= 0 && Number(guide.target_y) <= 1000;
+
+    if (validGuidance && window.__TAURI__) {
+      try {
+        await window.__TAURI__.core.invoke("show_guide");
+        // Give the transparent guide webview time to appear before sending its target.
+        await new Promise(resolve => window.setTimeout(resolve, 300));
+        await window.__TAURI__.event.emit("vosi-guidance", {
+          target_x: Number(guide.target_x),
+          target_y: Number(guide.target_y),
+          target_label: String(guide.target_label || "Next step"),
+          instruction: String(guide.instruction || "Click the highlighted control"),
+          confidence: Number(guide.confidence)
+        });
+        addTimelineItem(
+          "Click target highlighted",
+          String(guide.instruction || guide.target_label || "Follow the glowing highlight."),
+          "green"
+        );
+      } catch (guideError) {
+        console.error("VOSI could not show the click guide:", guideError);
+        addTimelineItem(
+          "Click guide unavailable",
+          "VOSI found a target, but the overlay could not be opened. Check the guide window permissions and restart VOSI.",
+          "violet"
+        );
+      }
+    } else if (window.__TAURI__) {
+      try {
+        await window.__TAURI__.event.emit("vosi-guidance-clear");
+        await window.__TAURI__.core.invoke("hide_guide");
+      } catch (guideError) {
+        console.warn("Could not clear the VOSI click guide:", guideError);
+      }
+    }
+
+    if (!data.success || brain.success === false) {
+      setStatus("AI REQUEST FAILED");
+    } else {
+      setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
+    }
+  } catch (error) {
+    console.error("VOSI question failed:", error);
+    addTimelineItem(
+      "Could not reach VOSI",
+      "Make sure the backend is running at http://127.0.0.1:8001 and try again. " + String(error),
+      "violet"
+    );
+    setStatus("BACKEND CONNECTION ERROR");
+  } finally {
+    mascot?.classList.remove("thinking");
+    if (statusText?.textContent === "BACKEND CONNECTION ERROR" ||
+        statusText?.textContent === "AI REQUEST FAILED") {
+      // Keep the error visible so it is easier to diagnose.
+    } else {
+      setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
+    }
+  }
 }
 
 
@@ -597,8 +629,7 @@ async function setAwareness(enabled: boolean, fromEndedTrack = false) {
       void notifyCompanion(true);
       if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: true });
       addTimelineItem("Screen awareness started", "VOSI is capturing the screen you selected.", "green");
-    } catch (error) {
-      awarenessEnabled = false;
+    } catch (error) {      awarenessEnabled = false;
       stopScreenCapture();
       updateAwarenessUI();
       setStatus("SCREEN SHARING NOT STARTED");
@@ -897,7 +928,6 @@ const robotEyes =
   document.querySelectorAll<HTMLElement>(
     ".eye"
   );
-
 
 let targetHeadX = 0;
 let targetHeadY = 0;
