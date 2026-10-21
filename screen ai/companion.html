@@ -50,7 +50,14 @@
       background: transparent;
       position: relative;
       z-index: 2;
-      filter: drop-shadow(0 0 9px rgba(56,189,248,0.42));
+      /*
+       * Adaptive monochrome contrast: invert the mark and use difference blending
+       * against the desktop behind this transparent window. The dark parts of the
+       * logo become black on bright backgrounds and white on dark backgrounds.
+       * This avoids sampling the screen or requesting extra screen-capture access.
+       */
+      filter: invert(1) drop-shadow(0 0 2px rgba(128,128,128,0.22));
+      mix-blend-mode: difference;
       transition: transform 0.3s, filter 0.3s;
       -webkit-user-drag: none;
       user-select: none;
