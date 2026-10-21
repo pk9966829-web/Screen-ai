@@ -50,8 +50,8 @@
       background: transparent;
       position: relative;
       z-index: 2;
-      /* Theme is selected from the live screen-brightness event sent by main.ts. */
-      filter: drop-shadow(0 0 2px rgba(128,128,128,0.22));
+      /* The supplied logo mark is white on transparency: start black for light screens. */
+      filter: invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.25));
       transition: transform 0.3s, filter 0.3s;
       -webkit-user-drag: none;
       user-select: none;
@@ -423,10 +423,10 @@
     listen('companion-contrast', (event) => {
       const theme = event.payload?.theme;
       if (!logoMark || (theme !== 'light' && theme !== 'dark')) return;
-      // Keep the exact logo asset; only invert its rendered pixels on dark screens.
-      logoMark.style.filter = theme === 'dark'
-        ? 'invert(1) drop-shadow(0 0 2px rgba(255,255,255,0.35))'
-        : 'drop-shadow(0 0 2px rgba(0,0,0,0.25))';
+      // The source mark is white: invert it on light screens, show it as-is on dark screens.
+      logoMark.style.filter = theme === 'light'
+        ? 'invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.25))'
+        : 'drop-shadow(0 0 2px rgba(255,255,255,0.35))';
     });
 
     listen('companion-asking', () => {
