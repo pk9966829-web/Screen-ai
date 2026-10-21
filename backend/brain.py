@@ -1,6 +1,7 @@
 import base64
 import os
 import json
+import re
 from pathlib import Path
 from typing import Dict, Any
 
@@ -117,7 +118,8 @@ Number of recent screen images attached: {len(usable_paths)}
         if guidance_marker in raw_answer:
             visible_answer, guidance_footer = raw_answer.rsplit(guidance_marker, 1)
             try:
-                parsed_guidance = json.loads(guidance_footer.strip())
+                guidance_match = re.search(r"\{.*?\}", guidance_footer.strip(), re.DOTALL)
+                parsed_guidance = json.loads(guidance_match.group(0)) if guidance_match else {}
                 if isinstance(parsed_guidance, dict):
                     try:
                         confidence = float(parsed_guidance.get("confidence", 0))
@@ -129,7 +131,7 @@ Number of recent screen images attached: {len(usable_paths)}
                         isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= 1000
                         and isinstance(y, (int, float)) and not isinstance(y, bool) and 0 <= y <= 1000
                     )
-                    if valid_point and confidence >= 0.75:
+                    if valid_point and confidence >= 0.60:
                         guidance = {
                             "target_x": int(x),
                             "target_y": int(y),
