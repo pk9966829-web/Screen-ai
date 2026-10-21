@@ -570,6 +570,13 @@ async function startScreenCapture() {
   await video.play();
 
   const canvas = document.createElement("canvas");
+  // A tiny sample is enough to estimate whether the shared screen is mostly light or dark.
+  const contrastCanvas = document.createElement("canvas");
+  contrastCanvas.width = 16;
+  contrastCanvas.height = 16;
+  const contrastContext = contrastCanvas.getContext("2d", { willReadFrequently: true });
+  let lastCompanionTheme: "light" | "dark" | null = null;
+
   const sendFrame = async () => {
     if (!screenStream || captureInProgress || !video.videoWidth || !video.videoHeight) return;
     captureInProgress = true;
@@ -579,6 +586,28 @@ async function startScreenCapture() {
       const context = canvas.getContext("2d");
       if (!context) return;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Detect overall screen brightness from a 16x16 thumbnail, without saving pixels.
+      // On dark screens the logo is inverted to white; on light screens it stays black.
+      if (contrastContext && window.__TAURI__) {
+        try {
+          contrastContext.drawImage(video, 0, 0, 16, 16);
+          const pixels = contrastContext.getImageData(0, 0, 16, 16).data;
+          let luminanceTotal = 0;
+          for (let i = 0; i < pixels.length; i += 4) {
+            luminanceTotal += 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
+          }
+          const averageLuminance = luminanceTotal / (pixels.length / 4);
+          const theme: "light" | "dark" = averageLuminance < 128 ? "dark" : "light";
+          if (theme !== lastCompanionTheme) {
+            lastCompanionTheme = theme;
+            void window.__TAURI__.event.emit("companion-contrast", { theme });
+          }
+        } catch (contrastError) {
+          console.warn("VOSI could not estimate screen brightness:", contrastError);
+        }
+      }
+
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
       if (!blob || !screenStream) return;
       const form = new FormData();
