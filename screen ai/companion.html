@@ -50,14 +50,8 @@
       background: transparent;
       position: relative;
       z-index: 2;
-      /*
-       * Adaptive monochrome contrast: invert the mark and use difference blending
-       * against the desktop behind this transparent window. The dark parts of the
-       * logo become black on bright backgrounds and white on dark backgrounds.
-       * This avoids sampling the screen or requesting extra screen-capture access.
-       */
-      filter: invert(1) drop-shadow(0 0 2px rgba(128,128,128,0.22));
-      mix-blend-mode: difference;
+      /* Theme is selected from the live screen-brightness event sent by main.ts. */
+      filter: none drop-shadow(0 0 2px rgba(128,128,128,0.22));
       transition: transform 0.3s, filter 0.3s;
       -webkit-user-drag: none;
       user-select: none;
@@ -243,6 +237,7 @@
     const { LogicalPosition } = window.__TAURI__.dpi;
 
     const companion = document.getElementById('companion');
+    const logoMark = document.querySelector('.logo-mark');
     const bubble = document.getElementById('bubble');
     const speech = document.getElementById('speech');
     const speechText = document.getElementById('speech-text');
@@ -423,6 +418,15 @@
         setState(isObserving ? 'observing' : 'idle');
         showSpeech('The AI brain is offline.', 2600);
       }
+    });
+
+    listen('companion-contrast', (event) => {
+      const theme = event.payload?.theme;
+      if (!logoMark || (theme !== 'light' && theme !== 'dark')) return;
+      // Keep the exact logo asset; only invert its rendered pixels on dark screens.
+      logoMark.style.filter = theme === 'dark'
+        ? 'invert(1) drop-shadow(0 0 2px rgba(255,255,255,0.35))'
+        : 'none drop-shadow(0 0 2px rgba(0,0,0,0.25))';
     });
 
     listen('companion-asking', () => {
