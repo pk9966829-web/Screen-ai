@@ -63,7 +63,16 @@ ACCURACY RULES:
 - Never say VOSI performed a click or completed an action unless a real action tool actually did so.
 - Do not claim certainty just because an image was supplied. Be concise and helpful.
 
-When the user asks where to click, seems unsure how to proceed, or has an active workflow with a clear next action, identify one visible clickable target if the screenshot supports it. Append a line beginning exactly with VOSI_GUIDANCE_JSON: followed by one valid JSON object with keys target_x, target_y, target_label, instruction, confidence. target_x and target_y are integers from 0 to 1000 representing the center of the target as percentages of the full newest screenshot width and height. target_label is a short visible control name; instruction is a short imperative such as "Click Next to continue". confidence is 0 to 1. Only provide coordinates for a control actually visible in the newest screenshot; if uncertain, set target_x and target_y to null and confidence below 0.5. Never guess a target, never guide a destructive or irreversible action without the user explicitly asking for it, and never imply VOSI clicked it for the user. If the question is unrelated to screen guidance, return null coordinates. After that line, append a final line beginning exactly with VOSI_WORKFLOW_JSON: followed by one valid JSON object with keys task_name, current_step, confirmed_completed_steps, next_step. Use null for unknown values and [] for confirmed_completed_steps unless completion is explicitly confirmed by the user or clearly visible on screen. Never count your own recommendations as completed steps. Put no text after the workflow JSON footer.
+LIVE CLICK-GUIDANCE RULES (follow these carefully):
+- When the user asks where an account/profile is, identify the account/profile control INSIDE the named website or app, not browser tabs, the address bar, bookmarks, window controls, or other browser chrome—unless the user explicitly asks about browser chrome.
+- First identify the application/page the user means, then locate the exact visible control that matches their words. For "my YouTube account", target the YouTube profile/avatar button in the YouTube page header, usually at the upper-right of the webpage content. Do not target the row of browser tabs above the page.
+- Distinguish visual regions: browser chrome (tabs/address bar) versus website content. Use the screenshot's visible boundaries and page layout. Never choose a nearby item just because it is close to the expected location.
+- Place the point at the CENTER of the clickable control itself, not the label, whitespace, screen edge, or neighboring control. If the target is too small or unclear to localize, do not emit a highlight.
+- Coordinates target_x and target_y are integers from 0 to 1000 relative to the FULL newest screenshot image, with (0,0) at its top-left and (1000,1000) at its bottom-right. Do not use coordinates from older screenshots, the VOSI window, or a cropped region.
+- Emit guidance only when the newest screenshot visibly supports the requested target and you can locate its center reliably. If the user names an app/control that is not visible, or multiple plausible matches exist, set target_x and target_y to null and confidence below 0.5; explain what needs to be shown.
+- Be conservative with confidence: 0.90-1.00 means the exact control and its center are clearly visible; 0.75-0.89 means visible and reasonably clear; below 0.75 means do not highlight. Never inflate confidence.
+- Append a line beginning exactly with VOSI_GUIDANCE_JSON: followed by one valid JSON object with keys target_x, target_y, target_label, instruction, confidence. target_label is a short name for the visible control; instruction is a short imperative. Never guess a target, never guide a destructive or irreversible action without explicit user request, and never imply VOSI clicked it for the user. If the question is unrelated to screen guidance, return null coordinates.
+- After that line, append a final line beginning exactly with VOSI_WORKFLOW_JSON: followed by one valid JSON object with keys task_name, current_step, confirmed_completed_steps, next_step. Use null for unknown values and [] for confirmed_completed_steps unless completion is explicitly confirmed by the user or clearly visible on screen. Never count recommendations as completed steps. Put no text after the workflow JSON footer.
 
 User question:
 {question}
@@ -131,7 +140,7 @@ Number of recent screen images attached: {len(usable_paths)}
                         isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= 1000
                         and isinstance(y, (int, float)) and not isinstance(y, bool) and 0 <= y <= 1000
                     )
-                    if valid_point and confidence >= 0.60:
+                    if valid_point and confidence >= 0.75:
                         guidance = {
                             "target_x": int(x),
                             "target_y": int(y),
