@@ -88,6 +88,66 @@
         #awareness-pause-button:disabled { opacity:.4; cursor:not-allowed; }
         #awareness-page-state.is-active { background:rgba(16,185,129,.12); color:#6ee7b7; }
         #awareness-page-state.is-paused { background:rgba(245,158,11,.12); color:#fbbf24; }
+
+        /* VOSI monochrome ambient theme inspired by the selected reference */
+        body, body.bg-space-base {
+            background-color: #080808;
+            color: #ededed;
+        }
+        .bg-space-base {
+            background-color: #080808;
+            background-image: radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.045), transparent 58%),
+                              linear-gradient(180deg, #101010 0%, #080808 48%, #050505 100%);
+        }
+        .stars-overlay {
+            opacity: .07;
+            background-size: 190px 190px;
+        }
+        .nebula {
+            background: radial-gradient(ellipse at center, rgba(220,220,220,.10) 0%, rgba(150,150,150,.045) 34%, transparent 72%) !important;
+            mix-blend-mode: screen;
+            filter: blur(110px);
+            opacity: .72;
+        }
+        .glass-panel {
+            background: rgba(19,19,19,.70);
+            border: 1px solid rgba(255,255,255,.085);
+            box-shadow: 0 10px 36px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.025);
+        }
+        .tab-card {
+            background: rgba(20,20,20,.78);
+            border-color: rgba(255,255,255,.10);
+            box-shadow: 0 10px 34px rgba(0,0,0,.38);
+        }
+        .nav-item.active {
+            background: linear-gradient(110deg, rgba(255,255,255,.12), rgba(255,255,255,.035)) !important;
+            color: #fff !important;
+            border-color: rgba(255,255,255,.16) !important;
+            box-shadow: 0 5px 18px rgba(0,0,0,.28) !important;
+        }
+        .nav-item.active i { color: #f0f0f0 !important; }
+        .text-gradient-purple {
+            background: linear-gradient(135deg, #ffffff 0%, #c8c8c8 55%, #929292 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #f2f2f2 0%, #c9c9c9 100%);
+            color: #111;
+            box-shadow: 0 0 18px rgba(255,255,255,.10);
+        }
+        .btn-gradient:hover { box-shadow: 0 0 24px rgba(255,255,255,.18); }
+        .tab-action {
+            background: linear-gradient(135deg, #eeeeee, #c8c8c8);
+            color: #111;
+        }
+        body.vosi-dim-theme .bg-space-base {
+            background-color: #030303;
+            background-image: radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.025), transparent 58%);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .nebula, .dust-particle { animation: none !important; }
+        }
     </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans">
