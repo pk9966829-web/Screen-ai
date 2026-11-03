@@ -37,6 +37,56 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: rgba(11, 14, 30, 0.5); }
         ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 9999px; }
+        .bg-space-base { background-color: #03050c; position: relative; }
+        .stars-overlay {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(1px 1px at 10% 20%, #fff 100%, transparent),
+                              radial-gradient(1px 1px at 30% 60%, #fff 100%, transparent),
+                              radial-gradient(2px 2px at 50% 10%, #fff 100%, transparent),
+                              radial-gradient(1.5px 1.5px at 70% 80%, #fff 100%, transparent),
+                              radial-gradient(1px 1px at 90% 40%, #fff 100%, transparent);
+            background-size: 150px 150px; opacity: 0.3; pointer-events: none; z-index: 0;
+        }
+        .nebula { position: absolute; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; animation: nebula-drift 30s ease-in-out infinite alternate; }
+        @keyframes nebula-drift {
+            0% { transform: scale(1) translate(0, 0) rotate(0deg); }
+            50% { transform: scale(1.1) translate(5%, 5%) rotate(5deg); }
+            100% { transform: scale(1) translate(0, 0) rotate(0deg); }
+        }
+        .dust-particle { position: absolute; width: 2px; height: 2px; background: white; border-radius: 50%; box-shadow: 0 0 4px 1px rgba(255,255,255,0.5); pointer-events: none; z-index: 0; animation: cosmic-dust linear infinite; }
+        @keyframes cosmic-dust {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            20% { opacity: 0.6; } 80% { opacity: 0.6; }
+            100% { transform: translateY(-100vh) translateX(20vw); opacity: 0; }
+        }
+        .glass-panel { background: rgba(7, 9, 19, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(139, 92, 246, 0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .text-gradient-purple { background: linear-gradient(135deg, #67e8f9 0%, #38bdf8 50%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-gradient { background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #3b82f6 100%); box-shadow: 0 0 20px rgba(14,165,233,0.4); transition: all 0.2s ease; }
+        .btn-gradient:hover { box-shadow: 0 0 28px rgba(14,165,233,0.65); transform: translateY(-1px); }
+        .tab-overlay { display:none; width:100%; max-width:720px; margin:auto; padding:18px; }
+        .tab-overlay.active { display:block; }
+        .tab-card { background:rgba(7,9,19,.62); backdrop-filter:blur(20px); border:1px solid rgba(139,92,246,.16); border-radius:20px; padding:22px; box-shadow:0 8px 32px rgba(0,0,0,.35); }
+        .tab-card h2 { color:#fff; font-size:24px; font-weight:800; margin-bottom:8px; }
+        .tab-card p { color:#94a3b8; font-size:13px; line-height:1.6; }
+        .tab-action { margin-top:16px; width:100%; padding:11px 16px; border-radius:12px; background:linear-gradient(135deg,#0284c7,#2563eb); color:white; font-size:12px; font-weight:700; }
+        .tab-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid rgba(255,255,255,.07); }
+        .tab-row:last-child { border-bottom:0; }
+        .settings-switch { position:relative; display:inline-flex; width:38px; height:22px; flex-shrink:0; }
+        .settings-switch input { position:absolute; opacity:0; width:1px; height:1px; }
+        .settings-switch span { position:absolute; inset:0; border-radius:999px; background:#334155; cursor:pointer; transition:background .2s; }
+        .settings-switch span:before { content:""; position:absolute; width:16px; height:16px; top:3px; left:3px; border-radius:50%; background:white; transition:transform .2s; }
+        .settings-switch input:checked + span { background:#2563eb; }
+        .settings-switch input:checked + span:before { transform:translateX(16px); }
+        .settings-switch input:focus-visible + span { outline:2px solid #7dd3fc; outline-offset:3px; }
+        body.vosi-dim-theme .glass-panel { background:rgba(4,6,14,.84); border-color:rgba(148,163,184,.12); }
+        body.vosi-dim-theme .bg-space-base { background-color:#010207; }
+        .tab-label { color:#e2e8f0; font-size:13px; font-weight:600; }
+        .tab-value { color:#64748b; font-size:11px; }
+        .task-state { display:inline-flex; padding:5px 9px; border-radius:999px; background:rgba(59,130,246,.12); color:#60a5fa; font-size:10px; font-weight:800; letter-spacing:.08em; }
+        #awareness-preview[hidden], #awareness-preview-placeholder[hidden] { display:none; }
+        #awareness-pause-button:disabled { opacity:.4; cursor:not-allowed; }
+        #awareness-page-state.is-active { background:rgba(16,185,129,.12); color:#6ee7b7; }
+        #awareness-page-state.is-paused { background:rgba(245,158,11,.12); color:#fbbf24; }
 
         /* =========================================================
            SOFT GLOWING AMBIENT BACKGROUND (matches provided image)
@@ -58,13 +108,9 @@
             z-index: 0;
             pointer-events: none;
             background:
-                /* large soft white glow top-left */
                 radial-gradient(ellipse 55% 45% at 18% 22%, rgba(255, 255, 255, 0.18) 0%, rgba(200, 200, 210, 0.06) 35%, transparent 70%),
-                /* secondary glow top-right */
                 radial-gradient(ellipse 50% 40% at 82% 18%, rgba(240, 240, 255, 0.14) 0%, rgba(180, 180, 200, 0.05) 40%, transparent 72%),
-                /* soft center haze */
                 radial-gradient(ellipse 70% 50% at 50% 45%, rgba(255, 255, 255, 0.07) 0%, transparent 65%),
-                /* bottom soft lift */
                 radial-gradient(ellipse 80% 40% at 50% 100%, rgba(160, 160, 180, 0.08) 0%, transparent 55%);
             filter: blur(28px);
             opacity: 0.95;
@@ -107,7 +153,7 @@
             100% { opacity: 1;   transform: translateX(1.5%) scale(1.03); }
         }
 
-        /* Extra soft orbs for depth (match the image lights) */
+        /* Extra soft orbs for depth */
         .ambient-orb {
             position: fixed;
             border-radius: 50%;
@@ -189,46 +235,18 @@
                 animation: none !important;
             }
         }
-
-        /* Keep the rest of the original utility styles */
-        .text-gradient-purple { background: linear-gradient(135deg, #67e8f9 0%, #38bdf8 50%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .btn-gradient { background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #3b82f6 100%); box-shadow: 0 0 20px rgba(14,165,233,0.4); transition: all 0.2s ease; }
-        .btn-gradient:hover { box-shadow: 0 0 28px rgba(14,165,233,0.65); transform: translateY(-1px); }
-        .tab-overlay { display:none; width:100%; max-width:720px; margin:auto; padding:18px; }
-        .tab-overlay.active { display:block; }
-        .tab-card h2 { color:#fff; font-size:24px; font-weight:800; margin-bottom:8px; }
-        .tab-card p { color:#94a3b8; font-size:13px; line-height:1.6; }
-        .tab-action { margin-top:16px; width:100%; padding:11px 16px; border-radius:12px; background:linear-gradient(135deg,#0284c7,#2563eb); color:white; font-size:12px; font-weight:700; }
-        .tab-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid rgba(255,255,255,.07); }
-        .tab-row:last-child { border-bottom:0; }
-        .settings-switch { position:relative; display:inline-flex; width:38px; height:22px; flex-shrink:0; }
-        .settings-switch input { position:absolute; opacity:0; width:1px; height:1px; }
-        .settings-switch span { position:absolute; inset:0; border-radius:999px; background:#334155; cursor:pointer; transition:background .2s; }
-        .settings-switch span:before { content:""; position:absolute; width:16px; height:16px; top:3px; left:3px; border-radius:50%; background:white; transition:transform .2s; }
-        .settings-switch input:checked + span { background:#2563eb; }
-        .settings-switch input:checked + span:before { transform:translateX(16px); }
-        .settings-switch input:focus-visible + span { outline:2px solid #7dd3fc; outline-offset:3px; }
-        body.vosi-dim-theme .glass-panel { background:rgba(4,6,14,.84); border-color:rgba(148,163,184,.12); }
-        body.vosi-dim-theme .bg-space-base { background-color:#010207; }
-        .tab-label { color:#e2e8f0; font-size:13px; font-weight:600; }
-        .tab-value { color:#64748b; font-size:11px; }
-        .task-state { display:inline-flex; padding:5px 9px; border-radius:999px; background:rgba(59,130,246,.12); color:#60a5fa; font-size:10px; font-weight:800; letter-spacing:.08em; }
-        #awareness-preview[hidden], #awareness-preview-placeholder[hidden] { display:none; }
-        #awareness-pause-button:disabled { opacity:.4; cursor:not-allowed; }
-        #awareness-page-state.is-active { background:rgba(16,185,129,.12); color:#6ee7b7; }
-        #awareness-page-state.is-paused { background:rgba(245,158,11,.12); color:#fbbf24; }
     </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans">
-    <!-- Soft ambient orbs that move slowly (matching the image lights) -->
+    <!-- Soft ambient orbs that move slowly -->
     <div class="ambient-orb orb-1"></div>
     <div class="ambient-orb orb-2"></div>
     <div class="ambient-orb orb-3"></div>
 
     <div class="stars-overlay"></div>
-    <div class="nebula w-[80vw] h-[80vh] top-[-20%] left-[-10%] mix-blend-screen" style="animation-duration: 40s;"></div>
-    <div class="nebula w-[60vw] h-[60vh] bottom-[-10%] right-[-10%] mix-blend-screen" style="animation-delay: -10s; animation-direction: alternate-reverse;"></div>
-    <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 25s; animation-delay: -5s;"></div>
+    <div class="nebula w-[80vw] h-[80vh] bg-indigo-900/20 top-[-20%] left-[-10%] mix-blend-screen" style="animation-duration: 40s;"></div>
+    <div class="nebula w-[60vw] h-[60vh] bg-fuchsia-900/15 bottom-[-10%] right-[-10%] mix-blend-screen" style="animation-delay: -10s; animation-direction: alternate-reverse;"></div>
+    <div class="nebula w-[50vw] h-[50vh] bg-blue-900/20 top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 25s; animation-delay: -5s;"></div>
     <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
 
     <div class="flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
@@ -325,7 +343,6 @@
                 </div>
             </main>
 
-            <!-- Right panel placeholder (kept minimal so the file stays valid) -->
             <aside class="col-span-12 lg:col-span-3 hidden lg:flex flex-col p-4 rounded-2xl glass-panel">
                 <h3 class="text-sm font-semibold text-white mb-3">Activity</h3>
                 <p class="text-xs text-slate-400">Screen awareness and task timeline will appear here.</p>
@@ -334,7 +351,6 @@
     </div>
 
     <script>
-        // Minimal bootstrap so the page still works
         document.addEventListener('DOMContentLoaded', () => {
             if (window.lucide) lucide.createIcons();
         });
