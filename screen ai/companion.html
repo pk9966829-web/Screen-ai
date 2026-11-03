@@ -59,56 +59,24 @@
     }
 
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
-    #companion.idle .logo-mark { animation: float 3.5s ease-in-out infinite; }
-
-    #companion.asking .logo-mark { animation: ask-bounce 0.7s ease-in-out infinite; }
     #companion.asking .glow {
       opacity: 1;
       background: radial-gradient(circle, rgba(251,191,36,0.45) 0%, transparent 70%);
     }
-    @keyframes ask-bounce {
-      0%, 100% { transform: translateY(0) scale(1); }
-      40% { transform: translateY(-7px) scale(1.05); }
-      60% { transform: translateY(-3px) scale(1.02); }
-    }
-
     #companion.observing .glow {
       opacity: 1;
       background: radial-gradient(circle, rgba(56,189,248,0.5) 0%, transparent 70%);
       animation: pulse-glow 2s ease-in-out infinite;
     }
 
-    #companion.thinking .logo-mark { animation: think 1.2s ease-in-out infinite; }
-    @keyframes think {
-      0%, 100% { transform: rotate(-4deg); }
-      50% { transform: rotate(4deg); }
-    }
-
-    #companion.working .logo-mark { animation: work 0.8s ease-in-out infinite; }
     #companion.working .glow {
       opacity: 0.9;
       background: radial-gradient(circle, rgba(167,139,250,0.45) 0%, transparent 70%);
     }
-    @keyframes work {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.07); }
-    }
-
-    #companion.attention .logo-mark { animation: bounce 0.55s ease-in-out infinite; }
     #companion.attention .glow {
       opacity: 1;
       background: radial-gradient(circle, rgba(251,191,36,0.55) 0%, transparent 70%);
     }
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      40% { transform: translateY(-8px); }
-      60% { transform: translateY(-4px); }
-    }
-
     #speech {
       position: absolute;
       left: 72px;
