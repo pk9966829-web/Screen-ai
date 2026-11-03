@@ -1,1 +1,248 @@
-<PLACEHOLDER>
+<!DOCTYPE html>
+<html lang="en" class="h-full font-sans antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOSI - Your Digital Screen Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['\"Plus Jakarta Sans\"', 'sans-serif'] },
+                    colors: {
+                        space: { 900: '#070913', 800: '#0B0E1E', 700: '#11152B', 600: '#171D3A', 500: '#1E2548' },
+                        neon: { blue: '#3b82f6', purple: '#8b5cf6', cyan: '#06b6d4', indigo: '#6366f1' }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'spin-slow': 'spin 20s linear infinite',
+                        'spin-reverse-slow': 'spin-reverse 25s linear infinite',
+                        'pulse-glow': 'pulseGlow 3s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-12px)' } },
+                        'spin-reverse': { '0%': { transform: 'rotate(360deg)' }, '100%': { transform: 'rotate(0deg)' } },
+                        pulseGlow: { '0%, 100%': { opacity: '0.4', transform: 'scale(1)' }, '50%': { opacity: '0.8', transform: 'scale(1.05)' } }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(11, 14, 30, 0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 9999px; }
+
+        /* =========================================================
+           STRONGER ANIMATED AMBIENT BACKGROUND
+        ========================================================= */
+
+        .bg-space-base {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            background: #030304;
+        }
+
+        .bg-space-base::before {
+            content: "";
+            position: fixed;
+            inset: -20%;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 55% 45% at 18% 22%, rgba(255, 255, 255, 0.22) 0%, rgba(200, 200, 210, 0.08) 35%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 82% 18%, rgba(240, 240, 255, 0.18) 0%, rgba(180, 180, 200, 0.07) 40%, transparent 72%),
+                radial-gradient(ellipse 70% 50% at 50% 45%, rgba(255, 255, 255, 0.10) 0%, transparent 65%),
+                radial-gradient(ellipse 80% 40% at 50% 100%, rgba(160, 160, 180, 0.10) 0%, transparent 55%);
+            filter: blur(28px);
+            opacity: 0.95;
+            transform: scale(1.08);
+            animation: ambient-drift 18s ease-in-out infinite alternate;
+            will-change: transform, opacity;
+        }
+
+        .bg-space-base::after {
+            content: "";
+            position: fixed;
+            inset: -10%;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse at 30% 70%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 75% 35%, rgba(220, 220, 235, 0.07) 0%, transparent 45%),
+                linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, transparent 30%, rgba(0, 0, 0, 0.35) 100%);
+            animation: haze-shift 12s ease-in-out infinite alternate;
+            will-change: transform, opacity;
+        }
+
+        @keyframes ambient-drift {
+            0% {
+                transform: scale(1.05) translate3d(-4%, 2%, 0) rotate(-2deg);
+                opacity: 0.75;
+            }
+            50% {
+                transform: scale(1.18) translate3d(3%, -3%, 0) rotate(2deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.10) translate3d(4%, 1%, 0) rotate(1deg);
+                opacity: 0.85;
+            }
+        }
+
+        @keyframes haze-shift {
+            0%   { opacity: 0.6; transform: translateX(-3%) translateY(1%) scale(1); }
+            100% { opacity: 1;   transform: translateX(3.5%) translateY(-2%) scale(1.06); }
+        }
+
+        .ambient-orb {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(55px);
+            mix-blend-mode: screen;
+            opacity: 0.65;
+            will-change: transform, opacity;
+        }
+
+        .orb-1 {
+            width: 60vw; height: 50vh;
+            top: -18%; left: -12%;
+            background: radial-gradient(circle, rgba(255,255,255,0.28) 0%, rgba(200,200,220,0.10) 40%, transparent 70%);
+            animation: orb-float-1 14s ease-in-out infinite alternate;
+        }
+
+        .orb-2 {
+            width: 48vw; height: 42vh;
+            top: 2%; right: -10%;
+            background: radial-gradient(circle, rgba(245,245,255,0.24) 0%, rgba(180,180,200,0.09) 45%, transparent 72%);
+            animation: orb-float-2 17s ease-in-out infinite alternate;
+        }
+
+        .orb-3 {
+            width: 42vw; height: 38vh;
+            bottom: 5%; left: 20%;
+            background: radial-gradient(circle, rgba(230,230,245,0.18) 0%, transparent 65%);
+            animation: orb-float-3 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes orb-float-1 {
+            0%   { transform: translate(0, 0) scale(1); opacity: 0.45; }
+            100% { transform: translate(12%, 9%) scale(1.18); opacity: 0.85; }
+        }
+
+        @keyframes orb-float-2 {
+            0%   { transform: translate(0, 0) scale(1.05); opacity: 0.5; }
+            100% { transform: translate(-10%, 12%) scale(1.02); opacity: 0.8; }
+        }
+
+        @keyframes orb-float-3 {
+            0%   { transform: translate(0, 0) scale(1); opacity: 0.35; }
+            100% { transform: translate(9%, -11%) scale(1.22); opacity: 0.7; }
+        }
+
+        .stars-overlay, .dust-particle { display: none !important; }
+
+        .nebula {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1;
+            background: radial-gradient(ellipse at center, rgba(245,245,250,0.18) 0%, rgba(190,190,200,0.08) 36%, transparent 74%) !important;
+            mix-blend-mode: screen;
+            filter: blur(90px);
+            opacity: 0.75;
+            animation: nebula-drift 16s ease-in-out infinite alternate !important;
+        }
+
+        @keyframes nebula-drift {
+            0%   { transform: scale(1) translate(0, 0); }
+            50%  { transform: scale(1.12) translate(5%, -4%); }
+            100% { transform: scale(1.05) translate(-3%, 3%); }
+        }
+
+        .glass-panel {
+            background: rgba(17, 17, 19, 0.78);
+            border-color: rgba(255, 255, 255, 0.11);
+            box-shadow: 0 10px 36px rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,255,255,0.035);
+        }
+
+        .tab-card {
+            background: rgba(18, 18, 20, 0.84);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bg-space-base::before,
+            .bg-space-base::after,
+            .ambient-orb,
+            .nebula {
+                animation: none !important;
+            }
+        }
+
+        .text-gradient-purple { background: linear-gradient(135deg, #67e8f9 0%, #38bdf8 50%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-gradient { background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #3b82f6 100%); box-shadow: 0 0 20px rgba(14,165,233,0.4); transition: all 0.2s ease; }
+        .btn-gradient:hover { box-shadow: 0 0 28px rgba(14,165,233,0.65); transform: translateY(-1px); }
+        .tab-overlay { display:none; width:100%; max-width:720px; margin:auto; padding:18px; }
+        .tab-overlay.active { display:block; }
+        .tab-card h2 { color:#fff; font-size:24px; font-weight:800; margin-bottom:8px; }
+        .tab-card p { color:#94a3b8; font-size:13px; line-height:1.6; }
+        .tab-action { margin-top:16px; width:100%; padding:11px 16px; border-radius:12px; background:linear-gradient(135deg,#0284c7,#2563eb); color:white; font-size:12px; font-weight:700; }
+        .tab-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid rgba(255,255,255,.07); }
+        .tab-row:last-child { border-bottom:0; }
+        .settings-switch { position:relative; display:inline-flex; width:38px; height:22px; flex-shrink:0; }
+        .settings-switch input { position:absolute; opacity:0; width:1px; height:1px; }
+        .settings-switch span { position:absolute; inset:0; border-radius:999px; background:#334155; cursor:pointer; transition:background .2s; }
+        .settings-switch span:before { content:""; position:absolute; width:16px; height:16px; top:3px; left:3px; border-radius:50%; background:white; transition:transform .2s; }
+        .settings-switch input:checked + span { background:#2563eb; }
+        .settings-switch input:checked + span:before { transform:translateX(16px); }
+        .settings-switch input:focus-visible + span { outline:2px solid #7dd3fc; outline-offset:3px; }
+        body.vosi-dim-theme .glass-panel { background:rgba(4,6,14,.84); border-color:rgba(148,163,184,.12); }
+        body.vosi-dim-theme .bg-space-base { background-color:#010207; }
+        .tab-label { color:#e2e8f0; font-size:13px; font-weight:600; }
+        .tab-value { color:#64748b; font-size:11px; }
+        .task-state { display:inline-flex; padding:5px 9px; border-radius:999px; background:rgba(59,130,246,.12); color:#60a5fa; font-size:10px; font-weight:800; letter-spacing:.08em; }
+        #awareness-preview[hidden], #awareness-preview-placeholder[hidden] { display:none; }
+        #awareness-pause-button:disabled { opacity:.4; cursor:not-allowed; }
+        #awareness-page-state.is-active { background:rgba(16,185,129,.12); color:#6ee7b7; }
+        #awareness-page-state.is-paused { background:rgba(245,158,11,.12); color:#fbbf24; }
+        /* UI content must stay above ambient layers (orbs, nebula, ::before/::after) */
+        .vosi-app-shell {
+            position: relative;
+            z-index: 20;
+            isolation: isolate;
+        }
+        .vosi-app-shell img,
+        .vosi-app-shell h1,
+        .vosi-app-shell h2,
+        .vosi-app-shell button,
+        .vosi-app-shell a,
+        .vosi-app-shell input,
+        .vosi-app-shell select,
+        .vosi-app-shell .tab-card,
+        .vosi-app-shell .glass-panel {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+</style>
+</head>
+<body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans">
+    <!-- Soft ambient orbs that move slowly -->
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+
+    <div class="stars-overlay"></div>
+    <div class="nebula w-[80vw] h-[80vh] top-[-20%] left-[-10%] mix-blend-screen" style="animation-duration: 16s;"></div>
+    <div class="nebula w-[60vw] h-[60vh] bottom-[-10%] right-[-10%] mix-blend-screen" style="animation-delay: -8s; animation-direction: alternate-reverse;"></div>
+    <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 14s; animation-delay: -4s;"></div>
+    <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
+
+<div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
