@@ -225,7 +225,7 @@
     <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 14s; animation-delay: -4s;"></div>
     <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
 
-    <div class="flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
+<div class="flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
             <div class="flex items-center space-x-2 md:hidden">
                 <img src="./src/assets/logo.png" alt="VOSI" class="w-7 h-7 rounded-full object-contain">
@@ -315,21 +315,683 @@
                         <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
                             <i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>Help me with this</span>
                         </button>
+                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
+                            <i data-lucide="circle" class="w-3.5 h-3.5"></i><span>Start screen awareness</span>
+                        </button>
                     </div>
+                </div>
+                <div id="tab-overlay" class="tab-overlay">
+                    <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
+                    <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>VOSI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
+                    <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>VOSI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask VOSI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local VOSI backend.</p></div>
+                    <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>Personalize how VOSI responds and observes your screen. Changes are saved on this device.</p><div class="mt-5 mb-2 text-[10px] uppercase tracking-widest text-sky-300 font-bold">AI &amp; Intelligence</div><div class="tab-row"><div><div class="tab-label">Response style</div><div class="tab-value">How VOSI explains things</div></div><select id="setting-response-style" class="rounded-lg border border-white/10 bg-space-700 px-3 py-2 text-xs text-white outline-none"><option value="balanced">Balanced</option><option value="concise">Short &amp; direct</option><option value="detailed">Detailed</option><option value="stepwise">Step-by-step</option></select></div><div class="tab-row"><div><div class="tab-label">Response language</div><div class="tab-value">Language for answers</div></div><select id="setting-language" class="rounded-lg border border-white/10 bg-space-700 px-3 py-2 text-xs text-white outline-none"><option value="same">Match my message</option><option value="English">English</option><option value="Hindi">Hindi</option><option value="Kannada">Kannada</option></select></div><div class="tab-row"><div><div class="tab-label">Click guidance</div><div class="tab-value">Show the on-screen guide when confidence is high</div></div><label class="settings-switch"><input id="setting-click-guidance" type="checkbox" checked><span></span></label></div><div class="tab-row"><div><div class="tab-label">Appearance</div><div class="tab-value">Choose the app background mood</div></div><select id="setting-theme" class="rounded-lg border border-white/10 bg-space-700 px-3 py-2 text-xs text-white outline-none"><option value="dark">Cosmic dark</option><option value="dim">Dimmed</option></select></div><div class="mt-5 mb-2 text-[10px] uppercase tracking-widest text-sky-300 font-bold">Screen observation</div><div class="tab-row"><div><div class="tab-label">Observation status</div><div class="tab-value">Screen capture state</div></div><span id="setting-observation-status" class="task-state">OFF</span></div><div class="tab-row"><div><div class="tab-label">Backend connection</div><div id="setting-backend-detail" class="tab-value">Checking local backend…</div></div><span id="setting-backend-status" class="task-state">CHECKING</span></div><div class="mt-5 mb-2 text-[10px] uppercase tracking-widest text-sky-300 font-bold">Privacy &amp; maintenance</div><p class="text-xs text-slate-400">Screen frames are sent to your local VOSI backend at 127.0.0.1:8001 while observation is active. Settings are stored in this app local browser storage.</p><button id="setting-reset" class="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-bold text-slate-300 hover:bg-white/[0.07]">Reset settings to defaults</button><p id="setting-save-status" class="text-[10px] mt-3 text-emerald-300" aria-live="polite">Settings ready.</p></div>
                 </div>
             </main>
 
-            <aside class="col-span-12 lg:col-span-3 hidden lg:flex flex-col p-4 rounded-2xl glass-panel">
-                <h3 class="text-sm font-semibold text-white mb-3">Activity</h3>
-                <p class="text-xs text-slate-400">Screen awareness and task timeline will appear here.</p>
+            <aside class="col-span-12 lg:col-span-3 flex flex-col gap-4 overflow-y-auto">
+                <div class="p-4 rounded-2xl glass-panel space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                            <i data-lucide="eye" class="w-4 h-4 text-indigo-400"></i><span>SCREEN AWARENESS</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="awareness-toggle" class="sr-only peer">
+                            <div class="w-9 h-5 bg-space-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-2 text-[10px] font-bold tracking-wider uppercase text-slate-500 peer-checked:text-blue-400" id="awareness-status-label">OFF</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">Screen AI can observe your screen when you ask it to.</p>
+                    <button id="btn-start-observing" class="w-full py-2.5 px-4 rounded-xl btn-gradient text-xs font-semibold text-white tracking-wide">Start observing</button>
+                </div>
+
+                <div class="p-4 rounded-2xl glass-panel space-y-3 hidden" id="response-box">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                            <i data-lucide="message-circle" class="w-4 h-4 text-cyan-400"></i><span>RESPONSE</span>
+                        </div>
+                        <button id="close-response" class="text-slate-500 hover:text-white text-xs">✕</button>
+                    </div>
+                    <div id="response-text" class="text-sm text-slate-200 leading-relaxed"></div>
+                </div>
             </aside>
         </div>
     </div>
 
-    <script>
+<script>
+        const API_BASE = "http://127.0.0.1:8001";
+
         document.addEventListener('DOMContentLoaded', () => {
-            if (window.lucide) lucide.createIcons();
+            lucide.createIcons();
+            setupInteractivity();
+            setupSettings();
+            createCosmicDust();
+            initCompanion();
+            checkBackend();
         });
+
+        const SETTINGS_KEY = "vosi.settings.v1";
+        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark" };
+        let vosiSettings = { ...DEFAULT_SETTINGS };
+        function loadVosiSettings() {
+            try { vosiSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; }
+            catch (_) { vosiSettings = { ...DEFAULT_SETTINGS }; }
+            const style = document.getElementById("setting-response-style"); const language = document.getElementById("setting-language"); const guide = document.getElementById("setting-click-guidance"); const theme = document.getElementById("setting-theme");
+            if (style) style.value = vosiSettings.responseStyle; if (language) language.value = vosiSettings.language; if (guide) guide.checked = !!vosiSettings.clickGuidance; if (theme) theme.value = vosiSettings.theme; applyVosiTheme();
+        }
+        function saveVosiSettings() {
+            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark" };
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save VOSI settings:", error); } applyVosiTheme();
+            const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Saved on this device.";
+        }
+        function applyVosiTheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
+        function prepareVosiPrompt(message) {
+            const instructions = []; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + ".");
+            return instructions.length ? "[User preferences: " + instructions.join(" ") + "] " + message : message;
+        }
+        function updateSettingsObservation(active) { const el = document.getElementById("setting-observation-status"); if (el) { el.textContent = active ? "ON" : "OFF"; el.classList.toggle("text-emerald-300", active); } }
+        async function refreshSettingsBackendStatus() {
+            const badge = document.getElementById("setting-backend-status"); const detail = document.getElementById("setting-backend-detail"); if (!badge || !detail) return;
+            try { const response = await fetch(API_BASE + "/", { signal: AbortSignal.timeout(2500) }); if (!response.ok) throw new Error("HTTP " + response.status); const data = await response.json(); badge.textContent = "ONLINE"; badge.classList.add("text-emerald-300"); detail.textContent = (data.version ? "VOSI backend v" + data.version : "Local backend") + " · 127.0.0.1:8001"; }
+            catch (_) { badge.textContent = "OFFLINE"; badge.classList.remove("text-emerald-300"); detail.textContent = "Start the FastAPI backend on port 8001."; }
+        }
+        function setupSettings() {
+            loadVosiSettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme"].forEach(id => document.getElementById(id)?.addEventListener("change", saveVosiSettings));
+            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadVosiSettings(); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
+            void refreshSettingsBackendStatus(); setInterval(() => { const page = document.getElementById("tab-page-settings"); if (page && page.style.display !== "none") void refreshSettingsBackendStatus(); }, 10000);
+        }
+        async function checkBackend() {
+            try {
+                const res = await fetch(API_BASE + "/");
+                const data = await res.json();
+                if (data.success) {
+                    console.log("Screen AI backend connected:", data.message);
+                    const statusEl = document.querySelector('.inline-flex.items-center.space-x-2 span.tracking-wider');
+                    if (statusEl) statusEl.textContent = "BACKEND CONNECTED";
+                }
+            } catch (e) {
+                console.warn("Backend not reachable at " + API_BASE + " – UI will still work with local fallbacks");
+            }
+        }
+
+        async function apiPost(path, body) {
+            const res = await fetch(API_BASE + path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            return res.json();
+        }
+
+        async function initCompanion() {
+            if (!window.__TAURI__) {
+                console.log('Not running in Tauri – companion skipped');
+                return;
+            }
+            try {
+                const { getByLabel } = window.__TAURI__.webviewWindow;
+                const { emit, listen } = window.__TAURI__.event;
+                let companionWin = await getByLabel('companion');
+                if (companionWin) {
+                    // Keep hidden until observing starts
+                    await companionWin.hide();
+                    await companionWin.setAlwaysOnTop(true);
+                    console.log('Companion window ready (hidden until observing)');
+                }
+                window.notifyCompanionObserving = async (active) => {
+                    try {
+                        await emit('observation-status', { active });
+                        await emit('companion-state', { state: active ? 'observing' : 'idle', observing: active });
+                    } catch (e) { console.warn('Failed to notify companion', e); }
+                };
+                await listen('companion-toggle-observe', async () => {
+                    const btn = document.getElementById('btn-start-observing');
+                    if (btn) btn.click();
+                });
+                await listen('companion-ask', async (event) => {
+                    const question = (event?.payload?.question || '').trim();
+                    if (!question) return;
+                    await answerFromCompanion(question);
+                });
+            } catch (err) { console.warn('Companion init error:', err); }
+        }
+
+        function createCosmicDust() {
+            const container = document.getElementById('dust-container');
+            if (!container) return;
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'dust-particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.bottom = '-' + (Math.random() * 100 + 100) + 'px';
+                particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                const size = Math.random() * 2 + 1;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                container.appendChild(particle);
+            }
+        }
+
+        function setupInteractivity() {
+            const navItems = document.querySelectorAll('.nav-item');
+            const main = document.querySelector('main');
+            const overlay = document.getElementById('tab-overlay');
+            const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), settings: document.getElementById('tab-page-settings') };
+            async function refreshWorkflow() {
+                const title = document.getElementById('task-page-title');
+                const state = document.getElementById('task-page-state');
+                const current = document.getElementById('task-current-step');
+                const next = document.getElementById('task-next-step');
+                const completedList = document.getElementById('task-completed-steps');
+                const changesList = document.getElementById('task-screen-changes');
+                const button = document.getElementById('task-page-button');
+                const note = document.getElementById('task-sync-note');
+                try {
+                    const response = await fetch(API_BASE + '/workflow');
+                    if (!response.ok) throw new Error('Workflow request failed');
+                    const data = await response.json();
+                    const task = data.task_state || {};
+                    const active = !!task.task;
+                    if (title) title.textContent = task.task || 'No active task';
+                    if (state) {
+                        state.textContent = active ? 'ACTIVE' : 'IDLE';
+                        state.classList.toggle('text-emerald-300', active);
+                    }
+                    if (current) current.textContent = task.current_step || 'Not detected yet';
+                    if (next) next.textContent = task.next_step || 'Ask VOSI for guidance to begin';
+                    if (button) button.textContent = active ? 'Stop task' : 'Start a task';
+                    if (completedList) {
+                        completedList.replaceChildren();
+                        const steps = Array.isArray(task.completed_steps) ? task.completed_steps : [];
+                        if (!steps.length) {
+                            const item = document.createElement('li');
+                            item.className = 'text-slate-500';
+                            item.textContent = 'No completed steps recorded yet';
+                            completedList.appendChild(item);
+                        } else {
+                            steps.forEach(step => {
+                                const item = document.createElement('li');
+                                item.className = 'flex items-start gap-2 rounded-lg bg-emerald-400/[0.06] px-3 py-2';
+                                const mark = document.createElement('span');
+                                mark.className = 'text-emerald-400';
+                                mark.textContent = '✓';
+                                const label = document.createElement('span');
+                                label.textContent = String(step);
+                                item.append(mark, label);
+                                completedList.appendChild(item);
+                            });
+                        }
+                    }
+                    if (changesList) {
+                        changesList.replaceChildren();
+                        const changes = Array.isArray(data.screen_changes) ? data.screen_changes.slice(-5).reverse() : [];
+                        if (!changes.length) {
+                            const item = document.createElement('li');
+                            item.className = 'text-slate-500';
+                            item.textContent = 'No visual transitions detected yet';
+                            changesList.appendChild(item);
+                        } else {
+                            changes.forEach(change => {
+                                const item = document.createElement('li');
+                                item.className = 'rounded-lg border border-sky-400/10 bg-sky-400/[0.04] px-3 py-2';
+                                const label = document.createElement('div');
+                                label.className = 'text-slate-200';
+                                label.textContent = change.status === 'transition_interpreted' ? 'Workflow interpreted' : 'Screen changed';
+                                const detail = document.createElement('div');
+                                detail.className = 'mt-1 text-[11px] text-slate-500';
+                                const parts = [];
+                                if (change.timestamp) parts.push(new Date(change.timestamp).toLocaleTimeString());
+                                if (change.current_step) parts.push('Step: ' + change.current_step);
+                                if (change.next_step) parts.push('Next: ' + change.next_step);
+                                if (change.evidence) parts.push(change.evidence);
+                                if (change.status !== 'transition_interpreted') parts.push('Visual difference ' + String(change.change_score ?? 'unknown'));
+                                detail.textContent = parts.join(' · ') || 'Visual transition recorded';
+                                item.append(label, detail);
+                                changesList.appendChild(item);
+                            });
+                        }
+                    }
+                    if (note) note.textContent = 'Synced just now · visual changes are not proof of task completion';
+                } catch (error) {
+                    if (note) note.textContent = 'Cannot sync workflow. Check that the VOSI backend is running.';
+                    console.warn('Workflow sync failed:', error);
+                }
+            }
+            if (main && overlay) Array.from(main.children).forEach(child => { if (child.id !== 'tab-overlay') child.classList.add('home-content'); });
+            function openTab(tab) {
+                navItems.forEach(nav => { const active = nav.dataset.tab === tab; nav.classList.toggle('active',active); nav.classList.toggle('text-slate-400',!active); nav.classList.toggle('text-white',active); nav.classList.toggle('bg-gradient-to-r',active); nav.classList.toggle('from-indigo-900/60',active); nav.classList.toggle('to-purple-900/40',active); nav.classList.toggle('border',active); nav.classList.toggle('border-indigo-500/30',active); nav.classList.toggle('shadow-md',active); });
+                Object.values(pages).forEach(page => { if(page) page.style.display='none'; }); if(pages[tab]) pages[tab].style.display='block';
+                if(tab==='home'){ overlay?.classList.remove('active'); main?.querySelectorAll('.home-content').forEach(el=>el.removeAttribute('style')); } else { main?.querySelectorAll('.home-content').forEach(el=>el.setAttribute('style','display:none')); overlay?.classList.add('active'); }
+                if (tab === 'tasks') void refreshWorkflow();
+            }
+            navItems.forEach(item => item.addEventListener('click',e=>{e.preventDefault();openTab(item.dataset.tab||'home');}));
+            // Keep the Tasks view in sync while screen awareness is running.
+            setInterval(() => {
+                if (pages.tasks && pages.tasks.style.display !== 'none') void refreshWorkflow();
+            }, 3000);
+            document.getElementById('awareness-page-button')?.addEventListener('click',()=>document.getElementById('btn-start-observing')?.click());
+            document.getElementById('task-page-button')?.addEventListener('click', async () => {
+                const running = document.getElementById('task-page-state')?.textContent === 'ACTIVE';
+                try {
+                    if (running) {
+                        await apiPost('/task', { action: 'stop' });
+                    } else {
+                        const suggested = window.prompt('What would you like VOSI to help you accomplish?');
+                        if (!suggested || !suggested.trim()) return;
+                        await apiPost('/task', { action: 'start', task_name: suggested.trim() });
+                    }
+                    await refreshWorkflow();
+                } catch (error) {
+                    const note = document.getElementById('task-sync-note');
+                    if (note) note.textContent = 'Could not update task. Check the VOSI backend.';
+                    console.warn('Task update failed:', error);
+                }
+            });
+
+            const quickBtns = document.querySelectorAll('.chip');
+            const userInput = document.getElementById('user-input');
+            quickBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const text = btn.innerText.trim();
+                    userInput.value = text;
+                    userInput.focus();
+                    document.getElementById('ai-prompt-form').dispatchEvent(new Event('submit', { cancelable: true }));
+                });
+            });
+
+            const awarenessToggle = document.getElementById('awareness-toggle');
+            const awarenessStatusLabel = document.getElementById('awareness-status-label');
+            const btnStartObserving = document.getElementById('btn-start-observing');
+            let screenStream = null;
+            let observationPaused = false;
+            let lastFrameSentAt = null;
+            const awarenessPageState = document.getElementById("awareness-page-state");
+            const awarenessPageDetail = document.getElementById("awareness-page-detail");
+            const awarenessPreview = document.getElementById("awareness-preview");
+            const awarenessPreviewPlaceholder = document.getElementById("awareness-preview-placeholder");
+            const awarenessFrameStatus = document.getElementById("awareness-frame-status");
+            const awarenessPauseButton = document.getElementById("awareness-pause-button");
+
+            function updateAwarenessPageState() {
+                const active = !!screenStream;
+                if (awarenessPageState) {
+                    awarenessPageState.textContent = !active ? "OFF" : observationPaused ? "PAUSED" : "OBSERVING";
+                    awarenessPageState.classList.toggle("is-active", active && !observationPaused);
+                    awarenessPageState.classList.toggle("is-paused", active && observationPaused);
+                }
+                if (awarenessPageDetail) awarenessPageDetail.textContent = !active ? "Choose Start observing to share a screen." : observationPaused ? "Preview is live; uploads to VOSI are paused." : "Your selected screen is being previewed and sent every 2 seconds.";
+                if (awarenessPauseButton) {
+                    awarenessPauseButton.disabled = !active;
+                    awarenessPauseButton.textContent = observationPaused ? "Resume frames" : "Pause frames";
+                }
+                if (awarenessPreview) awarenessPreview.hidden = !active;
+                if (awarenessPreviewPlaceholder) awarenessPreviewPlaceholder.hidden = active;
+                if (awarenessFrameStatus && !active) awarenessFrameStatus.textContent = "Waiting for screen share";
+            }
+
+            updateAwarenessPageState();
+
+            async function refreshAwarenessBackendStatus() {
+                const badge = document.getElementById("awareness-backend-state");
+                const detail = document.getElementById("awareness-backend-detail");
+                if (!badge || !detail) return;
+                try {
+                    const response = await fetch(API_BASE + "/", { signal: AbortSignal.timeout(2500) });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    const data = await response.json();
+                    badge.textContent = "ONLINE";
+                    badge.classList.add("text-emerald-300");
+                    detail.textContent = (data.version ? "VOSI backend v" + data.version : "Local backend") + " · 127.0.0.1:8001";
+                } catch (_) {
+                    badge.textContent = "OFFLINE";
+                    badge.classList.remove("text-emerald-300");
+                    detail.textContent = "Start the FastAPI backend on port 8001.";
+                }
+            }
+
+            function updateObservingState(active) {
+                if (awarenessToggle) awarenessToggle.checked = active;
+                updateSettingsObservation(active);
+                updateAwarenessPageState();
+                if (awarenessStatusLabel) {
+                    if (active) {
+                        awarenessStatusLabel.innerText = 'ON';
+                        awarenessStatusLabel.classList.remove('text-slate-500');
+                        awarenessStatusLabel.classList.add('text-blue-400');
+                    } else {
+                        awarenessStatusLabel.innerText = 'OFF';
+                        awarenessStatusLabel.classList.remove('text-blue-400');
+                        awarenessStatusLabel.classList.add('text-slate-500');
+                    }
+                }
+                if (btnStartObserving) {
+                    if (active) {
+                        btnStartObserving.innerText = 'Stop observing';
+                        btnStartObserving.classList.replace('btn-gradient', 'bg-rose-600/80');
+                    } else {
+                        btnStartObserving.innerText = 'Start observing';
+                        btnStartObserving.classList.replace('bg-rose-600/80', 'btn-gradient');
+                    }
+                }
+                const statusEl = document.querySelector('.inline-flex.items-center.space-x-2 span.tracking-wider');
+                if (statusEl) {
+                    statusEl.textContent = active ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP";
+                }
+            }
+
+            async function startObserving() {
+                try {
+                    await apiPost("/awareness", { enabled: true });
+
+                    // Ask for screen permission first. Only show the companion after permission succeeds.
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: false
+                    });
+
+                    try {
+                        if (window.__TAURI__?.core?.invoke) {
+                            await window.__TAURI__.core.invoke("show_companion");
+                        }
+                    } catch (e) {
+                        console.warn("Could not show companion window:", e);
+                    }
+                    updateObservingState(true);
+                    if (window.notifyCompanionObserving) window.notifyCompanionObserving(true);
+
+                    const video = awarenessPreview || document.createElement("video");
+                    video.srcObject = screenStream;
+                    video.muted = true;
+                    video.autoplay = true;
+                    video.playsInline = true;
+                    await video.play();
+                    observationPaused = false;
+                    lastFrameSentAt = null;
+                    updateAwarenessPageState();
+
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+                    let captureInProgress = false;
+
+                    // Resolve only after the frame has actually reached the backend.
+                    // This prevents a question from being answered using an older screenshot.
+                    const captureAndSend = async () => {
+                        if (!screenStream || observationPaused) return;
+                        // If the timer is already uploading, wait for it and then capture
+                        // again so a user question never races an older frame.
+                        while (captureInProgress && screenStream) {
+                            await new Promise(resolve => setTimeout(resolve, 40));
+                        }
+                        if (!screenStream || !video.videoWidth || !video.videoHeight || !ctx) return;
+                        captureInProgress = true;
+                        try {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const blob = await new Promise((resolve) => {
+                                canvas.toBlob(resolve, "image/jpeg", 0.9);
+                            });
+                            if (!blob || !screenStream) return;
+                            const formData = new FormData();
+                            formData.append("file", blob, `screen_${Date.now()}.jpg`);
+                            const res = await fetch(API_BASE + "/screen", { method: "POST", body: formData });
+                            if (!res.ok) throw new Error(`Screen upload failed (${res.status})`);
+                            const data = await res.json();
+                            if (!data.success) throw new Error(data.error || "Backend did not accept the screen frame");
+                            lastFrameSentAt = new Date();
+                            if (awarenessFrameStatus) awarenessFrameStatus.textContent = "Last frame · " + lastFrameSentAt.toLocaleTimeString();
+                            console.log("Live screen frame stored:", data.success);
+                        } catch (err) {
+                            console.warn("Failed to capture/send current screen frame:", err);
+                            throw err;
+                        } finally {
+                            captureInProgress = false;
+                        }
+                    };
+
+                    window.captureLatestScreen = captureAndSend;
+                    setTimeout(captureAndSend, 1500);
+                    window._screenInterval = setInterval(captureAndSend, 2000);
+
+                    screenStream.getVideoTracks()[0].onended = () => stopObserving();
+                    console.log("Screen awareness started – companion should now be visible");
+                    try {
+                        const { getCurrentWindow } = window.__TAURI__.window;
+                        // Minimize VOSI instead of hiding it, so it stays available in the Windows taskbar.
+                        await getCurrentWindow().minimize();
+                    } catch (e) {
+                        console.warn("Could not minimize main window:", e);
+                    }
+                } catch (err) {
+                    console.error("Could not start screen capture:", err);
+                    updateObservingState(false);
+                    showResponse("Permission needed", "Please allow screen sharing to enable awareness.");
+                }
+            }
+
+            async function stopObserving() {
+                if (window._screenInterval) {
+                    clearInterval(window._screenInterval);
+                    window._screenInterval = null;
+                }
+                if (screenStream) {
+                    screenStream.getTracks().forEach(track => track.stop());
+                    screenStream = null;
+                }
+                observationPaused = false;
+                if (awarenessPreview) awarenessPreview.srcObject = null;
+                updateAwarenessPageState();
+                window.captureLatestScreen = null;
+                updateObservingState(false);
+                if (window.notifyCompanionObserving) window.notifyCompanionObserving(false);
+
+                // Hide the floating companion when observing stops
+                try {
+                    if (window.__TAURI__ && window.__TAURI__.core) {
+                        window.__TAURI__.core.invoke("hide_companion");
+                    } else if (window.__TAURI__ && window.__TAURI__.invoke) {
+                        window.__TAURI__.invoke("hide_companion");
+                    }
+                } catch (e) {
+                    console.warn("Could not hide companion window:", e);
+                }
+
+                apiPost("/awareness", { enabled: false }).catch(() => {});
+                console.log("Screen awareness stopped");
+                try {
+                    const { getCurrentWindow } = window.__TAURI__.window;
+                    await getCurrentWindow().show();
+                    await getCurrentWindow().setFocus();
+                } catch (e) {
+                    console.warn("Could not restore main window:", e);
+                }
+            }
+
+            if (awarenessToggle) {
+                awarenessToggle.addEventListener('change', (e) => {
+                    if (e.target.checked) startObserving();
+                    else stopObserving();
+                });
+            }
+            if (btnStartObserving) {
+                btnStartObserving.addEventListener('click', () => {
+                    if (screenStream) stopObserving();
+                    else startObserving();
+                });
+            }
+            awarenessPauseButton?.addEventListener("click", () => {
+                if (!screenStream) return;
+                observationPaused = !observationPaused;
+                updateAwarenessPageState();
+                if (observationPaused) {
+                    if (awarenessFrameStatus) awarenessFrameStatus.textContent = lastFrameSentAt ? "Paused · last frame " + lastFrameSentAt.toLocaleTimeString() : "Uploads paused";
+                } else {
+                    if (awarenessFrameStatus) awarenessFrameStatus.textContent = "Resuming frame uploads…";
+                    if (window.captureLatestScreen) window.captureLatestScreen().catch(error => console.warn("Resume capture failed:", error));
+                }
+            });
+            document.getElementById("awareness-what-button")?.addEventListener("click", () => {
+                const input = document.getElementById("user-input");
+                const form = document.getElementById("ai-prompt-form");
+                if (input) input.value = "Based only on my latest shared screen, what am I doing and what is the current page showing?";
+                form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+            });
+            document.getElementById("awareness-guide-button")?.addEventListener("click", () => {
+                const input = document.getElementById("user-input");
+                const form = document.getElementById("ai-prompt-form");
+                if (input) input.value = "Look at my latest shared screen and guide me where to click next. Only identify a visible control if you can confidently see it; explain the exact location and do not claim you clicked it."; 
+                form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+            });
+            void refreshAwarenessBackendStatus();
+            setInterval(() => { const page = document.getElementById("tab-page-awareness"); if (page && page.style.display !== "none") void refreshAwarenessBackendStatus(); }, 10000);
+
+            const micBtn = document.getElementById('mic-btn');
+            let isListening = false;
+            if (micBtn) {
+                micBtn.addEventListener('click', () => {
+                    isListening = !isListening;
+                    if (isListening) {
+                        micBtn.classList.add('text-rose-400', 'animate-pulse');
+                        if (userInput) userInput.placeholder = 'Listening...';
+                    } else {
+                        micBtn.classList.remove('text-rose-400', 'animate-pulse');
+                        if (userInput) userInput.placeholder = 'Ask Screen AI anything...';
+                    }
+                });
+            }
+
+            const responseBox = document.getElementById('response-box');
+            const responseText = document.getElementById('response-text');
+            const closeResponse = document.getElementById('close-response');
+            if (closeResponse) {
+                closeResponse.addEventListener('click', () => responseBox.classList.add('hidden'));
+            }
+
+            function showResponse(title, body) {
+                if (!responseBox || !responseText) return;
+                responseBox.classList.remove('hidden');
+                responseText.innerHTML = `<strong>${escapeHtml(title)}</strong><br><span class="text-slate-300 text-sm">${escapeHtml(body || "")}</span>`;
+            }
+
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            }
+
+            async function updateClickGuide(guidance) {
+                try {
+                    if (!window.__TAURI__?.core?.invoke || !window.__TAURI__?.event?.emit) return;
+                    if (vosiSettings.clickGuidance && guidance && Number(guidance.confidence) >= 0.60) {
+                        await window.__TAURI__.core.invoke("show_guide");
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        await window.__TAURI__.event.emit("vosi-guidance", guidance);
+                    } else {
+                        await window.__TAURI__.event.emit("vosi-guidance-clear");
+                    }
+                } catch (error) {
+                    console.warn("VOSI click guide error:", error);
+                }
+            }
+
+            async function answerFromCompanion(query) {
+                try {
+                    if (window.__TAURI__?.event?.emit) {
+                        await window.__TAURI__.event.emit('companion-state', { state: 'thinking', observing: !!screenStream });
+                    }
+                } catch (e) {}
+                try {
+                    // The background observer keeps the latest screen frame fresh.
+                    // The backend uses that latest frame for the answer.
+                    if (window.captureLatestScreen) {
+                        await window.captureLatestScreen();
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                    }
+                    const data = await apiPost("/ask", { message: prepareVosiPrompt(query), include_screen: !!screenStream });
+                    await updateClickGuide(data?.brain?.guidance);
+                    await refreshWorkflow();
+                    if (data.success && data.brain) {
+                        const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
+                        try {
+                            if (window.__TAURI__?.event?.emit) {
+                                await window.__TAURI__.event.emit('companion-answer', {
+                                    success: true,
+                                    title: "VOSI",
+                                    answer: answer,
+                                    observing: !!screenStream
+                                });
+                            }
+                        } catch (e) {}
+                        showResponse("VOSI", answer);
+                    } else {
+                        const error = data?.brain?.error || data?.error || "Something went wrong";
+                        try {
+                            if (window.__TAURI__?.event?.emit) {
+                                await window.__TAURI__.event.emit('companion-answer', {
+                                    success: false,
+                                    title: "VOSI",
+                                    answer: error,
+                                    observing: !!screenStream
+                                });
+                            }
+                        } catch (e) {}
+                    }
+                } catch (err) {
+                    try {
+                        if (window.__TAURI__?.event?.emit) {
+                            await window.__TAURI__.event.emit('companion-answer', {
+                                success: false,
+                                title: "VOSI",
+                                answer: "I couldn't reach the VOSI brain. Check the backend.",
+                                observing: !!screenStream
+                            });
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            const form = document.getElementById('ai-prompt-form');
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const query = (userInput?.value || "").trim();
+                    if (!query) return;
+                    if (!screenStream && (query.toLowerCase().includes("my screen") || query.toLowerCase().includes("where to click") || query.toLowerCase().includes("latest shared screen"))) {
+                        showResponse("Screen sharing is off", "Start observing first and choose the screen you want VOSI to analyze.");
+                        return;
+                    }
+
+                    showResponse("Thinking...", "VOSI is analyzing your request...");
+                    userInput.value = "";
+
+                    try {
+                        // Refresh and finish uploading the current frame before asking the AI.
+                        if (screenStream && window.captureLatestScreen) {
+                            await window.captureLatestScreen();
+                        }
+                        const data = await apiPost("/ask", { message: query, include_screen: !!screenStream && !observationPaused });
+                        await updateClickGuide(data?.brain?.guidance);
+                    await refreshWorkflow();
+                        if (data.success && data.brain) {
+                            showResponse(
+                                data.brain.understanding || "Understood",
+                                data.brain.suggestion || "How else can I help?"
+                            );
+                        } else {
+                            showResponse("AI Error", data?.brain?.error || data?.error || "Something went wrong");
+                            console.error("VOSI AI error:", data);
+                        }
+                    } catch (err) {
+                        showResponse(
+                            `You asked: "${query}"`,
+                            "Backend is offline. Start the FastAPI server on port 8001 to get real answers."
+                        );
+                    }
+                });
+            }
+        }
     </script>
 </body>
 </html>
