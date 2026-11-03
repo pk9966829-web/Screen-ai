@@ -102,10 +102,10 @@
             z-index: 0;
             pointer-events: none;
             background: url("./vosi-ambient-reference.jpg") center / cover no-repeat;
-            filter: blur(34px) grayscale(1) brightness(.42);
-            opacity: .42;
+            filter: blur(34px) grayscale(1) brightness(.62);
+            opacity: .5;
             transform: scale(1.08);
-            animation: reference-image-drift 48s ease-in-out infinite alternate;
+            animation: reference-image-drift 38s ease-in-out infinite alternate;
             will-change: transform;
         }
         .bg-space-base::after {
@@ -115,24 +115,24 @@
             z-index: 1;
             pointer-events: none;
             background:
-                radial-gradient(ellipse at 50% 50%, rgba(5,5,6,.76) 0%, rgba(5,5,6,.48) 44%, rgba(3,3,4,.18) 76%),
+                radial-gradient(ellipse at 50% 50%, rgba(5,5,6,.48) 0%, rgba(5,5,6,.30) 44%, rgba(3,3,4,.18) 76%),
                 linear-gradient(180deg, rgba(2,2,3,.18), transparent 32%, rgba(2,2,3,.30));
         }
         @keyframes reference-image-drift {
-            from { transform: scale(1.08) translate3d(-.35%, .15%, 0); }
-            to { transform: scale(1.12) translate3d(.45%, -.25%, 0); }
+            from { transform: scale(1.08) translate3d(-1.2%, .6%, 0); }
+            to { transform: scale(1.14) translate3d(1.2%, -.8%, 0); }
         }
         .stars-overlay, .dust-particle { display: none !important; }
         .nebula {
             z-index: 2;
-            background: radial-gradient(ellipse at center, rgba(235,235,240,.12) 0%, rgba(170,170,180,.055) 36%, transparent 74%) !important;
+            background: radial-gradient(ellipse at center, rgba(245,245,250,.20) 0%, rgba(190,190,200,.09) 36%, transparent 74%) !important;
             mix-blend-mode: screen;
             filter: blur(112px);
-            opacity: .56;
+            opacity: .78;
         }
         @keyframes nebula-drift {
             0%, 100% { transform: scale(1) translate(0, 0); }
-            50% { transform: scale(1.045) translate(2%, -1.5%); }
+            50% { transform: scale(1.08) translate(4%, -3%); }
         }
         .glass-panel {
             background: rgba(17,17,19,.76);
