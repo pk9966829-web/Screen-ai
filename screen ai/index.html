@@ -282,6 +282,31 @@
                 align-items: center;
             }
         }
+
+        /* Collapse the entire rail; keep its toggle as a small floating arrow. */
+        body.vosi-sidebar-collapsed #app-sidebar { display:none !important; }
+        #sidebar-toggle {
+            position:fixed;
+            left:16px;
+            top:16px;
+            z-index:1000;
+            width:auto;
+            min-width:40px;
+            min-height:40px;
+        }
+        body.vosi-sidebar-collapsed #sidebar-toggle {
+            width:40px;
+            height:40px;
+            min-width:40px;
+            padding:0;
+            justify-content:center;
+            background:transparent;
+            border-color:transparent;
+        }
+        body.vosi-sidebar-collapsed #sidebar-toggle .toggle-label { display:none !important; }
+        @media (min-width:1024px) {
+            body.vosi-sidebar-collapsed #main-content { grid-column:span 9 / span 9; }
+        }
 </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans vosi-sidebar-collapsed">
@@ -295,6 +320,11 @@
     <div class="nebula w-[60vw] h-[60vh] bottom-[-10%] right-[-10%] mix-blend-screen" style="animation-delay: -8s; animation-direction: alternate-reverse;"></div>
     <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 14s; animation-delay: -4s;"></div>
     <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
+
+    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Show navigation">
+                        <i data-lucide="panel-left-open" class="w-4 h-4" aria-hidden="true"></i>
+                        <span class="toggle-label">Show navigation</span>
+                    </button>
 
 <div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
@@ -330,10 +360,6 @@
                             <p class="text-[11px] text-slate-400 tracking-tight">Your Digital Screen Assistant</p>
                         </div>
                     </div>
-                    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Show navigation">
-                        <i data-lucide="panel-left-open" class="w-4 h-4" aria-hidden="true"></i>
-                        <span class="toggle-label">Show navigation</span>
-                    </button>
                     <nav class="space-y-1.5" id="main-nav" hidden>
                         <a href="#" data-tab="home" class="nav-item active flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-900/60 to-purple-900/40 text-white border border-indigo-500/30 shadow-md shadow-indigo-950/50">
                             <i data-lucide="home" class="w-4 h-4 text-indigo-300"></i><span>Home</span>
