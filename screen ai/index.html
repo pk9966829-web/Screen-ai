@@ -307,6 +307,58 @@
         @media (min-width:1024px) {
             body.vosi-sidebar-collapsed #main-content { grid-column:span 9 / span 9; }
         }
+
+        /* Keep every tab panel inside the main column and let long content wrap. */
+        #main-content {
+            box-sizing: border-box;
+            min-width: 0;
+            min-height: 0;
+        }
+        #tab-overlay {
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            flex: 0 0 auto;
+            align-self: stretch;
+            margin: 0 auto;
+            padding: clamp(8px, 2vw, 18px);
+        }
+        .tab-card {
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+        .tab-row {
+            box-sizing: border-box;
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+        .tab-row > * {
+            min-width: 0;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+        .tab-row select {
+            box-sizing: border-box;
+            max-width: min(100%, 280px);
+        }
+        #awareness-preview,
+        #awareness-preview-placeholder,
+        #task-completed-steps,
+        #task-screen-changes {
+            box-sizing: border-box;
+            max-width: 100%;
+            min-width: 0;
+        }
+        #tab-page-awareness,
+        #tab-page-tasks,
+        #tab-page-settings,
+        #tab-page-home {
+            min-width: 0;
+            max-width: 100%;
+        }
 </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans vosi-sidebar-collapsed">
