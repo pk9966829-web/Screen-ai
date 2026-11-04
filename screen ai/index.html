@@ -250,6 +250,38 @@
             body.vosi-sidebar-collapsed #sidebar-toggle { justify-content:center; padding-inline:8px; }
             body.vosi-sidebar-collapsed #sidebar-toggle .toggle-label { display:none; }
         }
+
+        /* In the collapsed state, leave only the slim arrow control. */
+        body.vosi-sidebar-collapsed #app-sidebar {
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
+        }
+        body.vosi-sidebar-collapsed #sidebar-brand,
+        body.vosi-sidebar-collapsed #sidebar-footer,
+        body.vosi-sidebar-collapsed #sidebar-toggle .toggle-label {
+            display: none !important;
+        }
+        body.vosi-sidebar-collapsed #sidebar-toggle {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            justify-content: center;
+            background: transparent;
+            border-color: transparent;
+            color: #ededed;
+        }
+        body.vosi-sidebar-collapsed #sidebar-toggle:hover {
+            background: rgba(255,255,255,.10);
+        }
+        @media (min-width:1024px) {
+            body.vosi-sidebar-collapsed #app-sidebar {
+                padding: 0 !important;
+                align-items: center;
+            }
+        }
 </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans vosi-sidebar-collapsed">
