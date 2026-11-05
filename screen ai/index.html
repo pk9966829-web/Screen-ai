@@ -154,11 +154,21 @@
             position: fixed;
             pointer-events: none;
             z-index: 1;
-            background: radial-gradient(ellipse at center, rgba(245,245,250,0.18) 0%, rgba(190,190,200,0.08) 36%, transparent 74%) !important;
+            background: radial-gradient(ellipse at 35% 40%, rgba(46,145,255,.34) 0%, rgba(117,76,255,.22) 34%, rgba(45,213,235,.12) 60%, transparent 78%) !important;
             mix-blend-mode: screen;
             filter: blur(90px);
             opacity: 0.9;
             animation: nebula-drift 8s ease-in-out infinite alternate !important;
+        }
+
+        body > .nebula:nth-of-type(2) {
+            background: radial-gradient(ellipse at 35% 40%, rgba(43,145,255,.42), rgba(115,77,255,.24) 42%, transparent 78%) !important;
+        }
+        body > .nebula:nth-of-type(3) {
+            background: radial-gradient(ellipse at 60% 40%, rgba(208,66,255,.34), rgba(103,78,255,.22) 42%, transparent 78%) !important;
+        }
+        body > .nebula:nth-of-type(4) {
+            background: radial-gradient(ellipse at 45% 55%, rgba(38,220,225,.34), rgba(52,137,255,.24) 44%, transparent 78%) !important;
         }
 
         @keyframes nebula-drift {
