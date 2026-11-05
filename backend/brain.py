@@ -10,7 +10,7 @@ from openai import OpenAI
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-MODEL = os.getenv("VOSI_MODEL", "auto/best-vision")
+MODEL = os.getenv("VOSI_MODEL", "gemini/gemini-2.5-flash")
 BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:20128/v1")
 
 
