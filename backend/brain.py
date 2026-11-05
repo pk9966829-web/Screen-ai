@@ -5,9 +5,13 @@ import re
 from pathlib import Path
 from typing import Dict, Any
 
+from dotenv import load_dotenv
 from openai import OpenAI
 
-MODEL = os.getenv("VOSI_MODEL", "gpt-6-luna")
+load_dotenv(Path(__file__).with_name(".env"))
+
+MODEL = os.getenv("VOSI_MODEL", "auto/vision")
+BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:20128/v1")
 
 
 def _data_url(image_path: str) -> str:
@@ -37,7 +41,7 @@ def analyze_screen_question(
             "confidence": 0.0,
         }
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, base_url=BASE_URL)
     recent_context = context[-5:] if context else []
     recent_interactions = interactions[-8:] if interactions else []
     recent_screen_changes = screen_changes[-10:] if screen_changes else []
@@ -212,7 +216,7 @@ Return ONLY one valid JSON object with these keys:
 
 Do not infer completion from a visual change alone. Do not invent buttons, dialogs, progress, or user actions. If the task and screenshots do not provide enough evidence, return null for current_step and next_step, [] for completed steps, and low confidence. Do not rename or restart the active task. Keep strings concise."""
     try:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, base_url=BASE_URL)
         response = client.responses.create(
             model=MODEL,
             input=[{"role": "user", "content": [
