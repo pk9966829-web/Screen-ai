@@ -532,6 +532,7 @@
                             <div class="setting-row"><span>Click guidance<small>Show guide when confidence is high</small></span><label class="settings-switch" aria-label="Click guidance"><input id="setting-click-guidance" type="checkbox" checked><span></span></label></div>
                             <div class="setting-row"><span>Voice input</span><label class="settings-switch" aria-label="Voice input"><input id="setting-voice-input" type="checkbox" checked><span></span></label></div>
                             <div class="setting-row"><span>Voice replies</span><label class="settings-switch" aria-label="Voice replies"><input id="setting-voice-replies" type="checkbox" checked><span></span></label></div>
+                            <label class="setting-row" for="setting-voice-persona"><span>Spoken voice</span><select id="setting-voice-persona"><option value="female">Warm female</option><option value="male">Warm male</option></select></label>
                             <div class="setting-row"><span>Hands-free listening<small>Wake phrase “Hey Vosi”</small></span><label class="settings-switch" aria-label="Hands-free listening"><input id="setting-hands-free" type="checkbox"><span></span></label></div>
                             <label class="setting-row" for="setting-wake-phrase"><span>Wake phrase</span><input id="setting-wake-phrase" type="text" value="Hey Vosi" maxlength="40"></label>
                             <div id="voice-setting-status" class="side-note" aria-live="polite">Voice features are ready when enabled.</div>
@@ -631,25 +632,26 @@
         });
 
         const SETTINGS_KEY = "vosi.settings.v1";
-        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, handsFree: false, wakePhrase: "Hey Vosi", reminders: true, companionOverlay: true };
+        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey Vosi", reminders: true, companionOverlay: true };
         let vosiSettings = { ...DEFAULT_SETTINGS };
         function loadVosiSettings() {
             try { vosiSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; }
             catch (_) { vosiSettings = { ...DEFAULT_SETTINGS }; }
             const style = document.getElementById("setting-response-style"); const language = document.getElementById("setting-language"); const guide = document.getElementById("setting-click-guidance"); const theme = document.getElementById("setting-theme");
             if (style) style.value = vosiSettings.responseStyle; if (language) language.value = vosiSettings.language; if (guide) guide.checked = !!vosiSettings.clickGuidance; if (theme) theme.value = vosiSettings.theme;
+            const voicePersona = document.getElementById("setting-voice-persona"); if (voicePersona) voicePersona.value = vosiSettings.voicePersona || "female";
             for (const [id, key] of [["setting-voice-input","voiceInput"],["setting-voice-replies","voiceReplies"],["setting-hands-free","handsFree"],["setting-reminders","reminders"],["setting-companion-overlay","companionOverlay"]]) { const control = document.getElementById(id); if (control) control.checked = !!vosiSettings[key]; }
             const wakePhrase = document.getElementById("setting-wake-phrase"); if (wakePhrase) wakePhrase.value = vosiSettings.wakePhrase || "Hey Vosi";
             applyVosiTheme();
         }
         function saveVosiSettings() {
-            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark", voiceInput: !!document.getElementById("setting-voice-input")?.checked, voiceReplies: !!document.getElementById("setting-voice-replies")?.checked, handsFree: !!document.getElementById("setting-hands-free")?.checked, wakePhrase: document.getElementById("setting-wake-phrase")?.value.trim() || "Hey Vosi", reminders: !!document.getElementById("setting-reminders")?.checked, companionOverlay: !!document.getElementById("setting-companion-overlay")?.checked };
+            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark", voiceInput: !!document.getElementById("setting-voice-input")?.checked, voiceReplies: !!document.getElementById("setting-voice-replies")?.checked, voicePersona: document.getElementById("setting-voice-persona")?.value || "female", handsFree: !!document.getElementById("setting-hands-free")?.checked, wakePhrase: document.getElementById("setting-wake-phrase")?.value.trim() || "Hey Vosi", reminders: !!document.getElementById("setting-reminders")?.checked, companionOverlay: !!document.getElementById("setting-companion-overlay")?.checked };
             try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save VOSI settings:", error); } applyVosiTheme();
             const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Saved on this device.";
         }
         function applyVosiTheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
         function prepareVosiPrompt(message) {
-            const instructions = []; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + ".");
+            const instructions = []; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + "."); if (vosiSettings.voiceReplies) instructions.push("Speak in a warm, friendly, natural conversational tone. Use voice-ready phrasing and contractions, and avoid reading markdown aloud unless the user asks for it.");
             return instructions.length ? "[User preferences: " + instructions.join(" ") + "] " + message : message;
         }
         function updateSettingsObservation(active) { const el = document.getElementById("setting-observation-status"); if (el) { el.textContent = active ? "ON" : "OFF"; el.classList.toggle("text-emerald-300", active); } }
@@ -659,7 +661,7 @@
             catch (_) { badge.textContent = "OFFLINE"; badge.classList.remove("text-emerald-300"); detail.textContent = "Start the FastAPI backend on port 8001."; }
         }
         function setupSettings() {
-            loadVosiSettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveVosiSettings));
+            loadVosiSettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-voice-persona", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveVosiSettings));
             document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadVosiSettings(); window.dispatchEvent(new CustomEvent("vosi-settings-reset")); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
             void refreshSettingsBackendStatus(); setInterval(() => { const page = document.getElementById("tab-page-settings"); if (page && page.style.display !== "none") void refreshSettingsBackendStatus(); }, 10000);
         }
@@ -1228,15 +1230,66 @@
                 try { recognition.start(); isListening = true; return true; }
                 catch (error) { voiceRecognition = null; recognitionMode = null; setVoiceStatus('Could not start voice input. Try again.'); return false; }
             }
+            function speechPersona() { return document.getElementById('setting-voice-persona')?.value || vosiSettings.voicePersona || 'female'; }
+            function chooseSpeechVoice() {
+                const synth = window.speechSynthesis;
+                if (!synth) return null;
+                const allVoices = synth.getVoices();
+                if (!allVoices.length) return null;
+                const language = recognitionLanguage().toLowerCase().split('-')[0];
+                const languageVoices = allVoices.filter(voice => (voice.lang || '').toLowerCase().startsWith(language));
+                const voices = languageVoices.length ? languageVoices : allVoices;
+                const feminineNames = /\b(female|woman|girl|aria|jenny|zira|samantha|victoria|hazel|ava|susan|karen|sarah|emma|olivia|michelle|linda|amy|natasha|sonia|heera)\b/i;
+                const masculineNames = /\b(male|man|guy|david|mark|ryan|james|daniel|alex|tom|evan|matthew|christopher|george|peter|thomas|lee|fred|aaron|liam|george|ravi)\b/i;
+                const feminine = speechPersona() === 'female';
+                const genderPattern = feminine ? feminineNames : masculineNames;
+                const candidates = voices.filter(voice => {
+                    const declaredGender = String(voice.gender || '').toLowerCase();
+                    return feminine ? declaredGender === 'female' || genderPattern.test(voice.name || '') : declaredGender === 'male' || genderPattern.test(voice.name || '');
+                });
+                if (!candidates.length) return null;
+                const naturalPattern = /natural|neural|online|premium|enhanced|siri|google/i;
+                candidates.sort((a, b) => Number(naturalPattern.test(b.name)) - Number(naturalPattern.test(a.name)) || Number(!b.localService) - Number(!a.localService));
+                return candidates[0];
+            }
+            function refreshSpokenVoiceStatus() {
+                if (recognitionMode || window.speechSynthesis?.speaking) return;
+                const voice = chooseSpeechVoice();
+                const persona = speechPersona() === 'female' ? 'warm female voice' : 'warm male voice';
+                setVoiceStatus(voice ? 'Ready with ' + voice.name + ' (' + persona + ').' : 'Your ' + persona + ' is selected; this device has no matching installed voice, so its default will be used.');
+            }
+            function spokenText(text) {
+                return String(text)
+                    .replace(/```[\s\S]*?```/g, 'I’ve included a code example in the written reply.')
+                    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+                    .replace(/https?:\/\/\S+/g, 'the link')
+                    .replace(/[`*_>#]/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
             function speakVosi(text) {
                 if (!vosiSettings.voiceReplies || !text || !window.speechSynthesis) return;
                 if (recognitionMode === 'handsfree') stopVoiceRecognition();
                 window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = recognitionLanguage();
-                utterance.onend = () => { if (document.getElementById('setting-hands-free')?.checked) startVoiceRecognition('handsfree'); };
+                const utterance = new SpeechSynthesisUtterance(spokenText(text));
+                const selectedVoice = chooseSpeechVoice();
+                utterance.lang = selectedVoice?.lang || recognitionLanguage();
+                if (selectedVoice) utterance.voice = selectedVoice;
+                utterance.rate = 0.94;
+                utterance.pitch = speechPersona() === 'female' ? 1.04 : 0.97;
+                utterance.volume = 1;
+                utterance.onstart = () => setVoiceStatus('Speaking with the ' + (speechPersona() === 'female' ? 'warm female' : 'warm male') + ' voice.');
+                utterance.onend = () => {
+                    if (document.getElementById('setting-hands-free')?.checked) startVoiceRecognition('handsfree');
+                    else refreshSpokenVoiceStatus();
+                };
+                utterance.onerror = () => refreshSpokenVoiceStatus();
                 window.speechSynthesis.speak(utterance);
             }
+            window.speechSynthesis?.addEventListener?.('voiceschanged', refreshSpokenVoiceStatus);
+            window.setTimeout(refreshSpokenVoiceStatus, 150);
+            document.getElementById('setting-voice-persona')?.addEventListener('change', refreshSpokenVoiceStatus);
+            document.getElementById('setting-language')?.addEventListener('change', refreshSpokenVoiceStatus);
             micBtn?.setAttribute('aria-label', 'Speak to Vosi');
             micBtn?.setAttribute('aria-pressed', 'false');
             micBtn?.addEventListener('click', () => {
