@@ -507,17 +507,43 @@
     </div>
     <div id="letter-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="letter-title" aria-hidden="true">
         <section class="vosi-dialog">
-            <h2 id="letter-title">Draft a letter</h2>
-            <p>VOSI will create a Word document draft for you to review. It will not send or share the letter.</p>
-            <label class="dialog-field">Recipient (optional)<input id="letter-recipient" type="text" maxlength="240" placeholder="Person or organization"></label>
-            <label class="dialog-field">Your name (optional)<input id="letter-sender" type="text" maxlength="240" placeholder="Your name"></label>
-            <label class="dialog-field">Subject (optional)<input id="letter-subject" type="text" maxlength="240" placeholder="Letter subject"></label>
-            <label class="dialog-field">Tone<select id="letter-tone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="formal">Formal</option><option value="appreciative">Appreciative</option><option value="firm but respectful">Firm but respectful</option></select></label>
-            <label class="dialog-field">What should the letter say?<textarea id="letter-purpose" maxlength="5000" placeholder="Describe the reason for the letter and the facts VOSI should include."></textarea></label>
-            <p class="safety-note">The draft is saved in Documents\VOSI\Letters. Review names, dates, and facts in Word before you use it.</p>
+            <h2 id="letter-title">Let’s write your letter</h2>
+            <p id="letter-step-prompt">Who should the letter be addressed to?</p>
+            <label id="letter-recipient-step" class="dialog-field">Recipient name or organization<input id="letter-recipient" type="text" maxlength="240" placeholder="For example: Priya Sharma or Acme Ltd."></label>
+            <label id="letter-purpose-step" class="dialog-field" hidden>What should the letter say?<textarea id="letter-purpose" maxlength="5000" placeholder="Tell VOSI the reason for the letter and the facts to include."></textarea></label>
+            <div id="letter-extra-step" hidden>
+                <label class="dialog-field">Your name (optional)<input id="letter-sender" type="text" maxlength="240" placeholder="Your name"></label>
+                <label class="dialog-field">Subject (optional)<input id="letter-subject" type="text" maxlength="240" placeholder="Letter subject"></label>
+                <label class="dialog-field">Tone<select id="letter-tone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="formal">Formal</option><option value="appreciative">Appreciative</option><option value="firm but respectful">Firm but respectful</option></select></label>
+            </div>
+            <p class="safety-note">VOSI will create a Word draft and open it for you to review. It will not send the letter. Names, dates, and facts should be checked before use.</p>
             <div id="letter-draft-status" class="side-note" aria-live="polite"></div>
             <div id="letter-preview-wrap" hidden><label class="dialog-field">Draft preview<textarea id="letter-preview" readonly></textarea></label></div>
-            <div class="dialog-actions"><button id="letter-cancel" class="dialog-button" type="button">Close</button><button id="letter-draft-button" class="dialog-button primary" type="button">Create Word draft</button><button id="letter-open-button" class="dialog-button primary" type="button" hidden>Open in Word</button></div>
+            <div class="dialog-actions"><button id="letter-cancel" class="dialog-button" type="button">Cancel</button><button id="letter-back" class="dialog-button" type="button" hidden>Back</button><button id="letter-speak" class="dialog-button" type="button">Speak answer</button><button id="letter-next" class="dialog-button primary" type="button">Next</button><button id="letter-draft-button" class="dialog-button primary" type="button" hidden>Create and open in Word</button><button id="letter-open-button" class="dialog-button primary" type="button" hidden>Open again in Word</button></div>
+        </section>
+    </div>
+    <div id="hotel-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="hotel-title" aria-hidden="true">
+        <section class="vosi-dialog">
+            <h2 id="hotel-title">Compare hotels</h2>
+            <p id="hotel-step-prompt">Which city should VOSI research?</p>
+            <div id="hotel-details-form">
+                <label class="dialog-field">City<input id="hotel-city" type="text" maxlength="160" placeholder="City or destination"></label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="dialog-field">Check-in<input id="hotel-checkin" type="date"></label>
+                    <label class="dialog-field">Check-out<input id="hotel-checkout" type="date"></label>
+                </div>
+                <label class="dialog-field">Budget per night (optional)<input id="hotel-budget" type="text" maxlength="120" placeholder="For example: ₹8,000 or no preference"></label>
+                <label class="dialog-field">Travelers<select id="hotel-guests"><option value="1">1 traveler</option><option value="2" selected>2 travelers</option><option value="3">3 travelers</option><option value="4">4 travelers</option><option value="5">5 travelers</option><option value="6">6 travelers</option></select></label>
+                <label class="dialog-field">What matters to you? (optional)<textarea id="hotel-preferences" maxlength="600" placeholder="For example: near the city center, breakfast, quiet rooms"></textarea></label>
+                <label class="dialog-field">Sources to compare<select id="hotel-source-count"><option value="10">10 sources</option><option value="20" selected>20 sources</option><option value="30">30 sources</option></select></label>
+            </div>
+            <p class="safety-note">VOSI will search current public web results and link its sources. Hotel prices and availability can change; confirm them with the hotel or booking site.</p>
+            <div id="hotel-research-status" class="side-note" aria-live="polite"></div>
+            <div id="hotel-research-results" hidden class="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
+                <div id="hotel-research-report" class="whitespace-pre-wrap text-xs leading-relaxed text-slate-200"></div>
+                <ol id="hotel-source-list" class="mt-3 space-y-2 border-t border-white/10 pt-3 text-xs"></ol>
+            </div>
+            <div class="dialog-actions"><button id="hotel-cancel" class="dialog-button" type="button">Close</button><button id="hotel-research-button" class="dialog-button primary" type="button">Search and compare</button></div>
         </section>
     </div>
     <!-- Soft ambient orbs that move slowly -->
@@ -928,36 +954,84 @@
             const letterPreview = document.getElementById('letter-preview');
             const letterOpenButton = document.getElementById('letter-open-button');
             let generatedLetter = null;
+            let letterFlowStep = null;
             let pendingDeviceAction = null;
             function closeLetterDialog() {
                 letterDialog?.classList.remove('is-open');
                 letterDialog?.setAttribute('aria-hidden', 'true');
+                letterFlowStep = null;
             }
-            function openLetterDialog(seed = '') {
+            function setLetterStep(step, announce = false) {
+                letterFlowStep = step;
+                const prompt = document.getElementById('letter-step-prompt');
+                const recipientStep = document.getElementById('letter-recipient-step');
+                const purposeStep = document.getElementById('letter-purpose-step');
+                const extraStep = document.getElementById('letter-extra-step');
+                const back = document.getElementById('letter-back');
+                const next = document.getElementById('letter-next');
+                const speak = document.getElementById('letter-speak');
+                const draft = document.getElementById('letter-draft-button');
+                const prompts = ['Who should the letter be addressed to?', 'What should the letter say? Include the important details.', 'Add an optional sender name, subject, and tone. Then create the draft.'];
+                if (prompt) prompt.textContent = prompts[step] || prompts[2];
+                if (recipientStep) recipientStep.hidden = step !== 0;
+                if (purposeStep) purposeStep.hidden = step !== 1;
+                if (extraStep) extraStep.hidden = step !== 2;
+                if (back) back.hidden = step === 0 || step === null;
+                if (next) next.hidden = step === 2 || step === null;
+                if (speak) speak.hidden = step === 2 || step === null;
+                if (draft) draft.hidden = step !== 2;
+                if (announce && prompts[step]) speakVosi(prompts[step]);
+                if (step === 0) window.setTimeout(() => document.getElementById('letter-recipient')?.focus(), 0);
+                if (step === 1) window.setTimeout(() => letterPurpose?.focus(), 0);
+                if (step === 2) window.setTimeout(() => document.getElementById('letter-sender')?.focus(), 0);
+            }
+            function openLetterDialog(seed = '', announce = false) {
                 generatedLetter = null;
                 const recipient = document.getElementById('letter-recipient');
                 const sender = document.getElementById('letter-sender');
                 const subject = document.getElementById('letter-subject');
                 const tone = document.getElementById('letter-tone');
-                if (recipient) recipient.value = '';
+                let remainder = String(seed || '').replace(/^\s*(?:hey\s+vosi[,!: ]*)?(?:please\s+)?(?:write|draft|compose|create)\s+(?:me\s+)?(?:a\s+)?(?:formal\s+)?letter(?:\s+(?:in|using)\s+(?:microsoft\s+)?word)?\s*/i, '').trim();
+                const recipientMatch = remainder.match(/^to\s+(.+?)(?=\s+(?:about|asking|requesting|regarding|saying|for)\b|[,.;]|$)/i);
+                if (recipient) recipient.value = recipientMatch?.[1]?.trim() || '';
                 if (sender) sender.value = '';
                 if (subject) subject.value = '';
                 if (tone) tone.value = 'professional';
-                if (letterPurpose) letterPurpose.value = seed;
+                let bodySeed = remainder;
+                if (recipientMatch) bodySeed = remainder.slice(recipientMatch[0].length).replace(/^\s*(?:about|asking|requesting|regarding|saying|for)\s*/i, '').trim();
+                if (letterPurpose) letterPurpose.value = bodySeed;
                 if (letterDraftStatus) letterDraftStatus.textContent = 'Letter details are sent to your configured VOSI AI provider to create the draft; the Word file is saved locally.';
                 if (letterPreviewWrap) letterPreviewWrap.hidden = true;
                 if (letterPreview) letterPreview.value = '';
-                if (letterOpenButton) letterOpenButton.hidden = true;
+                if (letterOpenButton) { letterOpenButton.hidden = true; letterOpenButton.textContent = 'Open again in Word'; }
                 letterDialog?.classList.add('is-open');
                 letterDialog?.setAttribute('aria-hidden', 'false');
-                window.setTimeout(() => letterPurpose?.focus(), 0);
+                setLetterStep(recipient?.value.trim() ? (bodySeed ? 2 : 1) : 0, announce);
             }
             document.getElementById('letter-cancel')?.addEventListener('click', closeLetterDialog);
             letterDialog?.addEventListener('click', event => { if (event.target === letterDialog) closeLetterDialog(); });
+            document.getElementById('letter-next')?.addEventListener('click', () => {
+                if (letterFlowStep === 0 && !document.getElementById('letter-recipient')?.value.trim()) {
+                    if (letterDraftStatus) letterDraftStatus.textContent = 'Please tell VOSI who the letter is for.';
+                    document.getElementById('letter-recipient')?.focus(); return;
+                }
+                if (letterFlowStep === 1 && !letterPurpose?.value.trim()) {
+                    if (letterDraftStatus) letterDraftStatus.textContent = 'Please describe what the letter should say.';
+                    letterPurpose?.focus(); return;
+                }
+                if (letterFlowStep !== null && letterFlowStep < 2) setLetterStep(letterFlowStep + 1, true);
+            });
+            document.getElementById('letter-back')?.addEventListener('click', () => { if (letterFlowStep > 0) setLetterStep(letterFlowStep - 1, true); });
+            document.getElementById('letter-speak')?.addEventListener('click', () => {
+                if (letterDraftStatus) letterDraftStatus.textContent = 'Listening for your answer…';
+                startVoiceRecognition('push');
+            });
             document.getElementById('letter-draft-button')?.addEventListener('click', async event => {
                 const button = event.currentTarget;
                 const purpose = letterPurpose?.value.trim();
-                if (!purpose) { if (letterPurpose) letterPurpose.focus(); if (letterDraftStatus) letterDraftStatus.textContent = 'Add the reason and key facts for the letter first.'; return; }
+                const recipient = document.getElementById('letter-recipient')?.value.trim();
+                if (!recipient) { setLetterStep(0); if (letterDraftStatus) letterDraftStatus.textContent = 'Please tell VOSI who the letter is for.'; return; }
+                if (!purpose) { setLetterStep(1); if (letterDraftStatus) letterDraftStatus.textContent = 'Add the reason and key facts for the letter first.'; return; }
                 button.disabled = true; button.textContent = 'Drafting…';
                 if (letterOpenButton) letterOpenButton.hidden = true;
                 if (letterDraftStatus) letterDraftStatus.textContent = 'Drafting your letter…';
@@ -978,13 +1052,15 @@
                     generatedLetter = { filename: data.filename, path: data.file_path };
                     if (letterPreview) letterPreview.value = data.letter_text || '';
                     if (letterPreviewWrap) letterPreviewWrap.hidden = false;
+                    setLetterStep(null);
                     if (letterOpenButton) letterOpenButton.hidden = false;
-                    if (letterDraftStatus) letterDraftStatus.textContent = 'Draft saved to Documents\\VOSI\\Letters. Review it in Word before using it.';
+                    if (letterDraftStatus) letterDraftStatus.textContent = 'Draft saved. Opening it in Word so you can review it…';
+                    await openGeneratedLetter();
                 } catch (error) {
                     if (letterDraftStatus) letterDraftStatus.textContent = String(error?.message || error || 'Could not draft the letter. Check the backend and AI settings.');
                 } finally { button.disabled = false; button.textContent = 'Create Word draft'; }
             });
-            letterOpenButton?.addEventListener('click', async () => {
+            async function openGeneratedLetter() {
                 if (!generatedLetter) return;
                 try {
                     const openPath = window.__TAURI__?.opener?.openPath;
@@ -999,7 +1075,94 @@
                 } catch (error) {
                     if (letterDraftStatus) letterDraftStatus.textContent = 'Could not open the draft. It is saved at ' + generatedLetter.path;
                 }
+            }
+            letterOpenButton?.addEventListener('click', openGeneratedLetter);
+            const hotelDialog = document.getElementById('hotel-dialog');
+            const hotelStatus = document.getElementById('hotel-research-status');
+            function openHotelDialog(city = '', announce = false) {
+                document.getElementById('hotel-city').value = city;
+                document.getElementById('hotel-research-results').hidden = true;
+                document.getElementById('hotel-research-report').textContent = '';
+                document.getElementById('hotel-source-list').replaceChildren();
+                if (hotelStatus) hotelStatus.textContent = 'Add travel dates and a budget for a more useful comparison; both are optional.';
+                hotelDialog?.classList.add('is-open');
+                hotelDialog?.setAttribute('aria-hidden', 'false');
+                if (announce) speakVosi(city ? `I can compare hotels in ${city}. What dates and budget should I use?` : 'Which city should I research, and what are your dates and budget?');
+                window.setTimeout(() => document.getElementById('hotel-city')?.focus(), 0);
+            }
+            function closeHotelDialog() {
+                hotelDialog?.classList.remove('is-open');
+                hotelDialog?.setAttribute('aria-hidden', 'true');
+            }
+            document.getElementById('hotel-cancel')?.addEventListener('click', closeHotelDialog);
+            hotelDialog?.addEventListener('click', event => { if (event.target === hotelDialog) closeHotelDialog(); });
+            document.getElementById('hotel-research-button')?.addEventListener('click', async event => {
+                const button = event.currentTarget;
+                const city = document.getElementById('hotel-city').value.trim();
+                if (!city) { if (hotelStatus) hotelStatus.textContent = 'Enter the city you want VOSI to research.'; document.getElementById('hotel-city').focus(); return; }
+                const checkIn = document.getElementById('hotel-checkin').value;
+                const checkOut = document.getElementById('hotel-checkout').value;
+                if (checkIn && checkOut && checkOut <= checkIn) { if (hotelStatus) hotelStatus.textContent = 'Check-out must be after check-in.'; return; }
+                button.disabled = true; button.textContent = 'Researching…';
+                if (hotelStatus) hotelStatus.textContent = 'Searching public sources and comparing the results…';
+                try {
+                    const response = await fetch(API_BASE + '/research/hotels', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            city, check_in: checkIn, check_out: checkOut,
+                            budget: document.getElementById('hotel-budget').value.trim(),
+                            guests: Number(document.getElementById('hotel-guests').value),
+                            preferences: document.getElementById('hotel-preferences').value.trim(),
+                            source_count: Number(document.getElementById('hotel-source-count').value)
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not complete hotel research.');
+                    document.getElementById('hotel-research-report').textContent = data.report || 'No comparison was returned.';
+                    const list = document.getElementById('hotel-source-list');
+                    list.replaceChildren();
+                    (data.sources || []).forEach((source, index) => {
+                        const item = document.createElement('li');
+                        const link = document.createElement('a');
+                        link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+                        link.textContent = `[${index + 1}] ${source.title || source.url}`;
+                        link.className = 'text-sky-300 hover:underline';
+                        item.appendChild(link); list.appendChild(item);
+                    });
+                    document.getElementById('hotel-research-results').hidden = false;
+                    if (hotelStatus) hotelStatus.textContent = `Compared ${data.source_count} public sources${data.source_count < data.requested_source_count ? ` (requested ${data.requested_source_count})` : ''}. Confirm current prices and availability with the booking source.`;
+                } catch (error) {
+                    if (hotelStatus) hotelStatus.textContent = String(error?.message || error || 'Hotel research failed.');
+                } finally { button.disabled = false; button.textContent = 'Search and compare'; }
             });
+            async function playYoutubeSong(query) {
+                const song = String(query || '').trim();
+                if (!song) {
+                    const message = 'Which song should I search for on YouTube? Type the title and artist, then send it.';
+                    showResponse('Which song?', message); speakVosi(message); userInput?.focus(); return;
+                }
+                showResponse('Finding your song', `Searching YouTube for “${song}”…`);
+                try {
+                    const response = await fetch(API_BASE + '/youtube/play', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: song })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'YouTube search did not return a video.');
+                    const invoke = window.__TAURI__?.core?.invoke;
+                    if (invoke) await invoke('play_youtube_video', { videoId: data.video_id });
+                    else window.open(`https://www.youtube.com/watch?v=${encodeURIComponent(data.video_id)}&autoplay=1`, '_blank', 'noopener');
+                    const message = `Opened “${data.title}”${data.channel ? ` by ${data.channel}` : ''} on YouTube. If playback does not start automatically, press Play.`;
+                    showResponse('YouTube opened', message); speakVosi(message);
+                } catch (error) {
+                    const message = String(error?.message || error || 'Could not find that video.');
+                    const invoke = window.__TAURI__?.core?.invoke;
+                    try {
+                        if (invoke) await invoke('search_device_web', { provider: 'youtube', query: song });
+                        else window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`, '_blank', 'noopener');
+                        showResponse('YouTube search opened', `${message} I opened YouTube search results so you can choose a video.`);
+                    } catch { showResponse('Could not open YouTube', message); }
+                }
+            }
             function closeDeviceActionDialog() {
                 deviceActionDialog?.classList.remove('is-open');
                 deviceActionDialog?.setAttribute('aria-hidden', 'true');
@@ -1036,7 +1199,17 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
-                if (/\b(write|draft|compose|create)\b/.test(text) && /\b(letter|cover letter|resignation letter|thank[- ]you letter)\b/.test(text)) return { target: 'write-letter', seed: raw };
+                if (/\b(write|draft|compose|create)\b/.test(text) && /\b(letter|cover letter|resignation letter|thank[- ]you letter)\b/.test(text)) return { target: 'write-letter', seed: raw, announce: true };
+                const hotelIntent = /\b(best|find|compare|research|recommend)\b/.test(text) && /\b(hotel|hotels|accommodation|place to stay)\b/.test(text);
+                if (hotelIntent) {
+                    const cityMatch = text.match(/\b(?:in|near)\s+(.+?)(?:\s+(?:for|with|from)\b.*)?$/);
+                    return { target: 'hotel-research', city: cityMatch?.[1]?.trim() || '', announce: true };
+                }
+                if (/\b(play|listen to)\b/.test(text) && /\b(youtube|song|music)\b/.test(text)) {
+                    let song = text.replace(/^.*?\b(?:play|listen to)\b\s*/, '').replace(/\b(?:on|in)\s+youtube\b.*$/i, '').replace(/^the song\s+/i, '').trim();
+                    if (/^(any|a|some)?\s*(song|music)?$/i.test(song)) song = '';
+                    return { target: 'youtube-play', query: song };
+                }
                 const wifi = /\b(wi[\s-]?fi|wireless|network)\b/.test(text);
                 if (wifi && /\b(turn|switch|enable|disable|connect|disconnect|change)\b/.test(text)) return { target: 'wifi-settings', confirm: true };
                 const providerFirstSearch = text.match(/\b(?:search|look up)\s+(google|youtube|bing)\s+for\s+(.+)/);
@@ -1249,7 +1422,8 @@
                 btn.addEventListener('click', () => {
                     if (btn.dataset.action === 'awareness') { document.getElementById('btn-start-observing')?.click(); return; }
                     if (btn.dataset.action === 'task') { openTaskReview(); return; }
-                    if (btn.dataset.action === 'letter') { openLetterDialog(userInput?.value.trim() || ''); return; }
+                    if (btn.dataset.action === 'letter') { openLetterDialog(userInput?.value.trim() || '', true); return; }
+                    if (btn.dataset.action === 'hotel') { openHotelDialog(userInput?.value.trim() || '', true); return; }
                     if (btn.dataset.deviceTarget) { requestDeviceTarget(btn.dataset.deviceTarget); return; }
                     const text = btn.dataset.prompt || btn.innerText.trim();
                     if (!userInput) return;
@@ -1827,10 +2001,18 @@
                     e.preventDefault();
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
+                    if (letterFlowStep !== null && letterDialog?.classList.contains('is-open')) {
+                        if (letterFlowStep === 0) { document.getElementById('letter-recipient').value = query; setLetterStep(1, true); }
+                        else if (letterFlowStep === 1) { letterPurpose.value = query; setLetterStep(2, true); }
+                        userInput.value = '';
+                        return;
+                    }
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
-                        if (deviceCommand.target === 'write-letter') { openLetterDialog(deviceCommand.seed || ''); return; }
+                        if (deviceCommand.target === 'write-letter') { openLetterDialog(deviceCommand.seed || '', true); return; }
+                        if (deviceCommand.target === 'hotel-research') { openHotelDialog(deviceCommand.city || '', !!deviceCommand.announce); return; }
+                        if (deviceCommand.target === 'youtube-play') { void playYoutubeSong(deviceCommand.query || ''); return; }
                         requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm, deviceCommand.query || '');
                         return;
                     }

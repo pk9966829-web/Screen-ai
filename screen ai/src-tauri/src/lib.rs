@@ -81,6 +81,17 @@ fn search_device_web(app: tauri::AppHandle, provider: String, query: String) -> 
         .map_err(|error| format!("Could not open search results: {error}"))
 }
 
+/// Open a public YouTube watch page for a validated video ID returned by backend search.
+#[tauri::command]
+fn play_youtube_video(app: tauri::AppHandle, video_id: String) -> Result<(), String> {
+    if video_id.len() != 11 || !video_id.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-') {
+        return Err("YouTube returned an invalid video ID.".into());
+    }
+    app.opener()
+        .open_url(format!("https://www.youtube.com/watch?v={video_id}&autoplay=1"), None::<&str>)
+        .map_err(|error| format!("Could not open the YouTube video: {error}"))
+}
+
 /// Launch a small allow-list of built-in Windows apps without invoking a shell.
 #[tauri::command]
 fn launch_device_app(target: String) -> Result<(), String> {
@@ -177,7 +188,7 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, launch_device_app, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, show_companion, hide_companion, show_guide, hide_guide])
         .setup(|app| {
             #[cfg(desktop)]
             {

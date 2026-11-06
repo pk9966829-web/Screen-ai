@@ -5,3 +5,4 @@ pillow
 openai
 python-dotenv
 python-docx
+yt-dlp
