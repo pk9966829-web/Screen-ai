@@ -1,13 +1,18 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
 from uuid import uuid4
+from datetime import datetime
+import re
+from docx import Document
+from docx.shared import Inches, Pt
 
 from pipeline import ScreenPipeline
-from brain import analyze_screen_question
+from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
 app = FastAPI(title="VOSI Screen AI")
@@ -15,6 +20,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+LETTER_DIR = Path.home() / "Documents" / "VOSI" / "Letters"
+LETTER_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 pipeline = ScreenPipeline()
 
@@ -34,6 +41,14 @@ class AwarenessRequest(BaseModel):
     enabled: bool
 
 
+class LetterDraftRequest(BaseModel):
+    recipient: str = ""
+    sender: str = ""
+    subject: str = ""
+    purpose: str
+    tone: str = "professional"
+
+
 @app.get("/")
 def root():
     return {
@@ -41,7 +56,7 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /task", "POST /awareness"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness"],
     }
 
 
@@ -141,6 +156,64 @@ def ask_screen_ai(req: AskRequest):
         "interaction_recorded": bool(interaction) and bool(persisted_interaction),
         "screen_used": bool(latest_path and req.include_screen),
     }
+
+
+@app.post("/letter/draft")
+def create_letter_draft(req: LetterDraftRequest):
+    purpose = (req.purpose or "").strip()
+    if not purpose:
+        return {"success": False, "error": "Describe what the letter should say."}
+    if len(purpose) > 5000 or any(len(value) > 240 for value in (req.recipient, req.sender, req.subject, req.tone)):
+        return {"success": False, "error": "Letter details are too long. Shorten them and try again."}
+    allowed_tones = {"professional", "friendly", "formal", "appreciative", "firm but respectful"}
+    tone = req.tone.strip().lower() or "professional"
+    if tone not in allowed_tones:
+        return {"success": False, "error": "Choose one of the available letter tones."}
+
+    try:
+        letter_text = draft_letter(
+            recipient=req.recipient.strip(),
+            sender=req.sender.strip(),
+            subject=req.subject.strip(),
+            purpose=purpose,
+            tone=tone,
+        )
+        filename = f"VOSI-Letter-{datetime.now():%Y%m%d-%H%M%S}-{uuid4().hex[:6]}.docx"
+        file_path = LETTER_DIR / filename
+
+        document = Document()
+        section = document.sections[0]
+        section.top_margin = Inches(0.8)
+        section.bottom_margin = Inches(0.8)
+        normal = document.styles["Normal"]
+        normal.font.name = "Arial"
+        normal.font.size = Pt(11)
+        for line in letter_text.splitlines():
+            document.add_paragraph(line if line.strip() else "")
+        document.core_properties.title = req.subject.strip() or "VOSI Letter Draft"
+        document.save(file_path)
+        return {
+            "success": True,
+            "letter_text": letter_text,
+            "filename": filename,
+            "file_path": str(file_path.resolve()),
+        }
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
+@app.get("/letter/file/{filename}")
+def download_letter_draft(filename: str):
+    if not re.fullmatch(r"VOSI-Letter-\d{8}-\d{6}-[a-f0-9]{6}\.docx", filename):
+        return {"success": False, "error": "Invalid letter file name."}
+    file_path = (LETTER_DIR / filename).resolve()
+    if file_path.parent != LETTER_DIR.resolve() or not file_path.is_file():
+        return {"success": False, "error": "Letter file was not found."}
+    return FileResponse(
+        path=file_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename=filename,
+    )
 
 
 @app.post("/task")

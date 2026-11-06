@@ -179,6 +179,32 @@ Number of recent screen images attached: {len(usable_paths)}
         }
 
 
+def draft_letter(recipient: str, sender: str, subject: str, purpose: str, tone: str) -> str:
+    """Draft a letter from the user's details without inventing missing facts."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key == "your_openai_api_key_here":
+        raise RuntimeError("Configure OPENAI_API_KEY in backend/.env before drafting letters.")
+
+    prompt = f"""Write a polished letter draft for the user using only the details below.
+Do not invent names, dates, addresses, promises, or facts. Use bracketed placeholders such as [date] or [your address] when a standard letter needs missing information. Return only the letter body, with paragraphs and a suitable greeting and closing. Do not send or publish it.
+
+Recipient: {recipient or '[recipient]'}
+Sender: {sender or '[your name]'}
+Subject: {subject or '[subject]'}
+Purpose and details from the user: {purpose}
+Tone: {tone}
+"""
+    client = OpenAI(api_key=api_key, base_url=BASE_URL)
+    response = client.responses.create(
+        model=MODEL,
+        input=[{"role": "user", "content": [{"type": "input_text", "text": prompt}]}],
+    )
+    text = (response.output_text or "").strip()
+    if not text:
+        raise RuntimeError("The AI returned an empty letter draft.")
+    return text[:20000]
+
+
 def analyze_context(context: Dict[str, Any]) -> Dict[str, Any]:
     observation = context.get("observation", {})
     screens = context.get("recent_screens", [])

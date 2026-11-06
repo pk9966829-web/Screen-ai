@@ -452,6 +452,7 @@
         .vosi-dialog p { margin:0 0 16px; color:#aab6c8; font-size:12px; line-height:1.55; }
         .dialog-field { display:grid; gap:6px; margin:12px 0; color:#dbe6f5; font-size:11px; }
         .dialog-field select,.dialog-field input[type="text"] { width:100%; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 10px; background:#101a2b; color:#f5f8ff; font-size:12px; }
+        .dialog-field textarea { width:100%; min-height:96px; resize:vertical; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 10px; background:#101a2b; color:#f5f8ff; font-size:12px; line-height:1.5; }
         .dialog-check { display:flex; align-items:flex-start; gap:9px; margin:12px 0; color:#dbe6f5; font-size:11px; line-height:1.45; }
         .dialog-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:20px; }
         .dialog-button { padding:9px 13px; border:1px solid rgba(255,255,255,.14); border-radius:9px; color:#e5edf8; background:rgba(255,255,255,.06); font-size:11px; font-weight:700; }
@@ -502,6 +503,21 @@
             <p id="device-action-description">VOSI will open Windows Wi-Fi settings. You can review and make the change there.</p>
             <p class="safety-note">VOSI will not change your connection directly. You stay in control of network selection and passwords.</p>
             <div class="dialog-actions"><button id="device-action-cancel" class="dialog-button" type="button">Cancel</button><button id="device-action-confirm" class="dialog-button primary" type="button">Open settings</button></div>
+        </section>
+    </div>
+    <div id="letter-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="letter-title" aria-hidden="true">
+        <section class="vosi-dialog">
+            <h2 id="letter-title">Draft a letter</h2>
+            <p>VOSI will create a Word document draft for you to review. It will not send or share the letter.</p>
+            <label class="dialog-field">Recipient (optional)<input id="letter-recipient" type="text" maxlength="240" placeholder="Person or organization"></label>
+            <label class="dialog-field">Your name (optional)<input id="letter-sender" type="text" maxlength="240" placeholder="Your name"></label>
+            <label class="dialog-field">Subject (optional)<input id="letter-subject" type="text" maxlength="240" placeholder="Letter subject"></label>
+            <label class="dialog-field">Tone<select id="letter-tone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="formal">Formal</option><option value="appreciative">Appreciative</option><option value="firm but respectful">Firm but respectful</option></select></label>
+            <label class="dialog-field">What should the letter say?<textarea id="letter-purpose" maxlength="5000" placeholder="Describe the reason for the letter and the facts VOSI should include."></textarea></label>
+            <p class="safety-note">The draft is saved in Documents\VOSI\Letters. Review names, dates, and facts in Word before you use it.</p>
+            <div id="letter-draft-status" class="side-note" aria-live="polite"></div>
+            <div id="letter-preview-wrap" hidden><label class="dialog-field">Draft preview<textarea id="letter-preview" readonly></textarea></label></div>
+            <div class="dialog-actions"><button id="letter-cancel" class="dialog-button" type="button">Close</button><button id="letter-draft-button" class="dialog-button primary" type="button">Create Word draft</button><button id="letter-open-button" class="dialog-button primary" type="button" hidden>Open in Word</button></div>
         </section>
     </div>
     <!-- Soft ambient orbs that move slowly -->
@@ -664,6 +680,9 @@
                         </button>
                         <button class="quick-action" type="button" data-action="task">
                             Plan a task
+                        </button>
+                        <button class="quick-action" type="button" data-action="letter">
+                            Write a letter
                         </button>
                         <button class="quick-action" type="button" data-device-target="youtube">
                             Open YouTube
@@ -902,7 +921,85 @@
             const sidebarNav = document.getElementById('main-nav');
             const deviceActionDialog = document.getElementById('device-action-dialog');
             const deviceActionDescription = document.getElementById('device-action-description');
+            const letterDialog = document.getElementById('letter-dialog');
+            const letterPurpose = document.getElementById('letter-purpose');
+            const letterDraftStatus = document.getElementById('letter-draft-status');
+            const letterPreviewWrap = document.getElementById('letter-preview-wrap');
+            const letterPreview = document.getElementById('letter-preview');
+            const letterOpenButton = document.getElementById('letter-open-button');
+            let generatedLetter = null;
             let pendingDeviceAction = null;
+            function closeLetterDialog() {
+                letterDialog?.classList.remove('is-open');
+                letterDialog?.setAttribute('aria-hidden', 'true');
+            }
+            function openLetterDialog(seed = '') {
+                generatedLetter = null;
+                const recipient = document.getElementById('letter-recipient');
+                const sender = document.getElementById('letter-sender');
+                const subject = document.getElementById('letter-subject');
+                const tone = document.getElementById('letter-tone');
+                if (recipient) recipient.value = '';
+                if (sender) sender.value = '';
+                if (subject) subject.value = '';
+                if (tone) tone.value = 'professional';
+                if (letterPurpose) letterPurpose.value = seed;
+                if (letterDraftStatus) letterDraftStatus.textContent = 'Letter details are sent to your configured VOSI AI provider to create the draft; the Word file is saved locally.';
+                if (letterPreviewWrap) letterPreviewWrap.hidden = true;
+                if (letterPreview) letterPreview.value = '';
+                if (letterOpenButton) letterOpenButton.hidden = true;
+                letterDialog?.classList.add('is-open');
+                letterDialog?.setAttribute('aria-hidden', 'false');
+                window.setTimeout(() => letterPurpose?.focus(), 0);
+            }
+            document.getElementById('letter-cancel')?.addEventListener('click', closeLetterDialog);
+            letterDialog?.addEventListener('click', event => { if (event.target === letterDialog) closeLetterDialog(); });
+            document.getElementById('letter-draft-button')?.addEventListener('click', async event => {
+                const button = event.currentTarget;
+                const purpose = letterPurpose?.value.trim();
+                if (!purpose) { if (letterPurpose) letterPurpose.focus(); if (letterDraftStatus) letterDraftStatus.textContent = 'Add the reason and key facts for the letter first.'; return; }
+                button.disabled = true; button.textContent = 'Drafting…';
+                if (letterOpenButton) letterOpenButton.hidden = true;
+                if (letterDraftStatus) letterDraftStatus.textContent = 'Drafting your letter…';
+                try {
+                    const response = await fetch(API_BASE + '/letter/draft', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            recipient: document.getElementById('letter-recipient')?.value.trim() || '',
+                            sender: document.getElementById('letter-sender')?.value.trim() || '',
+                            subject: document.getElementById('letter-subject')?.value.trim() || '',
+                            tone: document.getElementById('letter-tone')?.value || 'professional',
+                            purpose
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not draft the letter.');
+                    generatedLetter = { filename: data.filename, path: data.file_path };
+                    if (letterPreview) letterPreview.value = data.letter_text || '';
+                    if (letterPreviewWrap) letterPreviewWrap.hidden = false;
+                    if (letterOpenButton) letterOpenButton.hidden = false;
+                    if (letterDraftStatus) letterDraftStatus.textContent = 'Draft saved to Documents\\VOSI\\Letters. Review it in Word before using it.';
+                } catch (error) {
+                    if (letterDraftStatus) letterDraftStatus.textContent = String(error?.message || error || 'Could not draft the letter. Check the backend and AI settings.');
+                } finally { button.disabled = false; button.textContent = 'Create Word draft'; }
+            });
+            letterOpenButton?.addEventListener('click', async () => {
+                if (!generatedLetter) return;
+                try {
+                    const openPath = window.__TAURI__?.opener?.openPath;
+                    if (openPath) await openPath(generatedLetter.path);
+                    else {
+                        const link = document.createElement('a');
+                        link.href = API_BASE + '/letter/file/' + encodeURIComponent(generatedLetter.filename);
+                        link.download = generatedLetter.filename;
+                        document.body.appendChild(link); link.click(); link.remove();
+                    }
+                    if (letterDraftStatus) letterDraftStatus.textContent = window.__TAURI__?.opener?.openPath ? 'Opened the Word draft. Review names, dates, and facts before using it.' : 'Downloaded the Word draft. Open the file in Word to review it.';
+                } catch (error) {
+                    if (letterDraftStatus) letterDraftStatus.textContent = 'Could not open the draft. It is saved at ' + generatedLetter.path;
+                }
+            });
             function closeDeviceActionDialog() {
                 deviceActionDialog?.classList.remove('is-open');
                 deviceActionDialog?.setAttribute('aria-hidden', 'true');
@@ -939,6 +1036,7 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                if (/\b(write|draft|compose|create)\b/.test(text) && /\b(letter|cover letter|resignation letter|thank[- ]you letter)\b/.test(text)) return { target: 'write-letter', seed: raw };
                 const wifi = /\b(wi[\s-]?fi|wireless|network)\b/.test(text);
                 if (wifi && /\b(turn|switch|enable|disable|connect|disconnect|change)\b/.test(text)) return { target: 'wifi-settings', confirm: true };
                 const providerFirstSearch = text.match(/\b(?:search|look up)\s+(google|youtube|bing)\s+for\s+(.+)/);
@@ -1151,6 +1249,7 @@
                 btn.addEventListener('click', () => {
                     if (btn.dataset.action === 'awareness') { document.getElementById('btn-start-observing')?.click(); return; }
                     if (btn.dataset.action === 'task') { openTaskReview(); return; }
+                    if (btn.dataset.action === 'letter') { openLetterDialog(userInput?.value.trim() || ''); return; }
                     if (btn.dataset.deviceTarget) { requestDeviceTarget(btn.dataset.deviceTarget); return; }
                     const text = btn.dataset.prompt || btn.innerText.trim();
                     if (!userInput) return;
@@ -1731,6 +1830,7 @@
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
+                        if (deviceCommand.target === 'write-letter') { openLetterDialog(deviceCommand.seed || ''); return; }
                         requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm, deviceCommand.query || '');
                         return;
                     }
