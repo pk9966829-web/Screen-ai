@@ -546,6 +546,21 @@
             <div class="dialog-actions"><button id="hotel-cancel" class="dialog-button" type="button">Close</button><button id="hotel-research-button" class="dialog-button primary" type="button">Search and compare</button></div>
         </section>
     </div>
+    <div id="web-research-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="web-research-title" aria-hidden="true">
+        <section class="vosi-dialog">
+            <h2 id="web-research-title">Search the web</h2>
+            <p>Ask VOSI to research a topic across current public web results. It will summarize findings and link the sources it used.</p>
+            <label class="dialog-field">What should I search for?<textarea id="web-research-query" maxlength="500" placeholder="For example: Compare current electric car safety ratings"></textarea></label>
+            <label class="dialog-field">Sources to review<select id="web-research-source-count"><option value="10">10 sources</option><option value="20" selected>20 sources</option><option value="30">30 sources</option></select></label>
+            <p class="safety-note">Web search is broad, but no search can cover every page on the internet. Check linked sources, especially for changing or high impact information.</p>
+            <div id="web-research-status" class="side-note" aria-live="polite"></div>
+            <div id="web-research-results" hidden class="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
+                <div id="web-research-report" class="whitespace-pre-wrap text-xs leading-relaxed text-slate-200"></div>
+                <ol id="web-research-source-list" class="mt-3 space-y-2 border-t border-white/10 pt-3 text-xs"></ol>
+            </div>
+            <div class="dialog-actions"><button id="web-research-close" class="dialog-button" type="button">Close</button><button id="web-research-button" class="dialog-button primary" type="button">Search and summarize</button></div>
+        </section>
+    </div>
     <!-- Soft ambient orbs that move slowly -->
     <div class="ambient-orb orb-1"></div>
     <div class="ambient-orb orb-2"></div>
@@ -709,6 +724,9 @@
                         </button>
                         <button class="quick-action" type="button" data-action="letter">
                             Write a letter
+                        </button>
+                        <button class="quick-action" type="button" data-action="web-research">
+                            Search the web
                         </button>
                         <button class="quick-action" type="button" data-device-target="youtube">
                             Open YouTube
@@ -1096,6 +1114,62 @@
             }
             document.getElementById('hotel-cancel')?.addEventListener('click', closeHotelDialog);
             hotelDialog?.addEventListener('click', event => { if (event.target === hotelDialog) closeHotelDialog(); });
+            const webResearchDialog = document.getElementById('web-research-dialog');
+            const webResearchStatus = document.getElementById('web-research-status');
+            function openWebResearchDialog(query = '', announce = false) {
+                const queryInput = document.getElementById('web-research-query');
+                queryInput.value = query;
+                document.getElementById('web-research-results').hidden = true;
+                document.getElementById('web-research-report').textContent = '';
+                document.getElementById('web-research-source-list').replaceChildren();
+                if (webResearchStatus) webResearchStatus.textContent = 'Choose up to 30 sources. Your Tavily search key must be configured in backend/.env.';
+                webResearchDialog?.classList.add('is-open');
+                webResearchDialog?.setAttribute('aria-hidden', 'false');
+                if (announce) speakVosi(query ? `I’ll search public web sources for ${query}.` : 'What topic should I search for across the web?');
+                window.setTimeout(() => queryInput?.focus(), 0);
+            }
+            document.getElementById('web-research-close')?.addEventListener('click', () => {
+                webResearchDialog?.classList.remove('is-open');
+                webResearchDialog?.setAttribute('aria-hidden', 'true');
+            });
+            webResearchDialog?.addEventListener('click', event => {
+                if (event.target === webResearchDialog) {
+                    webResearchDialog.classList.remove('is-open');
+                    webResearchDialog.setAttribute('aria-hidden', 'true');
+                }
+            });
+            document.getElementById('web-research-button')?.addEventListener('click', async event => {
+                const button = event.currentTarget;
+                const query = document.getElementById('web-research-query').value.trim();
+                if (!query) { if (webResearchStatus) webResearchStatus.textContent = 'Enter a question or topic to search.'; document.getElementById('web-research-query').focus(); return; }
+                button.disabled = true; button.textContent = 'Searching…';
+                if (webResearchStatus) webResearchStatus.textContent = 'Searching public web sources and preparing a cited summary…';
+                try {
+                    const response = await fetch(API_BASE + '/research/web', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query, source_count: Number(document.getElementById('web-research-source-count').value) })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not search the web.');
+                    document.getElementById('web-research-report').textContent = data.report || 'No summary was returned.';
+                    const list = document.getElementById('web-research-source-list');
+                    list.replaceChildren();
+                    (data.sources || []).forEach((source, index) => {
+                        const item = document.createElement('li');
+                        const link = document.createElement('a');
+                        const parsedUrl = new URL(source.url);
+                        if (!['https:', 'http:'].includes(parsedUrl.protocol)) return;
+                        link.href = parsedUrl.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+                        link.textContent = `[${index + 1}] ${source.title || parsedUrl.hostname}`;
+                        link.className = 'text-sky-300 hover:underline';
+                        item.appendChild(link); list.appendChild(item);
+                    });
+                    document.getElementById('web-research-results').hidden = false;
+                    if (webResearchStatus) webResearchStatus.textContent = `Summary based on ${data.source_count} public sources${data.source_count < data.requested_source_count ? ` (requested ${data.requested_source_count})` : ''}. Open the source links to check details and dates.`;
+                } catch (error) {
+                    if (webResearchStatus) webResearchStatus.textContent = String(error?.message || error || 'Web search failed.');
+                } finally { button.disabled = false; button.textContent = 'Search and summarize'; }
+            });
             document.getElementById('hotel-research-button')?.addEventListener('click', async event => {
                 const button = event.currentTarget;
                 const city = document.getElementById('hotel-city').value.trim();
@@ -1210,13 +1284,25 @@
                     if (/^(any|a|some)?\s*(song|music)?$/i.test(song)) song = '';
                     return { target: 'youtube-play', query: song };
                 }
+                const explicitWebSearch = /\b(?:search|look up|research|find information about)\b/.test(text) && /\b(?:web|internet|online)\b/.test(text);
+                if (explicitWebSearch) {
+                    const query = raw.replace(/^\s*(?:hey\s+vosi[,!: ]*)?/i, '')
+                        .replace(/^\s*(?:please\s+)?(?:search|look up|research|find information about)\s*/i, '')
+                        .replace(/^(?:(?:the|whole|entire|public|and)\s+)*(?:web|internet|online)\b\s*/i, '')
+                        .replace(/^(?:and\s+)?(?:(?:the|whole|entire|public)\s+)*(?:web|internet|online)\b\s*/i, '')
+                        .replace(/^\s*(?:for|about|on)\s+/i, '')
+                        .replace(/\s+(?:across|on|through|using)\s+(?:(?:the|whole|entire|public)\s+)*(?:web|internet|online)\s*$/i, '')
+                        .trim();
+                    return { target: 'web-research', query };
+                }
                 const wifi = /\b(wi[\s-]?fi|wireless|network)\b/.test(text);
                 if (wifi && /\b(turn|switch|enable|disable|connect|disconnect|change)\b/.test(text)) return { target: 'wifi-settings', confirm: true };
                 const providerFirstSearch = text.match(/\b(?:search|look up)\s+(google|youtube|bing)\s+for\s+(.+)/);
                 const providerLastSearch = text.match(/\b(?:search|look up|find)\s+(?:for\s+)?(.+?)\s+(?:on|using)\s+(google|youtube|bing)\b/);
                 const generalSearch = text.match(/\b(?:search|look up)\s+(?:the\s+)?(?:web|internet)?\s*(?:for\s+)?(.+)/);
-                const searchProvider = providerFirstSearch ? providerFirstSearch[1] : providerLastSearch ? providerLastSearch[2] : generalSearch ? 'google' : null;
+                const searchProvider = providerFirstSearch ? providerFirstSearch[1] : providerLastSearch ? providerLastSearch[2] : null;
                 const searchQuery = providerFirstSearch ? providerFirstSearch[2] : providerLastSearch ? providerLastSearch[1] : generalSearch ? generalSearch[1] : '';
+                if (generalSearch && !searchProvider) return { target: 'web-research', query: searchQuery.trim() };
                 if (searchProvider && searchQuery.trim()) return { target: 'search-' + searchProvider, query: searchQuery.trim() };
                 if (/\b(sign\s*in|log\s*in|login)\b/.test(text)) {
                     if (/\b(youtube)\b/.test(text)) return { target: 'youtube' };
@@ -1423,6 +1509,7 @@
                     if (btn.dataset.action === 'awareness') { document.getElementById('btn-start-observing')?.click(); return; }
                     if (btn.dataset.action === 'task') { openTaskReview(); return; }
                     if (btn.dataset.action === 'letter') { openLetterDialog(userInput?.value.trim() || '', true); return; }
+                    if (btn.dataset.action === 'web-research') { openWebResearchDialog(userInput?.value.trim() || '', true); return; }
                     if (btn.dataset.action === 'hotel') { openHotelDialog(userInput?.value.trim() || '', true); return; }
                     if (btn.dataset.deviceTarget) { requestDeviceTarget(btn.dataset.deviceTarget); return; }
                     const text = btn.dataset.prompt || btn.innerText.trim();
@@ -2011,6 +2098,7 @@
                     if (deviceCommand) {
                         userInput.value = '';
                         if (deviceCommand.target === 'write-letter') { openLetterDialog(deviceCommand.seed || '', true); return; }
+                        if (deviceCommand.target === 'web-research') { openWebResearchDialog(deviceCommand.query || '', true); return; }
                         if (deviceCommand.target === 'hotel-research') { openHotelDialog(deviceCommand.city || '', !!deviceCommand.announce); return; }
                         if (deviceCommand.target === 'youtube-play') { void playYoutubeSong(deviceCommand.query || ''); return; }
                         requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm, deviceCommand.query || '');

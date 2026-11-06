@@ -7,6 +7,7 @@ from typing import Optional
 import json
 import os
 from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
 from pathlib import Path
 from uuid import uuid4
 from datetime import datetime
@@ -15,7 +16,7 @@ from docx import Document
 from docx.shared import Inches, Pt
 
 from pipeline import ScreenPipeline
-from brain import analyze_screen_question, draft_letter, summarize_hotel_research
+from brain import analyze_screen_question, draft_letter, summarize_hotel_research, summarize_web_research
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
 app = FastAPI(title="VOSI Screen AI")
@@ -66,6 +67,11 @@ class YouTubePlayRequest(BaseModel):
     query: str
 
 
+class WebResearchRequest(BaseModel):
+    query: str
+    source_count: int = 20
+
+
 @app.get("/")
 def root():
     return {
@@ -73,7 +79,7 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /research/hotels", "POST /youtube/play", "POST /task", "POST /awareness"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /research/web", "POST /research/hotels", "POST /youtube/play", "POST /task", "POST /awareness"],
     }
 
 
@@ -270,6 +276,46 @@ def research_hotels(req: HotelResearchRequest):
         return {"success": True, "report": report, "sources": found, "source_count": len(found), "requested_source_count": req.source_count}
     except Exception as exc:
         return {"success": False, "error": f"Hotel research failed: {exc}"}
+
+
+@app.post("/research/web")
+def research_web(req: WebResearchRequest):
+    query = req.query.strip()
+    if not query or len(query) > 500:
+        return {"success": False, "error": "Enter a search question or topic up to 500 characters."}
+    if req.source_count not in {10, 20, 30}:
+        return {"success": False, "error": "Choose 10, 20, or 30 sources."}
+    api_key = os.getenv("TAVILY_API_KEY", "").strip()
+    if not api_key:
+        return {"success": False, "error": "Web research needs a Tavily search key. Add TAVILY_API_KEY to backend/.env and restart the server."}
+
+    found = []
+    seen = set()
+    try:
+        # Tavily returns up to 20 results per request. A related second query lets
+        # VOSI collect up to 30 distinct links when the user selects that option.
+        queries = [query, f"{query} additional sources and perspectives"] if req.source_count > 20 else [query]
+        for search_query in queries:
+            payload = json.dumps({"query": search_query, "max_results": 20, "search_depth": "basic", "include_answer": False}).encode("utf-8")
+            request = Request("https://api.tavily.com/search", data=payload, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
+            with urlopen(request, timeout=35) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            for item in result.get("results", []):
+                url = str(item.get("url", ""))
+                if urlsplit(url).scheme not in {"https", "http"} or not urlsplit(url).netloc or url in seen:
+                    continue
+                seen.add(url)
+                found.append({"title": str(item.get("title", "Source"))[:240], "url": url, "snippet": str(item.get("content", ""))[:1600], "published_date": str(item.get("published_date") or "")[:40]})
+                if len(found) >= req.source_count:
+                    break
+            if len(found) >= req.source_count:
+                break
+        if not found:
+            return {"success": False, "error": "The search service returned no usable results. Try a more specific phrase."}
+        report = summarize_web_research(query, found)
+        return {"success": True, "query": query, "report": report, "sources": found, "source_count": len(found), "requested_source_count": req.source_count}
+    except Exception as exc:
+        return {"success": False, "error": f"Web research failed: {exc}"}
 
 
 @app.post("/youtube/play")
