@@ -1,5 +1,6 @@
 use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewWindow};
 use tauri_plugin_opener::OpenerExt;
+use std::process::Command;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -32,6 +33,32 @@ fn open_device_target(app: tauri::AppHandle, target: String) -> Result<(), Strin
     app.opener()
         .open_url(url, None::<&str>)
         .map_err(|error| format!("Could not open the requested page: {error}"))
+}
+
+/// Launch a small allow-list of built-in Windows apps without invoking a shell.
+#[tauri::command]
+fn launch_device_app(target: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let executable = match target.as_str() {
+            "calculator" => "calc.exe",
+            "notepad" => "notepad.exe",
+            "file-explorer" => "explorer.exe",
+            "task-manager" => "taskmgr.exe",
+            "paint" => "mspaint.exe",
+            _ => return Err("That app is not supported yet.".into()),
+        };
+        Command::new(executable)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| format!("Could not launch the requested app: {error}"))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = target;
+        Err("Built-in app shortcuts are available in the Windows VOSI app.".into())
+    }
 }
 
 /// Force the floating companion character to appear on top of everything
@@ -98,7 +125,7 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, launch_device_app, show_companion, hide_companion, show_guide, hide_guide])
         .setup(|app| {
             #[cfg(desktop)]
             {

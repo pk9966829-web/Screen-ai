@@ -674,6 +674,12 @@
                         <button class="quick-action" type="button" data-device-target="windows-settings">
                             Windows settings
                         </button>
+                        <button class="quick-action" type="button" data-device-target="calculator">
+                            Open Calculator
+                        </button>
+                        <button class="quick-action" type="button" data-device-target="file-explorer">
+                            Open File Explorer
+                        </button>
                     </div>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
@@ -904,13 +910,14 @@
             }
             async function launchDeviceTarget(target) {
                 const invoke = window.__TAURI__?.core?.invoke;
-                const names = { youtube: 'YouTube', 'google-sign-in': 'Google sign-in', 'microsoft-sign-in': 'Microsoft sign-in', 'github-sign-in': 'GitHub sign-in', 'windows-settings': 'Windows Settings', 'wifi-settings': 'Wi-Fi settings', 'network-settings': 'Network settings', 'sound-settings': 'Sound settings', 'display-settings': 'Display settings', 'bluetooth-settings': 'Bluetooth settings' };
+                const names = { youtube: 'YouTube', 'google-sign-in': 'Google sign-in', 'microsoft-sign-in': 'Microsoft sign-in', 'github-sign-in': 'GitHub sign-in', 'windows-settings': 'Windows Settings', 'wifi-settings': 'Wi-Fi settings', 'network-settings': 'Network settings', 'sound-settings': 'Sound settings', 'display-settings': 'Display settings', 'bluetooth-settings': 'Bluetooth settings', calculator: 'Calculator', notepad: 'Notepad', 'file-explorer': 'File Explorer', 'task-manager': 'Task Manager', paint: 'Paint' };
+                const appTargets = new Set(['calculator', 'notepad', 'file-explorer', 'task-manager', 'paint']);
                 if (!invoke) {
                     showResponse('Open in the desktop app', 'Device actions are available when you run the installed VOSI desktop app.');
                     return;
                 }
                 try {
-                    await invoke('open_device_target', { target });
+                    await invoke(appTargets.has(target) ? 'launch_device_app' : 'open_device_target', { target });
                     const isSignIn = target.endsWith('-sign-in');
                     const details = isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; VOSI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
                     showResponse('Opened ' + (names[target] || 'device page'), details);
@@ -932,6 +939,11 @@
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
                 const wifi = /\b(wi[\s-]?fi|wireless|network)\b/.test(text);
                 if (wifi && /\b(turn|switch|enable|disable|connect|disconnect|change)\b/.test(text)) return { target: 'wifi-settings', confirm: true };
+                if (/\b(calculator|calc)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'calculator' };
+                if (/\b(notepad|text editor)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'notepad' };
+                if (/\b(file explorer|explorer|my files)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'file-explorer' };
+                if (/\b(task manager)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'task-manager' };
+                if (/\b(paint)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'paint' };
                 if (/\b(sign\s*in|log\s*in|login)\b/.test(text)) {
                     if (/\b(youtube)\b/.test(text)) return { target: 'youtube' };
                     if (/\b(google|gmail)\b/.test(text)) return { target: 'google-sign-in' };
