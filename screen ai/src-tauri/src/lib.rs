@@ -13,6 +13,11 @@ fn greet(name: &str) -> String {
 fn open_device_target(app: tauri::AppHandle, target: String) -> Result<(), String> {
     let url = match target.as_str() {
         "youtube" => "https://www.youtube.com/",
+        "google" => "https://www.google.com/",
+        "gmail" => "https://mail.google.com/",
+        "github" => "https://github.com/",
+        "outlook" => "https://outlook.office.com/",
+        "calendar" => "https://calendar.google.com/",
         "google-sign-in" => "https://accounts.google.com/",
         "microsoft-sign-in" => "https://login.microsoftonline.com/",
         "github-sign-in" => "https://github.com/login",
@@ -22,6 +27,20 @@ fn open_device_target(app: tauri::AppHandle, target: String) -> Result<(), Strin
         "sound-settings" => "ms-settings:sound",
         "display-settings" => "ms-settings:display",
         "bluetooth-settings" => "ms-settings:bluetooth",
+        "privacy-settings" => "ms-settings:privacy",
+        "microphone-settings" => "ms-settings:privacy-microphone",
+        "camera-settings" => "ms-settings:privacy-webcam",
+        "notifications-settings" => "ms-settings:notifications",
+        "accessibility-settings" => "ms-settings:easeofaccess",
+        "apps-settings" => "ms-settings:appsfeatures",
+        "accounts-settings" => "ms-settings:yourinfo",
+        "personalization-settings" => "ms-settings:personalization",
+        "storage-settings" => "ms-settings:storagesense",
+        "time-settings" => "ms-settings:dateandtime",
+        "keyboard-settings" => "ms-settings:typing",
+        "mouse-settings" => "ms-settings:mousetouchpad",
+        "power-settings" => "ms-settings:powersleep",
+        "update-settings" => "ms-settings:windowsupdate",
         _ => return Err("That device action is not supported yet.".into()),
     };
 
@@ -35,6 +54,33 @@ fn open_device_target(app: tauri::AppHandle, target: String) -> Result<(), Strin
         .map_err(|error| format!("Could not open the requested page: {error}"))
 }
 
+/// Search a fixed, trusted provider. The query is treated only as encoded URL data.
+#[tauri::command]
+fn search_device_web(app: tauri::AppHandle, provider: String, query: String) -> Result<(), String> {
+    let query = query.trim();
+    if query.is_empty() || query.chars().count() > 200 {
+        return Err("Please use a search phrase between 1 and 200 characters.".into());
+    }
+    let base = match provider.as_str() {
+        "google" => "https://www.google.com/search?q=",
+        "youtube" => "https://www.youtube.com/results?search_query=",
+        "bing" => "https://www.bing.com/search?q=",
+        _ => return Err("That search provider is not supported.".into()),
+    };
+    let encoded: String = query
+        .bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (byte as char).to_string()
+            }
+            _ => format!("%{byte:02X}"),
+        })
+        .collect();
+    app.opener()
+        .open_url(format!("{base}{encoded}"), None::<&str>)
+        .map_err(|error| format!("Could not open search results: {error}"))
+}
+
 /// Launch a small allow-list of built-in Windows apps without invoking a shell.
 #[tauri::command]
 fn launch_device_app(target: String) -> Result<(), String> {
@@ -46,6 +92,12 @@ fn launch_device_app(target: String) -> Result<(), String> {
             "file-explorer" => "explorer.exe",
             "task-manager" => "taskmgr.exe",
             "paint" => "mspaint.exe",
+            "edge" => "msedge.exe",
+            "chrome" => "chrome.exe",
+            "word" => "winword.exe",
+            "excel" => "excel.exe",
+            "powerpoint" => "powerpnt.exe",
+            "outlook-app" => "outlook.exe",
             _ => return Err("That app is not supported yet.".into()),
         };
         Command::new(executable)
@@ -125,7 +177,7 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, launch_device_app, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, launch_device_app, show_companion, hide_companion, show_guide, hide_guide])
         .setup(|app| {
             #[cfg(desktop)]
             {

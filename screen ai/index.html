@@ -902,25 +902,27 @@
             const sidebarNav = document.getElementById('main-nav');
             const deviceActionDialog = document.getElementById('device-action-dialog');
             const deviceActionDescription = document.getElementById('device-action-description');
-            let pendingDeviceTarget = null;
+            let pendingDeviceAction = null;
             function closeDeviceActionDialog() {
                 deviceActionDialog?.classList.remove('is-open');
                 deviceActionDialog?.setAttribute('aria-hidden', 'true');
-                pendingDeviceTarget = null;
+                pendingDeviceAction = null;
             }
-            async function launchDeviceTarget(target) {
+            async function launchDeviceTarget(target, query = '') {
                 const invoke = window.__TAURI__?.core?.invoke;
-                const names = { youtube: 'YouTube', 'google-sign-in': 'Google sign-in', 'microsoft-sign-in': 'Microsoft sign-in', 'github-sign-in': 'GitHub sign-in', 'windows-settings': 'Windows Settings', 'wifi-settings': 'Wi-Fi settings', 'network-settings': 'Network settings', 'sound-settings': 'Sound settings', 'display-settings': 'Display settings', 'bluetooth-settings': 'Bluetooth settings', calculator: 'Calculator', notepad: 'Notepad', 'file-explorer': 'File Explorer', 'task-manager': 'Task Manager', paint: 'Paint' };
-                const appTargets = new Set(['calculator', 'notepad', 'file-explorer', 'task-manager', 'paint']);
+                const names = { youtube: 'YouTube', google: 'Google', gmail: 'Gmail', github: 'GitHub', outlook: 'Outlook', calendar: 'Google Calendar', 'google-sign-in': 'Google sign-in', 'microsoft-sign-in': 'Microsoft sign-in', 'github-sign-in': 'GitHub sign-in', 'windows-settings': 'Windows Settings', 'wifi-settings': 'Wi-Fi settings', 'network-settings': 'Network settings', 'sound-settings': 'Sound settings', 'display-settings': 'Display settings', 'bluetooth-settings': 'Bluetooth settings', 'privacy-settings': 'Privacy settings', 'microphone-settings': 'Microphone privacy settings', 'camera-settings': 'Camera privacy settings', 'notifications-settings': 'Notification settings', 'accessibility-settings': 'Accessibility settings', 'apps-settings': 'Apps settings', 'accounts-settings': 'Account settings', 'personalization-settings': 'Personalization settings', 'storage-settings': 'Storage settings', 'time-settings': 'Date and time settings', 'keyboard-settings': 'Keyboard settings', 'mouse-settings': 'Mouse settings', 'power-settings': 'Power settings', 'update-settings': 'Windows Update', calculator: 'Calculator', notepad: 'Notepad', 'file-explorer': 'File Explorer', 'task-manager': 'Task Manager', paint: 'Paint', edge: 'Microsoft Edge', chrome: 'Google Chrome', word: 'Microsoft Word', excel: 'Microsoft Excel', powerpoint: 'PowerPoint', 'outlook-app': 'Outlook' };
+                const appTargets = new Set(['calculator', 'notepad', 'file-explorer', 'task-manager', 'paint', 'edge', 'chrome', 'word', 'excel', 'powerpoint', 'outlook-app']);
                 if (!invoke) {
                     showResponse('Open in the desktop app', 'Device actions are available when you run the installed VOSI desktop app.');
                     return;
                 }
                 try {
-                    await invoke(appTargets.has(target) ? 'launch_device_app' : 'open_device_target', { target });
+                    if (target.startsWith('search-')) await invoke('search_device_web', { provider: target.slice(7), query });
+                    else await invoke(appTargets.has(target) ? 'launch_device_app' : 'open_device_target', { target });
                     const isSignIn = target.endsWith('-sign-in');
-                    const details = isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; VOSI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
-                    showResponse('Opened ' + (names[target] || 'device page'), details);
+                    const isSearch = target.startsWith('search-');
+                    const details = isSearch ? 'Opened ' + target.slice(7) + ' results for “' + query + '”.' : isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; VOSI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
+                    showResponse(isSearch ? 'Search opened' : 'Opened ' + (names[target] || 'device page'), details);
                     speakVosi(details);
                 } catch (error) {
                     const message = String(error?.message || error || 'Could not open that page.');
@@ -928,9 +930,9 @@
                     speakVosi(message);
                 }
             }
-            function requestDeviceTarget(target, needsConfirmation = false) {
-                if (!needsConfirmation) { void launchDeviceTarget(target); return; }
-                pendingDeviceTarget = target;
+            function requestDeviceTarget(target, needsConfirmation = false, query = '') {
+                if (!needsConfirmation) { void launchDeviceTarget(target, query); return; }
+                pendingDeviceAction = { target, query };
                 if (deviceActionDescription) deviceActionDescription.textContent = 'VOSI will open Windows Wi-Fi settings. You can review and make the requested connection change there; VOSI will not switch networks or enter a password for you.';
                 deviceActionDialog?.classList.add('is-open');
                 deviceActionDialog?.setAttribute('aria-hidden', 'false');
@@ -939,32 +941,56 @@
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
                 const wifi = /\b(wi[\s-]?fi|wireless|network)\b/.test(text);
                 if (wifi && /\b(turn|switch|enable|disable|connect|disconnect|change)\b/.test(text)) return { target: 'wifi-settings', confirm: true };
-                if (/\b(calculator|calc)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'calculator' };
-                if (/\b(notepad|text editor)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'notepad' };
-                if (/\b(file explorer|explorer|my files)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'file-explorer' };
-                if (/\b(task manager)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'task-manager' };
-                if (/\b(paint)\b/.test(text) && /\b(open|launch|start)\b/.test(text)) return { target: 'paint' };
+                const providerFirstSearch = text.match(/\b(?:search|look up)\s+(google|youtube|bing)\s+for\s+(.+)/);
+                const providerLastSearch = text.match(/\b(?:search|look up|find)\s+(?:for\s+)?(.+?)\s+(?:on|using)\s+(google|youtube|bing)\b/);
+                const generalSearch = text.match(/\b(?:search|look up)\s+(?:the\s+)?(?:web|internet)?\s*(?:for\s+)?(.+)/);
+                const searchProvider = providerFirstSearch ? providerFirstSearch[1] : providerLastSearch ? providerLastSearch[2] : generalSearch ? 'google' : null;
+                const searchQuery = providerFirstSearch ? providerFirstSearch[2] : providerLastSearch ? providerLastSearch[1] : generalSearch ? generalSearch[1] : '';
+                if (searchProvider && searchQuery.trim()) return { target: 'search-' + searchProvider, query: searchQuery.trim() };
                 if (/\b(sign\s*in|log\s*in|login)\b/.test(text)) {
                     if (/\b(youtube)\b/.test(text)) return { target: 'youtube' };
                     if (/\b(google|gmail)\b/.test(text)) return { target: 'google-sign-in' };
                     if (/\b(microsoft|outlook|office)\b/.test(text)) return { target: 'microsoft-sign-in' };
                     if (/\b(github)\b/.test(text)) return { target: 'github-sign-in' };
                 }
+                if (/\b(open|launch|start)\b/.test(text)) {
+                    const apps = [
+                        ['calculator', /\b(calculator|calc)\b/], ['notepad', /\b(notepad|text editor)\b/],
+                        ['file-explorer', /\b(file explorer|my files|explorer)\b/], ['task-manager', /\b(task manager)\b/],
+                        ['paint', /\b(paint)\b/], ['edge', /\b(microsoft edge|edge browser|edge)\b/],
+                        ['chrome', /\b(google chrome|chrome browser|chrome)\b/], ['word', /\b(microsoft word|word)\b/],
+                        ['excel', /\b(microsoft excel|excel)\b/], ['powerpoint', /\b(powerpoint|power point)\b/],
+                        ['outlook-app', /\b(outlook app|outlook desktop)\b/]
+                    ];
+                    for (const [target, pattern] of apps) if (pattern.test(text)) return { target };
+                    const sites = [['youtube', /\b(youtube|you tube)\b/], ['google', /\bgoogle\b/], ['gmail', /\bgmail\b/], ['github', /\bgithub\b/], ['outlook', /\boutlook\b/], ['calendar', /\b(calendar|google calendar)\b/]];
+                    for (const [target, pattern] of sites) if (pattern.test(text)) return { target };
+                }
                 if (/\b(youtube|you tube)\b/.test(text) && (/\b(open|launch|go to|visit|watch|start)\b/.test(text) || text.length < 18)) return { target: 'youtube' };
                 if (/\b(wi[\s-]?fi|wireless)\b/.test(text) && /\b(settings|setting|open|connect)\b/.test(text)) return { target: 'wifi-settings' };
-                if (/\b(network)\b/.test(text) && /\b(settings|setting)\b/.test(text)) return { target: 'network-settings' };
-                if (/\b(sound|volume|audio)\b/.test(text) && /\b(settings|setting|open)\b/.test(text)) return { target: 'sound-settings' };
-                if (/\b(display|screen|brightness)\b/.test(text) && /\b(settings|setting|open)\b/.test(text)) return { target: 'display-settings' };
-                if (/\b(bluetooth)\b/.test(text) && /\b(settings|setting|open|turn on|turn off)\b/.test(text)) return { target: 'bluetooth-settings' };
+                const settings = [
+                    ['network-settings', /\bnetwork\b/], ['sound-settings', /\b(sound|volume|audio)\b/],
+                    ['display-settings', /\b(display|brightness|screen settings)\b/], ['bluetooth-settings', /\bbluetooth\b/],
+                    ['microphone-settings', /\b(microphone|mic)\b/], ['camera-settings', /\bcamera\b/],
+                    ['notifications-settings', /\bnotifications?\b/], ['accessibility-settings', /\b(accessibility|ease of access)\b/],
+                    ['apps-settings', /\b(apps|installed apps)\b/], ['accounts-settings', /\b(accounts|user account)\b/],
+                    ['privacy-settings', /\bprivacy\b/], ['personalization-settings', /\b(personalization|wallpaper|background)\b/],
+                    ['storage-settings', /\b(storage|disk space)\b/], ['time-settings', /\b(date and time|time zone|clock settings)\b/],
+                    ['keyboard-settings', /\b(keyboard|typing)\b/], ['mouse-settings', /\b(mouse|touchpad)\b/],
+                    ['power-settings', /\b(power|battery|sleep settings)\b/], ['update-settings', /\b(windows update|system update|updates)\b/]
+                ];
+                if (/\b(open|show|change|adjust|settings?|preferences)\b/.test(text)) {
+                    for (const [target, pattern] of settings) if (pattern.test(text)) return { target };
+                }
                 if (/\b(open|show)\b.*\b(windows )?settings\b/.test(text)) return { target: 'windows-settings' };
                 return null;
             }
             document.getElementById('device-action-cancel')?.addEventListener('click', closeDeviceActionDialog);
             deviceActionDialog?.addEventListener('click', event => { if (event.target === deviceActionDialog) closeDeviceActionDialog(); });
             document.getElementById('device-action-confirm')?.addEventListener('click', () => {
-                const target = pendingDeviceTarget;
+                const action = pendingDeviceAction;
                 closeDeviceActionDialog();
-                if (target) void launchDeviceTarget(target);
+                if (action) void launchDeviceTarget(action.target, action.query);
             });
             sidebarToggle?.addEventListener('click', () => {
                 const expanded = sidebarToggle.getAttribute('aria-expanded') !== 'true';
@@ -1705,7 +1731,7 @@
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
-                        requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm);
+                        requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm, deviceCommand.query || '');
                         return;
                     }
                     if (!screenStream && (query.toLowerCase().includes("my screen") || query.toLowerCase().includes("where to click") || query.toLowerCase().includes("latest shared screen"))) {
