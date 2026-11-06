@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VOSI - Your Digital Screen Assistant</title>
+    <title>Vosi - Your Screen Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,14 +39,14 @@
         ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 9999px; }
 
         /* =========================================================
-           STRONGER ANIMATED AMBIENT BACKGROUND
+           DEEP OCEAN GLOW
         ========================================================= */
 
         .bg-space-base {
             position: relative;
             isolation: isolate;
             overflow: hidden;
-            background: #030304;
+            background: linear-gradient(180deg, #08284a 0%, #041b33 42%, #021225 76%, #010814 100%);
         }
 
         .bg-space-base::before {
@@ -56,10 +56,10 @@
             z-index: 0;
             pointer-events: none;
             background:
-                radial-gradient(ellipse 55% 45% at 18% 22%, rgba(255, 255, 255, 0.27) 0%, rgba(200, 200, 210, 0.08) 35%, transparent 70%),
-                radial-gradient(ellipse 50% 40% at 82% 18%, rgba(240, 240, 255, 0.23) 0%, rgba(180, 180, 200, 0.07) 40%, transparent 72%),
-                radial-gradient(ellipse 70% 50% at 50% 45%, rgba(255, 255, 255, 0.10) 0%, transparent 65%),
-                radial-gradient(ellipse 80% 40% at 50% 100%, rgba(160, 160, 180, 0.10) 0%, transparent 55%);
+                radial-gradient(ellipse 55% 45% at 18% 22%, rgba(14, 165, 233, 0.26) 0%, rgba(14, 116, 144, 0.10) 35%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 82% 18%, rgba(59, 130, 246, 0.22) 0%, rgba(37, 99, 180, 0.08) 40%, transparent 72%),
+                radial-gradient(ellipse 70% 50% at 50% 45%, rgba(6, 182, 212, 0.10) 0%, transparent 65%),
+                radial-gradient(ellipse 80% 40% at 50% 100%, rgba(8, 47, 73, 0.18) 0%, transparent 55%);
             filter: blur(28px);
             opacity: 0.95;
             transform: scale(1.08);
@@ -74,9 +74,9 @@
             z-index: 1;
             pointer-events: none;
             background:
-                radial-gradient(ellipse at 30% 70%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 75% 35%, rgba(220, 220, 235, 0.07) 0%, transparent 45%),
-                linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, transparent 30%, rgba(0, 0, 0, 0.35) 100%);
+                radial-gradient(ellipse at 30% 70%, rgba(34, 211, 238, 0.055) 0%, transparent 50%),
+                radial-gradient(ellipse at 75% 35%, rgba(96, 165, 250, 0.07) 0%, transparent 45%),
+                linear-gradient(180deg, rgba(1, 12, 28, 0.08) 0%, transparent 30%, rgba(0, 5, 16, 0.42) 100%);
             animation: haze-shift 6s ease-in-out infinite alternate;
             will-change: transform, opacity;
         }
@@ -115,21 +115,21 @@
         .orb-1 {
             width: 60vw; height: 50vh;
             top: -18%; left: -12%;
-            background: radial-gradient(circle, rgba(255,255,255,0.28) 0%, rgba(200,200,220,0.10) 40%, transparent 70%);
+            background: radial-gradient(circle, rgba(14,165,233,0.24) 0%, rgba(8,145,178,0.10) 40%, transparent 70%);
             animation: orb-float-1 7s ease-in-out infinite alternate;
         }
 
         .orb-2 {
             width: 48vw; height: 42vh;
             top: 2%; right: -10%;
-            background: radial-gradient(circle, rgba(245,245,255,0.24) 0%, rgba(180,180,200,0.09) 45%, transparent 72%);
+            background: radial-gradient(circle, rgba(59,130,246,0.23) 0%, rgba(37,99,235,0.09) 45%, transparent 72%);
             animation: orb-float-2 8s ease-in-out infinite alternate;
         }
 
         .orb-3 {
             width: 42vw; height: 38vh;
             bottom: 5%; left: 20%;
-            background: radial-gradient(circle, rgba(230,230,245,0.18) 0%, transparent 65%);
+            background: radial-gradient(circle, rgba(20,184,166,0.16) 0%, transparent 65%);
             animation: orb-float-3 10s ease-in-out infinite alternate;
         }
 
@@ -154,7 +154,7 @@
             position: fixed;
             pointer-events: none;
             z-index: 1;
-            background: radial-gradient(ellipse at center, rgba(245,245,250,0.18) 0%, rgba(190,190,200,0.08) 36%, transparent 74%) !important;
+            background: radial-gradient(ellipse at center, rgba(34,211,238,0.13) 0%, rgba(37,99,235,0.07) 36%, transparent 74%) !important;
             mix-blend-mode: screen;
             filter: blur(90px);
             opacity: 0.9;
@@ -367,9 +367,143 @@
             min-width: 0;
             max-width: 100%;
         }
+
+        /* Jarvis-inspired Vosi home with its controls kept in the left rail. */
+        body.bg-space-base { background:#050505 !important; color:#f3f3f3; }
+        body.bg-space-base::before {
+            background:
+                radial-gradient(ellipse 44% 30% at 12% 38%, rgba(242,242,242,.32), transparent 72%),
+                radial-gradient(ellipse 55% 26% at 86% 15%, rgba(220,220,220,.30), transparent 72%),
+                radial-gradient(ellipse 66% 28% at 22% 96%, rgba(190,190,190,.17), transparent 72%),
+                radial-gradient(ellipse 46% 24% at 94% 58%, rgba(190,190,190,.15), transparent 72%);
+            animation: ambient-drift 10s ease-in-out infinite alternate;
+        }
+        body.bg-space-base::after {
+            background:radial-gradient(ellipse at 50% 50%, transparent 22%, rgba(0,0,0,.58) 100%);
+            animation:haze-shift 12s ease-in-out infinite alternate;
+        }
+        .ambient-orb { mix-blend-mode:screen; opacity:.45; }
+        .orb-1 { background:radial-gradient(circle,rgba(245,245,245,.32),transparent 70%); animation-duration:8s; }
+        .orb-2 { background:radial-gradient(circle,rgba(220,220,220,.27),transparent 72%); animation-duration:10s; }
+        .orb-3 { background:radial-gradient(circle,rgba(185,185,185,.2),transparent 65%); animation-duration:12s; }
+        .vosi-app-shell { height:100vh!important; width:100vw!important; padding:0!important; }
+        .vosi-app-shell > header { display:none!important; }
+        .vosi-app-shell > .grid.grid-cols-12 { display:grid!important; grid-template-columns:290px minmax(0,1fr)!important; grid-template-rows:minmax(0,1fr); gap:0!important; height:100%; }
+        #app-sidebar { grid-column:1!important; grid-row:1; display:flex!important; align-items:stretch!important; justify-content:flex-start!important; gap:20px; min-width:0; min-height:0; height:100%; overflow-y:auto; padding:20px 14px!important; border:0!important; border-right:1px solid rgba(255,255,255,.10)!important; border-radius:0!important; background:rgba(8,8,8,.78)!important; backdrop-filter:blur(18px); box-shadow:none!important; }
+        #app-sidebar > .space-y-6 { width:100%; display:flex; flex-direction:column; gap:18px; }
+        #app-sidebar > .space-y-6 > * { margin-top:0!important; }
+        #main-nav > * { margin-top:0!important; }
+        #main-content { grid-column:2!important; grid-row:1; display:flex!important; align-items:center!important; justify-content:center!important; height:100%; min-height:0; overflow:hidden!important; padding:32px!important; }
+        .vosi-app-shell .grid.grid-cols-12 > aside:last-child { position:fixed; inset:0; z-index:80; display:block!important; width:100%; height:100%; padding:0; pointer-events:none; }
+        #response-box:not(.hidden) { position:absolute; right:24px; bottom:24px; width:min(390px,calc(100vw - 32px)); max-height:45vh; overflow:auto; pointer-events:auto; background:rgba(18,18,20,.96); border:1px solid rgba(255,255,255,.16); backdrop-filter:blur(18px); }
+        #response-box.hidden { display:none!important; }
+        #main-content > .inline-flex { display:none!important; }
+        #main-content > .text-center.space-y-2 { margin:0 0 22px!important; }
+        #main-content > .text-center.space-y-2 > p { display:none!important; }
+        #main-content > .text-center.space-y-2 h2 { color:#f3f3f3!important; font-size:36px!important; font-weight:600!important; letter-spacing:-.03em; }
+        .text-gradient-purple { color:#f3f3f3!important; background:none!important; -webkit-text-fill-color:#f3f3f3!important; }
+        #main-content > .w-full.max-w-2xl { width:min(720px,100%); margin:0!important; }
+        #main-content > .w-full.max-w-2xl > .flex.flex-wrap { display:flex!important; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:14px; }
+        #ai-prompt-form input { border:1px solid rgba(255,255,255,.16)!important; border-radius:999px!important; background:rgba(255,255,255,.075)!important; box-shadow:0 12px 52px rgba(0,0,0,.38); padding-top:15px!important; padding-bottom:15px!important; color:#f3f3f3!important; }
+        #ai-prompt-form .absolute.left-4 { color:#bcbcbc!important; }
+        #ai-prompt-form button[type="submit"] { background:#f2f2f2!important; color:#111!important; }
+        #sidebar-toggle { display:grid!important; place-items:center; left:14px; top:16px; width:38px; height:38px; min-width:38px; min-height:38px; padding:0; border:1px solid rgba(255,255,255,.16); border-radius:50%; background:rgba(255,255,255,.09); color:#f3f3f3; }
+        #sidebar-toggle .toggle-arrow { font-size:22px; line-height:1; }
+        #sidebar-toggle .toggle-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+        body.vosi-sidebar-expanded #sidebar-toggle { left:270px; top:16px; }
+        body.vosi-sidebar-expanded #sidebar-toggle .toggle-arrow { transform:rotate(180deg); }
+        body.vosi-sidebar-collapsed .vosi-app-shell > .grid.grid-cols-12 { grid-template-columns:minmax(0,1fr)!important; }
+        body.vosi-sidebar-collapsed #main-content { grid-column:1!important; }
+        #main-nav[hidden] { display:flex!important; }
+        #main-nav { flex-direction:column; gap:3px; }
+        #main-nav .nav-item { color:#c9c9c9!important; background:transparent!important; border-color:transparent!important; box-shadow:none!important; }
+        #main-nav .nav-item.active { color:#fff!important; background:rgba(255,255,255,.09)!important; border-color:rgba(255,255,255,.08)!important; }
+        #main-nav .nav-item[data-tab="settings"] { display:none!important; }
+        #sidebar-brand { padding:0 8px!important; }
+        #sidebar-brand .relative { width:34px!important; height:34px!important; box-shadow:none!important; }
+        #sidebar-settings { display:flex; flex-direction:column; gap:15px; }
+        #sidebar-settings .setting-group { display:flex; flex-direction:column; gap:7px; }
+        #sidebar-settings .setting-title { margin:0 8px 2px; color:#a4a4a4; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+        #sidebar-settings .setting-row { display:flex; align-items:center; justify-content:space-between; gap:9px; min-height:31px; padding:4px 8px; border-radius:8px; color:#dedede; font-size:11px; }
+        #sidebar-settings .setting-row label:first-child { flex:1; min-width:0; }
+        #sidebar-settings .setting-row small { display:block; color:#898989; font-size:10px; line-height:1.25; }
+        #sidebar-settings select,#sidebar-settings input[type="text"] { max-width:126px; min-width:104px; border:1px solid rgba(255,255,255,.13); border-radius:8px; background:#171717; color:#eee; padding:5px 7px; font-size:10px; }
+        #sidebar-settings .settings-switch { width:34px; height:20px; }
+        #sidebar-settings .settings-switch span:before { width:14px; height:14px; }
+        #sidebar-settings .settings-switch input:checked + span:before { transform:translateX(14px); }
+        #sidebar-settings .side-action { width:100%; padding:7px 9px; border:1px solid rgba(255,255,255,.12); border-radius:9px; background:rgba(255,255,255,.06); color:#eee; text-align:left; font-size:11px; }
+        #sidebar-settings .side-action:hover { background:rgba(255,255,255,.11); }
+        #sidebar-settings .task-state { font-size:9px; padding:3px 7px; }
+        #sidebar-settings .side-note { padding:0 8px; color:#838383; font-size:10px; line-height:1.45; }
+        #setting-save-status { min-height:14px; padding:0 8px; color:#8ee6bd; font-size:10px; }
+        .quick-action { padding:9px 12px; border:1px solid rgba(255,255,255,.12); border-radius:999px; color:#dedede; background:rgba(255,255,255,.055); font-size:11px; transition:background .2s,border-color .2s,transform .2s; }
+        .quick-action:hover { background:rgba(255,255,255,.11); border-color:rgba(125,190,255,.3); transform:translateY(-1px); }
+        .preset-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:0 8px; }
+        .preset-button { min-height:32px; border:1px solid rgba(255,255,255,.12); border-radius:8px; color:#ddd; background:rgba(255,255,255,.05); font-size:10px; }
+        .preset-button:hover { background:rgba(255,255,255,.11); }
+        .voice-status-row { display:flex; align-items:center; gap:7px; padding:2px 8px; }
+        .voice-status-dot { width:8px; height:8px; border-radius:50%; background:#64748b; box-shadow:0 0 0 3px rgba(100,116,139,.12); }
+        .voice-status-dot.is-listening { background:#34d399; box-shadow:0 0 0 3px rgba(52,211,153,.16),0 0 12px rgba(52,211,153,.6); }
+        .voice-status-label { color:#9ca3af; font-size:10px; }
+        .dialog-backdrop { position:fixed; inset:0; z-index:2000; display:none; place-items:center; padding:20px; background:rgba(0,5,16,.74); backdrop-filter:blur(12px); }
+        .dialog-backdrop.is-open { display:grid; }
+        .vosi-dialog { width:min(520px,100%); max-height:min(90vh,760px); overflow:auto; padding:26px; border:1px solid rgba(148,190,230,.22); border-radius:20px; background:linear-gradient(150deg,rgba(18,28,44,.98),rgba(7,13,25,.98)); box-shadow:0 26px 90px rgba(0,0,0,.55); color:#eef5ff; }
+        .vosi-dialog h2 { margin:0 0 8px; font-size:22px; font-weight:750; }
+        .vosi-dialog p { margin:0 0 16px; color:#aab6c8; font-size:12px; line-height:1.55; }
+        .dialog-field { display:grid; gap:6px; margin:12px 0; color:#dbe6f5; font-size:11px; }
+        .dialog-field select,.dialog-field input[type="text"] { width:100%; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 10px; background:#101a2b; color:#f5f8ff; font-size:12px; }
+        .dialog-check { display:flex; align-items:flex-start; gap:9px; margin:12px 0; color:#dbe6f5; font-size:11px; line-height:1.45; }
+        .dialog-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:20px; }
+        .dialog-button { padding:9px 13px; border:1px solid rgba(255,255,255,.14); border-radius:9px; color:#e5edf8; background:rgba(255,255,255,.06); font-size:11px; font-weight:700; }
+        .dialog-button.primary { border-color:rgba(56,189,248,.42); background:linear-gradient(135deg,#0284c7,#2563eb); color:white; }
+        .dialog-button:disabled { opacity:.45; cursor:not-allowed; }
+        .safety-note { padding:11px 12px; border:1px solid rgba(251,191,36,.2); border-radius:10px; color:#e9d8a6!important; background:rgba(251,191,36,.055); font-size:11px!important; }
+        @media(max-width:850px) {
+            .vosi-app-shell > .grid.grid-cols-12 { grid-template-columns:250px minmax(0,1fr)!important; }
+            #app-sidebar { padding:16px 10px!important; }
+            #main-content { padding:22px!important; }
+        }
+        @media(max-width:620px) {
+            .vosi-app-shell > .grid.grid-cols-12 { grid-template-columns:minmax(0,1fr)!important; grid-template-rows:auto minmax(300px,1fr); }
+            #app-sidebar { grid-column:1!important; grid-row:1; height:48vh; min-height:245px; border-right:0!important; border-bottom:1px solid rgba(255,255,255,.10)!important; }
+            #main-content { grid-column:1!important; grid-row:2; min-height:0; padding:20px!important; }
+            #main-content > .text-center.space-y-2 { margin-bottom:14px; }
+            #main-content > .text-center.space-y-2 h2 { font-size:28px!important; }
+        }
 </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans vosi-sidebar-collapsed">
+    <div id="setup-wizard" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="setup-title" aria-hidden="true">
+        <section class="vosi-dialog">
+            <h2 id="setup-title">Set up VOSI your way</h2>
+            <p>Choose a few preferences to get started. You can change them any time in the sidebar.</p>
+            <label class="dialog-field">Response style<select id="setup-response-style"><option value="balanced">Balanced</option><option value="concise">Short and direct</option><option value="detailed">Detailed</option><option value="stepwise">Step by step</option></select></label>
+            <label class="dialog-field">Response language<select id="setup-language"><option value="same">Match my message</option><option value="English">English</option><option value="Hindi">Hindi</option><option value="Kannada">Kannada</option></select></label>
+            <label class="dialog-field">Appearance<select id="setup-theme"><option value="dark">VOSI dark</option><option value="dim">Dimmed</option></select></label>
+            <label class="dialog-check"><input id="setup-voice-replies" type="checkbox" checked><span>Speak VOSI’s replies aloud</span></label>
+            <label class="dialog-check"><input id="setup-hands-free" type="checkbox"><span>Enable “Hey Vosi” wake listening while VOSI is running</span></label>
+            <p class="safety-note">Hands-free listening is optional. When enabled, the microphone stays active and browser speech recognition may process audio online. VOSI cannot wake from a fully closed state.</p>
+            <div class="dialog-actions"><button id="setup-skip" class="dialog-button" type="button">Skip for now</button><button id="setup-finish" class="dialog-button primary" type="button">Save preferences</button></div>
+        </section>
+    </div>
+    <div id="task-review-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="task-review-title" aria-hidden="true">
+        <section class="vosi-dialog">
+            <h2 id="task-review-title">Review this task</h2>
+            <p>VOSI will draft a plan for you to review, then track progress from the screen context you share.</p>
+            <label class="dialog-field">What do you want to accomplish?<input id="task-review-input" type="text" maxlength="240" placeholder="For example: organize these notes into a summary"></label>
+            <div id="task-plan-preview" hidden><strong class="text-xs text-sky-200">Suggested steps</strong><div id="task-plan-output" class="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-slate-300"></div></div>
+            <p class="safety-note">The plan is advisory. VOSI won’t click, send, delete, purchase, or submit anything; you stay in control of those actions.</p>
+            <div class="dialog-actions"><button id="task-review-cancel" class="dialog-button" type="button">Cancel</button><button id="task-review-plan" class="dialog-button primary" type="button">Create a plan</button><button id="task-review-start" class="dialog-button primary" type="button" hidden>Approve plan and track</button></div>
+        </section>
+    </div>
+    <div id="device-action-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="device-action-title" aria-hidden="true">
+        <section class="vosi-dialog">
+            <h2 id="device-action-title">Open Wi-Fi settings?</h2>
+            <p id="device-action-description">VOSI will open Windows Wi-Fi settings. You can review and make the change there.</p>
+            <p class="safety-note">VOSI will not change your connection directly. You stay in control of network selection and passwords.</p>
+            <div class="dialog-actions"><button id="device-action-cancel" class="dialog-button" type="button">Cancel</button><button id="device-action-confirm" class="dialog-button primary" type="button">Open settings</button></div>
+        </section>
+    </div>
     <!-- Soft ambient orbs that move slowly -->
     <div class="ambient-orb orb-1"></div>
     <div class="ambient-orb orb-2"></div>
@@ -381,16 +515,16 @@
     <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 14s; animation-delay: -4s;"></div>
     <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
 
-    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Show navigation">
-                        <i data-lucide="panel-left-open" class="w-4 h-4" aria-hidden="true"></i>
-                        <span class="toggle-label">Show navigation</span>
+    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="false" aria-controls="app-sidebar" aria-label="Show settings">
+                        <span class="toggle-arrow" aria-hidden="true">›</span>
+                        <span class="toggle-label">Show settings</span>
                     </button>
 
 <div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
             <div class="flex items-center space-x-2 md:hidden">
                 <img src="./src/assets/logo.png" alt="VOSI" class="w-7 h-7 rounded-full object-contain">
-                <span class="font-bold text-sm tracking-wide text-white">VOSI</span>
+                <span class="font-bold text-sm tracking-wide text-white">Vosi</span>
             </div>
             <div class="hidden md:block"></div>
             <div class="flex items-center space-x-3 ml-auto">
@@ -416,11 +550,11 @@
                             <img src="./src/assets/logo.png" alt="VOSI logo" class="block w-full h-full object-contain">
                         </div>
                         <div id="sidebar-brand-copy" class="min-w-0">
-                            <h1 class="font-bold text-sm text-white tracking-wider">VOSI</h1>
+                            <h1 class="font-bold text-sm text-white tracking-wider">Vosi</h1>
                             <p class="text-[11px] text-slate-400 tracking-tight">Your Digital Screen Assistant</p>
                         </div>
                     </div>
-                    <nav class="space-y-1.5" id="main-nav" hidden>
+                    <nav class="space-y-1.5" id="main-nav">
                         <a href="#" data-tab="home" class="nav-item active flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-900/60 to-purple-900/40 text-white border border-indigo-500/30 shadow-md shadow-indigo-950/50">
                             <i data-lucide="home" class="w-4 h-4 text-indigo-300"></i><span>Home</span>
                         </a>
@@ -434,6 +568,52 @@
                             <i data-lucide="settings" class="w-4 h-4"></i><span>Settings</span>
                         </a>
                     </nav>
+                    <div id="sidebar-settings" aria-label="Vosi settings">
+                        <section class="setting-group" aria-labelledby="side-awareness-title">
+                            <h2 class="setting-title" id="side-awareness-title">Screen awareness</h2>
+                            <div class="setting-row"><span>Observe shared screen</span><label class="settings-switch" aria-label="Screen awareness"><input type="checkbox" id="awareness-toggle"><span></span></label></div>
+                            <button id="btn-start-observing" class="side-action" type="button">Start observing</button>
+                            <button id="sidebar-pause-awareness" class="side-action" type="button" disabled>Pause frame uploads</button>
+                            <div class="setting-row"><span>Observation status</span><span id="setting-observation-status" class="task-state">OFF</span></div>
+                            <div class="setting-row"><span>Local AI backend</span><span id="setting-backend-status" class="task-state">CHECKING</span></div>
+                            <div id="setting-backend-detail" class="side-note">Checking local backend…</div>
+                        </section>
+                        <section class="setting-group" aria-labelledby="side-assistant-title">
+                            <h2 class="setting-title" id="side-assistant-title">Assistant</h2>
+                            <label class="setting-row" for="setting-response-style"><span>Response style</span><select id="setting-response-style"><option value="balanced">Balanced</option><option value="concise">Short &amp; direct</option><option value="detailed">Detailed</option><option value="stepwise">Step-by-step</option></select></label>
+                            <label class="setting-row" for="setting-language"><span>Response language</span><select id="setting-language"><option value="same">Match my message</option><option value="English">English</option><option value="Hindi">Hindi</option><option value="Kannada">Kannada</option></select></label>
+                            <div class="setting-row"><span>Click guidance<small>Show guide when confidence is high</small></span><label class="settings-switch" aria-label="Click guidance"><input id="setting-click-guidance" type="checkbox" checked><span></span></label></div>
+                            <div class="setting-row"><span>Voice input</span><label class="settings-switch" aria-label="Voice input"><input id="setting-voice-input" type="checkbox" checked><span></span></label></div>
+                            <div class="setting-row"><span>Voice replies</span><label class="settings-switch" aria-label="Voice replies"><input id="setting-voice-replies" type="checkbox" checked><span></span></label></div>
+                            <label class="setting-row" for="setting-voice-persona"><span>Spoken voice</span><select id="setting-voice-persona"><option value="female">Warm female</option><option value="male">Warm male</option></select></label>
+                            <div class="setting-row"><span>Hands-free wake phrase<small>“Hey Vosi” while VOSI is running</small></span><label class="settings-switch" aria-label="Hands-free wake phrase"><input id="setting-hands-free" type="checkbox"><span></span></label></div>
+                            <label class="setting-row" for="setting-wake-phrase"><span>Wake phrase</span><input id="setting-wake-phrase" type="text" value="Hey Vosi" maxlength="40"></label>
+                            <p class="side-note">When enabled, VOSI keeps the microphone active to detect the wake phrase. Browser speech recognition may process audio online. VOSI must remain running; it cannot wake from a fully closed state.</p>
+                            <div class="voice-status-row"><span id="voice-status-dot" class="voice-status-dot" aria-hidden="true"></span><span id="voice-status-label" class="voice-status-label">Voice is off</span></div>
+                            <button id="voice-pause-button" class="side-action" type="button">Enable wake listening</button>
+                            <button id="voice-test-button" class="side-action" type="button">Test microphone</button>
+                            <div id="voice-setting-status" class="side-note" aria-live="polite">Voice features are ready when enabled.</div>
+                        </section>
+                        <section class="setting-group" aria-labelledby="side-presets-title">
+                            <h2 class="setting-title" id="side-presets-title">Quick setup</h2>
+                            <div class="preset-grid"><button class="preset-button" type="button" data-preset="focus">Focus</button><button class="preset-button" type="button" data-preset="quiet">Quiet</button><button class="preset-button" type="button" data-preset="handsfree">Hands-free</button></div>
+                        </section>
+                        <section class="setting-group" aria-labelledby="side-experience-title">
+                            <h2 class="setting-title" id="side-experience-title">Experience</h2>
+                            <label class="setting-row" for="setting-theme"><span>Appearance</span><select id="setting-theme"><option value="dark">Jarvis dark</option><option value="dim">Dimmed</option></select></label>
+                            <div class="setting-row"><span>Reminder alerts</span><label class="settings-switch" aria-label="Reminder alerts"><input id="setting-reminders" type="checkbox" checked><span></span></label></div>
+                            <div class="setting-row"><span>Companion overlay<small>Show while screen awareness is on</small></span><label class="settings-switch" aria-label="Companion overlay"><input id="setting-companion-overlay" type="checkbox" checked><span></span></label></div>
+                            <div class="setting-row"><span>Start with Windows<small>Open VOSI when you sign in</small></span><label class="settings-switch" aria-label="Start with Windows"><input id="setting-start-with-windows" type="checkbox"><span></span></label></div>
+                            <div id="startup-setting-status" class="side-note" aria-live="polite">Available in the installed desktop app.</div>
+                            <button id="setup-open-button" class="side-action" type="button">Open setup guide</button>
+                        </section>
+                        <section class="setting-group" aria-labelledby="side-privacy-title">
+                            <h2 class="setting-title" id="side-privacy-title">Privacy &amp; maintenance</h2>
+                            <p class="side-note">Screen frames go to your local Vosi backend only while awareness is active. Hands-free listening is opt-in; browser speech recognition may process audio online. Preferences are saved on this device.</p>
+                            <button id="setting-reset" class="side-action" type="button">Reset settings to defaults</button>
+                            <p id="setting-save-status" aria-live="polite">Settings ready.</p>
+                        </section>
+                    </div>
                 </div>
                 <div id="sidebar-footer" class="pt-4 border-t border-white/5 px-2">
                     <div class="flex items-center space-x-2 text-xs font-medium text-slate-300">
@@ -453,7 +633,7 @@
                 <div class="text-center space-y-2 max-w-xl">
                     <p class="text-xs tracking-widest text-sky-300 font-semibold uppercase">Your Digital Companion</p>
                     <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-                        Hi, I'm <span class="text-gradient-purple">VOSI.</span>
+                        Hi, I'm <span class="text-gradient-purple">Vosi.</span>
                     </h2>
                     <p class="text-slate-400 text-xs md:text-sm leading-relaxed px-4">
                         I'm here to understand your screen, follow what you're doing, and help when you need me.
@@ -470,14 +650,29 @@
                         </div>
                     </form>
                     <div class="flex flex-wrap justify-center gap-2">
-                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
-                            <i data-lucide="eye" class="w-3.5 h-3.5"></i><span>What's on my screen?</span>
+                        <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
+                            Explain my screen
                         </button>
-                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
-                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>Help me with this</span>
+                        <button class="quick-action" type="button" data-prompt="Summarize my shared screen in three short bullet points.">
+                            Summarize screen
                         </button>
-                        <button class="chip px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-slate-300 hover:text-white hover:border-indigo-500/40 transition-all flex items-center space-x-1.5">
-                            <i data-lucide="circle" class="w-3.5 h-3.5"></i><span>Start screen awareness</span>
+                        <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
+                            Guide next step
+                        </button>
+                        <button class="quick-action" type="button" data-action="awareness">
+                            Start screen sharing
+                        </button>
+                        <button class="quick-action" type="button" data-action="task">
+                            Plan a task
+                        </button>
+                        <button class="quick-action" type="button" data-device-target="youtube">
+                            Open YouTube
+                        </button>
+                        <button class="quick-action" type="button" data-device-target="wifi-settings">
+                            Wi-Fi settings
+                        </button>
+                        <button class="quick-action" type="button" data-device-target="windows-settings">
+                            Windows settings
                         </button>
                     </div>
                 </div>
@@ -485,26 +680,11 @@
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
                     <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>VOSI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
                     <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>VOSI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask VOSI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local VOSI backend.</p></div>
-                    <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>Personalize how VOSI responds and observes your screen. Changes are saved on this device.</p><div class="mt-5 mb-2 text-[10px] uppercase tracking-widest text-sky-300 font-bold">AI &amp; Intelligence</div><div class="tab-row"><div><div class="tab-label">Response style</div><div class="tab-value">How VOSI explains things</div></div><select id="setting-response-style" class="rounded-lg border border-white/10 bg-space-700 px-3 py-2 text-xs text-white outline-none"><option value="balanced">Balanced</option><option value="concise">Short &amp; direct</option><option value="detailed">Detailed</option><option value="stepwise">Step-by-step</option></select></div><div class="tab-row"><div><div class="tab-label">Response language</div><div class="tab-value">Language for answers</div></div><select id="setting-language" class="rounded-lg border border-white/10 bg-space-700 px-3 py-2 text-xs text-white outline-none"><option value="same">Match my message</option><option value="English">English</option><option value="Hindi">Hindi</option><option value="Kannada">Kannada</option></select></div><div class="tab-row"><div><div class="tab-label">Click guidance</div><div class="tab-value">Show the on-screen guide when confidence is high</div></div><label class="settings-switch"><input id="setting-click-guidance" type="checkbox" checked><span></span></label></div><div class="tab-row"><div><div class="tab-label">Appearance</div><div class="tab-value">Choose the app background mood</div></div><select id="setting-theme" class="rounded-lg border border-white/10 bg-space-700 px-3 py-2 text-xs text-white outline-none"><option value="dark">Cosmic dark</option><option value="dim">Dimmed</option></select></div><div class="mt-5 mb-2 text-[10px] uppercase tracking-widest text-sky-300 font-bold">Screen observation</div><div class="tab-row"><div><div class="tab-label">Observation status</div><div class="tab-value">Screen capture state</div></div><span id="setting-observation-status" class="task-state">OFF</span></div><div class="tab-row"><div><div class="tab-label">Backend connection</div><div id="setting-backend-detail" class="tab-value">Checking local backend…</div></div><span id="setting-backend-status" class="task-state">CHECKING</span></div><div class="mt-5 mb-2 text-[10px] uppercase tracking-widest text-sky-300 font-bold">Privacy &amp; maintenance</div><p class="text-xs text-slate-400">Screen frames are sent to your local VOSI backend at 127.0.0.1:8001 while observation is active. Settings are stored in this app local browser storage.</p><button id="setting-reset" class="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-bold text-slate-300 hover:bg-white/[0.07]">Reset settings to defaults</button><p id="setting-save-status" class="text-[10px] mt-3 text-emerald-300" aria-live="polite">Settings ready.</p></div>
+                    <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>Vosi preferences are available in the left sidebar.</p></div>
                 </div>
             </main>
 
             <aside class="col-span-12 lg:col-span-3 flex flex-col gap-4 overflow-y-auto">
-                <div class="p-4 rounded-2xl glass-panel space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                            <i data-lucide="eye" class="w-4 h-4 text-indigo-400"></i><span>SCREEN AWARENESS</span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="awareness-toggle" class="sr-only peer">
-                            <div class="w-9 h-5 bg-space-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                            <span class="ml-2 text-[10px] font-bold tracking-wider uppercase text-slate-500 peer-checked:text-blue-400" id="awareness-status-label">OFF</span>
-                        </label>
-                    </div>
-                    <p class="text-xs text-slate-400 leading-relaxed">Screen AI can observe your screen when you ask it to.</p>
-                    <button id="btn-start-observing" class="w-full py-2.5 px-4 rounded-xl btn-gradient text-xs font-semibold text-white tracking-wide">Start observing</button>
-                </div>
-
                 <div class="p-4 rounded-2xl glass-panel space-y-3 hidden" id="response-box">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -525,28 +705,34 @@
             lucide.createIcons();
             setupInteractivity();
             setupSettings();
+            setupOnboarding();
             createCosmicDust();
             initCompanion();
             checkBackend();
         });
 
         const SETTINGS_KEY = "vosi.settings.v1";
-        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark" };
+        const ONBOARDING_KEY = "vosi.setup.complete.v1";
+        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey Vosi", reminders: true, companionOverlay: true };
         let vosiSettings = { ...DEFAULT_SETTINGS };
         function loadVosiSettings() {
             try { vosiSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; }
             catch (_) { vosiSettings = { ...DEFAULT_SETTINGS }; }
             const style = document.getElementById("setting-response-style"); const language = document.getElementById("setting-language"); const guide = document.getElementById("setting-click-guidance"); const theme = document.getElementById("setting-theme");
-            if (style) style.value = vosiSettings.responseStyle; if (language) language.value = vosiSettings.language; if (guide) guide.checked = !!vosiSettings.clickGuidance; if (theme) theme.value = vosiSettings.theme; applyVosiTheme();
+            if (style) style.value = vosiSettings.responseStyle; if (language) language.value = vosiSettings.language; if (guide) guide.checked = !!vosiSettings.clickGuidance; if (theme) theme.value = vosiSettings.theme;
+            const voicePersona = document.getElementById("setting-voice-persona"); if (voicePersona) voicePersona.value = vosiSettings.voicePersona || "female";
+            for (const [id, key] of [["setting-voice-input","voiceInput"],["setting-voice-replies","voiceReplies"],["setting-hands-free","handsFree"],["setting-reminders","reminders"],["setting-companion-overlay","companionOverlay"]]) { const control = document.getElementById(id); if (control) control.checked = !!vosiSettings[key]; }
+            const wakePhrase = document.getElementById("setting-wake-phrase"); if (wakePhrase) wakePhrase.value = vosiSettings.wakePhrase || "Hey Vosi";
+            applyVosiTheme();
         }
         function saveVosiSettings() {
-            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark" };
+            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark", voiceInput: !!document.getElementById("setting-voice-input")?.checked, voiceReplies: !!document.getElementById("setting-voice-replies")?.checked, voicePersona: document.getElementById("setting-voice-persona")?.value || "female", handsFree: !!document.getElementById("setting-hands-free")?.checked, wakePhrase: document.getElementById("setting-wake-phrase")?.value.trim() || "Hey Vosi", reminders: !!document.getElementById("setting-reminders")?.checked, companionOverlay: !!document.getElementById("setting-companion-overlay")?.checked };
             try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save VOSI settings:", error); } applyVosiTheme();
             const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Saved on this device.";
         }
         function applyVosiTheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
         function prepareVosiPrompt(message) {
-            const instructions = []; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + ".");
+            const instructions = ["Do not claim you performed clicks or external actions. Before any action that sends, deletes, purchases, or submits, explain the intended action and wait for the user to explicitly confirm."]; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + "."); if (vosiSettings.voiceReplies) instructions.push("Speak in a warm, friendly, natural conversational tone. Use voice-ready phrasing and contractions, and avoid reading markdown aloud unless the user asks for it.");
             return instructions.length ? "[User preferences: " + instructions.join(" ") + "] " + message : message;
         }
         function updateSettingsObservation(active) { const el = document.getElementById("setting-observation-status"); if (el) { el.textContent = active ? "ON" : "OFF"; el.classList.toggle("text-emerald-300", active); } }
@@ -556,9 +742,76 @@
             catch (_) { badge.textContent = "OFFLINE"; badge.classList.remove("text-emerald-300"); detail.textContent = "Start the FastAPI backend on port 8001."; }
         }
         function setupSettings() {
-            loadVosiSettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme"].forEach(id => document.getElementById(id)?.addEventListener("change", saveVosiSettings));
-            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadVosiSettings(); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
+            loadVosiSettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-voice-persona", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveVosiSettings));
+            setupPreferencePresets();
+            void setupStartupPreference();
+            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadVosiSettings(); window.dispatchEvent(new CustomEvent("vosi-settings-reset")); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
             void refreshSettingsBackendStatus(); setInterval(() => { const page = document.getElementById("tab-page-settings"); if (page && page.style.display !== "none") void refreshSettingsBackendStatus(); }, 10000);
+        }
+        function setupOnboarding() {
+            const dialog = document.getElementById("setup-wizard");
+            const open = () => {
+                const style = document.getElementById("setup-response-style"); const language = document.getElementById("setup-language"); const theme = document.getElementById("setup-theme");
+                if (style) style.value = document.getElementById("setting-response-style")?.value || "balanced";
+                if (language) language.value = document.getElementById("setting-language")?.value || "same";
+                if (theme) theme.value = document.getElementById("setting-theme")?.value || "dark";
+                const replies = document.getElementById("setup-voice-replies"); const handsFree = document.getElementById("setup-hands-free");
+                if (replies) replies.checked = !!document.getElementById("setting-voice-replies")?.checked;
+                if (handsFree) handsFree.checked = !!document.getElementById("setting-hands-free")?.checked;
+                dialog?.classList.add("is-open"); dialog?.setAttribute("aria-hidden", "false");
+            };
+            const close = () => { dialog?.classList.remove("is-open"); dialog?.setAttribute("aria-hidden", "true"); };
+            document.getElementById("setup-skip")?.addEventListener("click", () => { localStorage.setItem(ONBOARDING_KEY, "1"); close(); });
+            document.getElementById("setup-finish")?.addEventListener("click", () => {
+                const style = document.getElementById("setting-response-style"); const language = document.getElementById("setting-language"); const theme = document.getElementById("setting-theme");
+                const replies = document.getElementById("setting-voice-replies"); const handsFree = document.getElementById("setting-hands-free"); const previousHandsFree = !!handsFree?.checked;
+                if (style) style.value = document.getElementById("setup-response-style")?.value || "balanced";
+                if (language) language.value = document.getElementById("setup-language")?.value || "same";
+                if (theme) theme.value = document.getElementById("setup-theme")?.value || "dark";
+                if (replies) replies.checked = !!document.getElementById("setup-voice-replies")?.checked;
+                if (handsFree) handsFree.checked = !!document.getElementById("setup-hands-free")?.checked;
+                localStorage.setItem(ONBOARDING_KEY, "1"); saveVosiSettings(); close();
+                if (previousHandsFree !== !!handsFree?.checked) handsFree?.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+            document.getElementById("setup-open-button")?.addEventListener("click", open);
+            if (!localStorage.getItem(ONBOARDING_KEY)) open();
+        }
+        function setupPreferencePresets() {
+            document.querySelectorAll("[data-preset]").forEach(button => button.addEventListener("click", () => {
+                const preset = button.dataset.preset;
+                const input = document.getElementById("setting-voice-input"); const replies = document.getElementById("setting-voice-replies");
+                const handsFree = document.getElementById("setting-hands-free"); const reminders = document.getElementById("setting-reminders");
+                const clickGuidance = document.getElementById("setting-click-guidance"); const previousHandsFree = !!handsFree?.checked;
+                if (preset === "focus") { if (input) input.checked = true; if (replies) replies.checked = false; if (handsFree) handsFree.checked = false; if (reminders) reminders.checked = false; if (clickGuidance) clickGuidance.checked = true; }
+                if (preset === "quiet") { if (input) input.checked = false; if (replies) replies.checked = false; if (handsFree) handsFree.checked = false; if (reminders) reminders.checked = false; }
+                if (preset === "handsfree") { if (input) input.checked = true; if (replies) replies.checked = true; if (handsFree) handsFree.checked = true; if (reminders) reminders.checked = true; }
+                saveVosiSettings();
+                if (previousHandsFree !== !!handsFree?.checked) handsFree?.dispatchEvent(new Event("change", { bubbles: true }));
+                const status = document.getElementById("setting-save-status"); if (status) status.textContent = (preset === "handsfree" ? "Hands-free preset selected. Allow microphone access if prompted." : preset === "quiet" ? "Quiet preset selected." : "Focus preset selected.");
+            }));
+        }
+        async function setupStartupPreference() {
+            const control = document.getElementById("setting-start-with-windows"); const status = document.getElementById("startup-setting-status");
+            const autostart = window.__TAURI__?.autostart;
+            if (!control) return;
+            if (!autostart?.isEnabled || !autostart?.enable || !autostart?.disable) { control.disabled = true; if (status) status.textContent = "Available in the installed VOSI desktop app."; return; }
+            try { control.checked = await autostart.isEnabled(); if (status) status.textContent = control.checked ? "VOSI starts when you sign in." : "VOSI will only start when you open it."; }
+            catch (_) { control.disabled = true; if (status) status.textContent = "Could not read the Windows startup setting."; return; }
+            control.addEventListener("change", async () => {
+                control.disabled = true;
+                try {
+                    if (control.checked) await autostart.enable(); else await autostart.disable();
+                    if (status) status.textContent = control.checked ? "VOSI will start when you sign in." : "VOSI will only start when you open it.";
+                } catch (error) {
+                    control.checked = !control.checked;
+                    if (status) status.textContent = "Could not update startup setting. " + String(error);
+                } finally { control.disabled = false; }
+            });
+            window.addEventListener("vosi-settings-reset", () => {
+                if (!control.checked) return;
+                control.checked = false;
+                void autostart.disable().then(() => { if (status) status.textContent = "VOSI will only start when you open it."; }).catch(() => { if (status) status.textContent = "Could not clear the Windows startup setting."; });
+            });
         }
         async function checkBackend() {
             try {
@@ -583,6 +836,7 @@
             return res.json();
         }
 
+        let companionWindow = null;
         async function initCompanion() {
             if (!window.__TAURI__) {
                 console.log('Not running in Tauri – companion skipped');
@@ -591,17 +845,21 @@
             try {
                 const { getByLabel } = window.__TAURI__.webviewWindow;
                 const { emit, listen } = window.__TAURI__.event;
-                let companionWin = await getByLabel('companion');
-                if (companionWin) {
+                companionWindow = await getByLabel('companion');
+                if (companionWindow) {
                     // Keep hidden until observing starts
-                    await companionWin.hide();
-                    await companionWin.setAlwaysOnTop(true);
+                    await companionWindow.hide();
+                    await companionWindow.setAlwaysOnTop(true);
                     console.log('Companion window ready (hidden until observing)');
                 }
                 window.notifyCompanionObserving = async (active) => {
                     try {
                         await emit('observation-status', { active });
                         await emit('companion-state', { state: active ? 'observing' : 'idle', observing: active });
+                        if (companionWindow) {
+                            if (active && vosiSettings.companionOverlay) await companionWindow.show();
+                            else await companionWindow.hide();
+                        }
                     } catch (e) { console.warn('Failed to notify companion', e); }
                 };
                 await listen('companion-toggle-observe', async () => {
@@ -636,13 +894,73 @@
         function setupInteractivity() {
             const sidebarToggle = document.getElementById('sidebar-toggle');
             const sidebarNav = document.getElementById('main-nav');
+            const deviceActionDialog = document.getElementById('device-action-dialog');
+            const deviceActionDescription = document.getElementById('device-action-description');
+            let pendingDeviceTarget = null;
+            function closeDeviceActionDialog() {
+                deviceActionDialog?.classList.remove('is-open');
+                deviceActionDialog?.setAttribute('aria-hidden', 'true');
+                pendingDeviceTarget = null;
+            }
+            async function launchDeviceTarget(target) {
+                const invoke = window.__TAURI__?.core?.invoke;
+                const names = { youtube: 'YouTube', 'google-sign-in': 'Google sign-in', 'microsoft-sign-in': 'Microsoft sign-in', 'github-sign-in': 'GitHub sign-in', 'windows-settings': 'Windows Settings', 'wifi-settings': 'Wi-Fi settings', 'network-settings': 'Network settings', 'sound-settings': 'Sound settings', 'display-settings': 'Display settings', 'bluetooth-settings': 'Bluetooth settings' };
+                if (!invoke) {
+                    showResponse('Open in the desktop app', 'Device actions are available when you run the installed VOSI desktop app.');
+                    return;
+                }
+                try {
+                    await invoke('open_device_target', { target });
+                    const isSignIn = target.endsWith('-sign-in');
+                    const details = isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; VOSI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
+                    showResponse('Opened ' + (names[target] || 'device page'), details);
+                    speakVosi(details);
+                } catch (error) {
+                    const message = String(error?.message || error || 'Could not open that page.');
+                    showResponse('Could not open it', message);
+                    speakVosi(message);
+                }
+            }
+            function requestDeviceTarget(target, needsConfirmation = false) {
+                if (!needsConfirmation) { void launchDeviceTarget(target); return; }
+                pendingDeviceTarget = target;
+                if (deviceActionDescription) deviceActionDescription.textContent = 'VOSI will open Windows Wi-Fi settings. You can review and make the requested connection change there; VOSI will not switch networks or enter a password for you.';
+                deviceActionDialog?.classList.add('is-open');
+                deviceActionDialog?.setAttribute('aria-hidden', 'false');
+            }
+            function parseDeviceCommand(raw) {
+                const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                const wifi = /\b(wi[\s-]?fi|wireless|network)\b/.test(text);
+                if (wifi && /\b(turn|switch|enable|disable|connect|disconnect|change)\b/.test(text)) return { target: 'wifi-settings', confirm: true };
+                if (/\b(sign\s*in|log\s*in|login)\b/.test(text)) {
+                    if (/\b(youtube)\b/.test(text)) return { target: 'youtube' };
+                    if (/\b(google|gmail)\b/.test(text)) return { target: 'google-sign-in' };
+                    if (/\b(microsoft|outlook|office)\b/.test(text)) return { target: 'microsoft-sign-in' };
+                    if (/\b(github)\b/.test(text)) return { target: 'github-sign-in' };
+                }
+                if (/\b(youtube|you tube)\b/.test(text) && (/\b(open|launch|go to|visit|watch|start)\b/.test(text) || text.length < 18)) return { target: 'youtube' };
+                if (/\b(wi[\s-]?fi|wireless)\b/.test(text) && /\b(settings|setting|open|connect)\b/.test(text)) return { target: 'wifi-settings' };
+                if (/\b(network)\b/.test(text) && /\b(settings|setting)\b/.test(text)) return { target: 'network-settings' };
+                if (/\b(sound|volume|audio)\b/.test(text) && /\b(settings|setting|open)\b/.test(text)) return { target: 'sound-settings' };
+                if (/\b(display|screen|brightness)\b/.test(text) && /\b(settings|setting|open)\b/.test(text)) return { target: 'display-settings' };
+                if (/\b(bluetooth)\b/.test(text) && /\b(settings|setting|open|turn on|turn off)\b/.test(text)) return { target: 'bluetooth-settings' };
+                if (/\b(open|show)\b.*\b(windows )?settings\b/.test(text)) return { target: 'windows-settings' };
+                return null;
+            }
+            document.getElementById('device-action-cancel')?.addEventListener('click', closeDeviceActionDialog);
+            deviceActionDialog?.addEventListener('click', event => { if (event.target === deviceActionDialog) closeDeviceActionDialog(); });
+            document.getElementById('device-action-confirm')?.addEventListener('click', () => {
+                const target = pendingDeviceTarget;
+                closeDeviceActionDialog();
+                if (target) void launchDeviceTarget(target);
+            });
             sidebarToggle?.addEventListener('click', () => {
                 const expanded = sidebarToggle.getAttribute('aria-expanded') !== 'true';
                 if (sidebarNav) sidebarNav.hidden = !expanded;
                 sidebarToggle.setAttribute('aria-expanded', String(expanded));
-                sidebarToggle.setAttribute('aria-label', expanded ? 'Hide navigation' : 'Show navigation');
+                sidebarToggle.setAttribute('aria-label', expanded ? 'Hide settings' : 'Show settings');
                 const label = sidebarToggle.querySelector('.toggle-label');
-                if (label) label.textContent = expanded ? 'Hide navigation' : 'Show navigation';
+                if (label) label.textContent = expanded ? 'Hide settings' : 'Show settings';
                 document.body.classList.toggle('vosi-sidebar-expanded', expanded);
                 document.body.classList.toggle('vosi-sidebar-collapsed', !expanded);
             });
@@ -743,32 +1061,64 @@
                 if (pages.tasks && pages.tasks.style.display !== 'none') void refreshWorkflow();
             }, 3000);
             document.getElementById('awareness-page-button')?.addEventListener('click',()=>document.getElementById('btn-start-observing')?.click());
+            const taskReviewDialog = document.getElementById('task-review-dialog');
+            const taskReviewInput = document.getElementById('task-review-input');
+            const taskPlanButton = document.getElementById('task-review-plan');
+            const taskStartButton = document.getElementById('task-review-start');
+            const taskPlanPreview = document.getElementById('task-plan-preview');
+            const taskPlanOutput = document.getElementById('task-plan-output');
+            let reviewedTaskName = null;
+            const closeTaskReview = () => { taskReviewDialog?.classList.remove('is-open'); taskReviewDialog?.setAttribute('aria-hidden', 'true'); };
+            const openTaskReview = () => { reviewedTaskName = null; if (taskPlanPreview) taskPlanPreview.hidden = true; if (taskPlanOutput) taskPlanOutput.textContent = ''; if (taskPlanButton) { taskPlanButton.hidden = false; taskPlanButton.disabled = false; taskPlanButton.textContent = 'Create a plan'; } if (taskStartButton) taskStartButton.hidden = true; taskReviewDialog?.classList.add('is-open'); taskReviewDialog?.setAttribute('aria-hidden', 'false'); if (taskReviewInput) { taskReviewInput.value = ''; taskReviewInput.focus(); } };
             document.getElementById('task-page-button')?.addEventListener('click', async () => {
                 const running = document.getElementById('task-page-state')?.textContent === 'ACTIVE';
-                try {
-                    if (running) {
-                        await apiPost('/task', { action: 'stop' });
-                    } else {
-                        const suggested = window.prompt('What would you like VOSI to help you accomplish?');
-                        if (!suggested || !suggested.trim()) return;
-                        await apiPost('/task', { action: 'start', task_name: suggested.trim() });
-                    }
-                    await refreshWorkflow();
-                } catch (error) {
-                    const note = document.getElementById('task-sync-note');
-                    if (note) note.textContent = 'Could not update task. Check the VOSI backend.';
-                    console.warn('Task update failed:', error);
-                }
+                if (!running) { openTaskReview(); return; }
+                try { await apiPost('/task', { action: 'stop' }); await refreshWorkflow(); }
+                catch (error) { const note = document.getElementById('task-sync-note'); if (note) note.textContent = 'Could not stop task tracking. Check the VOSI backend.'; console.warn('Task update failed:', error); }
             });
+            document.getElementById('task-review-cancel')?.addEventListener('click', closeTaskReview);
+            taskPlanButton?.addEventListener('click', async () => {
+                const taskName = taskReviewInput?.value.trim();
+                if (!taskName) { if (taskReviewInput) taskReviewInput.focus(); return; }
+                taskPlanButton.disabled = true; taskPlanButton.textContent = 'Creating plan…';
+                try {
+                    const request = 'Create a short, numbered, practical plan for this user goal: ' + taskName + '. Do not execute actions. Point out any step that would send, delete, purchase, or submit something and say that the user must explicitly approve it first.';
+                    const data = await apiPost('/ask', { message: prepareVosiPrompt(request), include_screen: false });
+                    if (!data?.success || !data?.brain) throw new Error(data?.brain?.error || data?.error || 'VOSI could not create a plan.');
+                    reviewedTaskName = taskName;
+                    if (taskPlanOutput) taskPlanOutput.textContent = data.brain.suggestion || data.brain.understanding || 'Review the goal, work through one step at a time, and confirm any consequential action yourself.';
+                    if (taskPlanPreview) taskPlanPreview.hidden = false;
+                    taskPlanButton.hidden = true; if (taskStartButton) taskStartButton.hidden = false;
+                } catch (error) {
+                    if (taskPlanPreview) taskPlanPreview.hidden = false;
+                    if (taskPlanOutput) taskPlanOutput.textContent = 'Could not create a plan. Check the backend connection and try again.';
+                    console.warn('Task planning failed:', error);
+                } finally { taskPlanButton.disabled = false; if (!taskPlanButton.hidden) taskPlanButton.textContent = 'Try again'; }
+            });
+            taskStartButton?.addEventListener('click', async event => {
+                const taskName = taskReviewInput?.value.trim(); const button = event.currentTarget;
+                if (!taskName || taskName !== reviewedTaskName) { if (taskReviewInput) taskReviewInput.focus(); return; }
+                button.disabled = true;
+                try { await apiPost('/task', { action: 'start', task_name: taskName }); closeTaskReview(); await refreshWorkflow(); }
+                catch (error) { const note = document.getElementById('task-sync-note'); if (note) note.textContent = 'Could not start task tracking. Check the VOSI backend.'; console.warn('Task update failed:', error); }
+                finally { button.disabled = false; }
+            });
+            taskReviewInput?.addEventListener('input', () => { if (reviewedTaskName && taskReviewInput.value.trim() !== reviewedTaskName) { reviewedTaskName = null; if (taskPlanButton) { taskPlanButton.hidden = false; taskPlanButton.textContent = 'Create a plan'; } if (taskStartButton) taskStartButton.hidden = true; } });
+            taskReviewInput?.addEventListener('keydown', event => { if (event.key === 'Enter') (reviewedTaskName === taskReviewInput.value.trim() ? taskStartButton : taskPlanButton)?.click(); });
+            taskReviewDialog?.addEventListener('click', event => { if (event.target === taskReviewDialog) closeTaskReview(); });
 
-            const quickBtns = document.querySelectorAll('.chip');
+            const quickBtns = document.querySelectorAll('.quick-action');
             const userInput = document.getElementById('user-input');
             quickBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const text = btn.innerText.trim();
+                    if (btn.dataset.action === 'awareness') { document.getElementById('btn-start-observing')?.click(); return; }
+                    if (btn.dataset.action === 'task') { openTaskReview(); return; }
+                    if (btn.dataset.deviceTarget) { requestDeviceTarget(btn.dataset.deviceTarget); return; }
+                    const text = btn.dataset.prompt || btn.innerText.trim();
+                    if (!userInput) return;
                     userInput.value = text;
                     userInput.focus();
-                    document.getElementById('ai-prompt-form').dispatchEvent(new Event('submit', { cancelable: true }));
+                    document.getElementById('ai-prompt-form')?.requestSubmit();
                 });
             });
 
@@ -784,6 +1134,14 @@
             const awarenessPreviewPlaceholder = document.getElementById("awareness-preview-placeholder");
             const awarenessFrameStatus = document.getElementById("awareness-frame-status");
             const awarenessPauseButton = document.getElementById("awareness-pause-button");
+            document.getElementById('setting-companion-overlay')?.addEventListener('change', () => {
+                window.setTimeout(() => { if (window.notifyCompanionObserving) void window.notifyCompanionObserving(!!screenStream); }, 0);
+                const status = document.getElementById('setting-save-status');
+                if (status) status.textContent = 'Saved on this device.';
+            });
+            document.getElementById('setting-voice-replies')?.addEventListener('change', event => {
+                if (!event.currentTarget.checked) window.speechSynthesis?.cancel();
+            });
 
             function updateAwarenessPageState() {
                 const active = !!screenStream;
@@ -797,6 +1155,13 @@
                     awarenessPauseButton.disabled = !active;
                     awarenessPauseButton.textContent = observationPaused ? "Resume frames" : "Pause frames";
                 }
+                const sidebarPauseButton = document.getElementById("sidebar-pause-awareness");
+                if (sidebarPauseButton) {
+                    sidebarPauseButton.disabled = !active;
+                    sidebarPauseButton.textContent = observationPaused ? "Resume frame uploads" : "Pause frame uploads";
+                }
+                const observeButton = document.getElementById("btn-start-observing");
+                if (observeButton) observeButton.textContent = active ? "Stop observing" : "Start observing";
                 if (awarenessPreview) awarenessPreview.hidden = !active;
                 if (awarenessPreviewPlaceholder) awarenessPreviewPlaceholder.hidden = active;
                 if (awarenessFrameStatus && !active) awarenessFrameStatus.textContent = "Waiting for screen share";
@@ -863,7 +1228,7 @@
                     });
 
                     try {
-                        if (window.__TAURI__?.core?.invoke) {
+                        if (vosiSettings.companionOverlay && window.__TAURI__?.core?.invoke) {
                             await window.__TAURI__.core.invoke("show_companion");
                         }
                     } catch (e) {
@@ -1003,6 +1368,7 @@
                     if (window.captureLatestScreen) window.captureLatestScreen().catch(error => console.warn("Resume capture failed:", error));
                 }
             });
+            document.getElementById("sidebar-pause-awareness")?.addEventListener("click", () => awarenessPauseButton?.click());
             document.getElementById("awareness-what-button")?.addEventListener("click", () => {
                 const input = document.getElementById("user-input");
                 const form = document.getElementById("ai-prompt-form");
@@ -1019,19 +1385,211 @@
             setInterval(() => { const page = document.getElementById("tab-page-awareness"); if (page && page.style.display !== "none") void refreshAwarenessBackendStatus(); }, 10000);
 
             const micBtn = document.getElementById('mic-btn');
+            const voiceSettingStatus = document.getElementById('voice-setting-status');
+            const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let voiceRecognition = null;
+            let recognitionMode = null;
             let isListening = false;
-            if (micBtn) {
-                micBtn.addEventListener('click', () => {
-                    isListening = !isListening;
-                    if (isListening) {
-                        micBtn.classList.add('text-rose-400', 'animate-pulse');
-                        if (userInput) userInput.placeholder = 'Listening...';
-                    } else {
-                        micBtn.classList.remove('text-rose-400', 'animate-pulse');
-                        if (userInput) userInput.placeholder = 'Ask Screen AI anything...';
-                    }
-                });
+            let wakePendingUntil = 0;
+            function setVoiceStatus(text) {
+                if (voiceSettingStatus) voiceSettingStatus.textContent = text;
+                const listening = !!recognitionMode || /listening|speaking/i.test(text);
+                const dot = document.getElementById('voice-status-dot'); const label = document.getElementById('voice-status-label');
+                const pauseButton = document.getElementById('voice-pause-button');
+                dot?.classList.toggle('is-listening', listening);
+                if (label) label.textContent = listening ? 'Microphone listening' : (text.toLowerCase().includes('off') ? 'Voice is off' : 'Voice is ready');
+                if (pauseButton) {
+                    pauseButton.textContent = recognitionMode === 'handsfree' ? 'Pause wake listening' : (document.getElementById('setting-hands-free')?.checked ? 'Resume wake listening' : 'Enable wake listening');
+                    pauseButton.disabled = !document.getElementById('setting-voice-input')?.checked;
+                }
             }
+            function recognitionLanguage() {
+                const language = document.getElementById('setting-language')?.value || 'same';
+                return language === 'Hindi' ? 'hi-IN' : language === 'Kannada' ? 'kn-IN' : language === 'English' ? 'en-US' : (navigator.language || 'en-US');
+            }
+            function stopVoiceRecognition() {
+                const current = voiceRecognition;
+                voiceRecognition = null;
+                recognitionMode = null;
+                isListening = false;
+                if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
+                if (userInput) userInput.placeholder = 'Ask Vosi anything...';
+                if (current) { current.onend = null; try { current.abort(); } catch (_) {} }
+            }
+            function startVoiceRecognition(mode) {
+                if (!vosiSettings.voiceInput) { setVoiceStatus('Turn on Voice input in the sidebar first.'); return false; }
+                if (!SpeechRecognitionAPI) { setVoiceStatus('Voice recognition needs Chrome or Edge.'); return false; }
+                stopVoiceRecognition();
+                const recognition = new SpeechRecognitionAPI();
+                voiceRecognition = recognition;
+                recognitionMode = mode;
+                recognition.lang = recognitionLanguage();
+                recognition.continuous = mode === 'handsfree';
+                recognition.interimResults = mode === 'handsfree';
+                if (micBtn && mode === 'push') { micBtn.classList.add('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'true'); }
+                if (userInput && mode === 'push') userInput.placeholder = 'Listening…';
+                setVoiceStatus(mode === 'handsfree' ? 'Listening for “' + (vosiSettings.wakePhrase || 'Hey Vosi') + '”. Browser speech recognition may process audio online.' : 'Listening… browser speech recognition may process audio online.');
+                recognition.onresult = event => {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        if (result.isFinal) transcript += result[0].transcript + ' ';
+                    }
+                    transcript = transcript.trim();
+                    if (!transcript) return;
+                    if (mode === 'push') {
+                        if (userInput) userInput.value = transcript;
+                        isListening = false;
+                        if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
+                        try { recognition.stop(); } catch (_) {}
+                        document.getElementById('ai-prompt-form')?.requestSubmit();
+                        return;
+                    }
+                    const phrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim().toLowerCase();
+                    const heard = transcript.toLowerCase();
+                    const wakeAt = phrase ? heard.indexOf(phrase) : -1;
+                    let command = '';
+                    if (wakeAt >= 0) {
+                        command = transcript.slice(wakeAt + phrase.length).replace(/^[\s,.:;-]+/, '').trim();
+                        if (!command) { wakePendingUntil = Date.now() + 8000; setVoiceStatus('I’m listening. Say your request after the wake phrase.'); return; }
+                    } else if (Date.now() < wakePendingUntil) command = transcript;
+                    else return;
+                    wakePendingUntil = 0;
+                    if (userInput) userInput.value = command;
+                    document.getElementById('ai-prompt-form')?.requestSubmit();
+                };
+                recognition.onerror = event => {
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        if (mode === 'handsfree') { const control = document.getElementById('setting-hands-free'); if (control) control.checked = false; saveVosiSettings(); }
+                        stopVoiceRecognition();
+                        setVoiceStatus('Microphone permission is blocked. Allow it in Windows or the app settings.');
+                    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                        setVoiceStatus('Voice input stopped: ' + event.error + '.');
+                    }
+                };
+                recognition.onend = () => {
+                    if (voiceRecognition === recognition) { voiceRecognition = null; recognitionMode = null; }
+                    if (mode === 'handsfree' && document.getElementById('setting-hands-free')?.checked && vosiSettings.voiceInput) {
+                        window.setTimeout(() => startVoiceRecognition('handsfree'), 500);
+                    } else if (mode === 'push') {
+                        isListening = false;
+                        if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
+                        if (userInput) userInput.placeholder = 'Ask Vosi anything...';
+                        if (document.getElementById('setting-hands-free')?.checked && vosiSettings.voiceInput) window.setTimeout(() => startVoiceRecognition('handsfree'), 500);
+                    }
+                };
+                try { recognition.start(); isListening = true; return true; }
+                catch (error) { voiceRecognition = null; recognitionMode = null; setVoiceStatus('Could not start voice input. Try again.'); return false; }
+            }
+            function speechPersona() { return document.getElementById('setting-voice-persona')?.value || vosiSettings.voicePersona || 'female'; }
+            function chooseSpeechVoice() {
+                const synth = window.speechSynthesis;
+                if (!synth) return null;
+                const allVoices = synth.getVoices();
+                if (!allVoices.length) return null;
+                const language = recognitionLanguage().toLowerCase().split('-')[0];
+                const languageVoices = allVoices.filter(voice => (voice.lang || '').toLowerCase().startsWith(language));
+                const voices = languageVoices.length ? languageVoices : allVoices;
+                const feminineNames = /\b(female|woman|girl|aria|jenny|zira|samantha|victoria|hazel|ava|susan|karen|sarah|emma|olivia|michelle|linda|amy|natasha|sonia|heera)\b/i;
+                const masculineNames = /\b(male|man|guy|david|mark|ryan|james|daniel|alex|tom|evan|matthew|christopher|george|peter|thomas|lee|fred|aaron|liam|george|ravi)\b/i;
+                const feminine = speechPersona() === 'female';
+                const genderPattern = feminine ? feminineNames : masculineNames;
+                const candidates = voices.filter(voice => {
+                    const declaredGender = String(voice.gender || '').toLowerCase();
+                    return feminine ? declaredGender === 'female' || genderPattern.test(voice.name || '') : declaredGender === 'male' || genderPattern.test(voice.name || '');
+                });
+                if (!candidates.length) return null;
+                const naturalPattern = /natural|neural|online|premium|enhanced|siri|google/i;
+                candidates.sort((a, b) => Number(naturalPattern.test(b.name)) - Number(naturalPattern.test(a.name)) || Number(!b.localService) - Number(!a.localService));
+                return candidates[0];
+            }
+            function refreshSpokenVoiceStatus() {
+                if (recognitionMode || window.speechSynthesis?.speaking) return;
+                const voice = chooseSpeechVoice();
+                const persona = speechPersona() === 'female' ? 'warm female voice' : 'warm male voice';
+                setVoiceStatus(voice ? 'Ready with ' + voice.name + ' (' + persona + ').' : 'Your ' + persona + ' is selected; this device has no matching installed voice, so its default will be used.');
+            }
+            function spokenText(text) {
+                return String(text)
+                    .replace(/```[\s\S]*?```/g, 'I’ve included a code example in the written reply.')
+                    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+                    .replace(/https?:\/\/\S+/g, 'the link')
+                    .replace(/[`*_>#]/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+            function speakVosi(text) {
+                if (!vosiSettings.voiceReplies || !text || !window.speechSynthesis) return;
+                if (recognitionMode === 'handsfree') stopVoiceRecognition();
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(spokenText(text));
+                const selectedVoice = chooseSpeechVoice();
+                utterance.lang = selectedVoice?.lang || recognitionLanguage();
+                if (selectedVoice) utterance.voice = selectedVoice;
+                utterance.rate = 0.94;
+                utterance.pitch = speechPersona() === 'female' ? 1.04 : 0.97;
+                utterance.volume = 1;
+                utterance.onstart = () => setVoiceStatus('Speaking with the ' + (speechPersona() === 'female' ? 'warm female' : 'warm male') + ' voice.');
+                utterance.onend = () => {
+                    if (document.getElementById('setting-hands-free')?.checked) startVoiceRecognition('handsfree');
+                    else refreshSpokenVoiceStatus();
+                };
+                utterance.onerror = () => refreshSpokenVoiceStatus();
+                window.speechSynthesis.speak(utterance);
+            }
+            window.speechSynthesis?.addEventListener?.('voiceschanged', refreshSpokenVoiceStatus);
+            window.setTimeout(refreshSpokenVoiceStatus, 150);
+            document.getElementById('setting-voice-persona')?.addEventListener('change', refreshSpokenVoiceStatus);
+            document.getElementById('setting-language')?.addEventListener('change', refreshSpokenVoiceStatus);
+            micBtn?.setAttribute('aria-label', 'Speak to Vosi');
+            micBtn?.setAttribute('aria-pressed', 'false');
+            micBtn?.addEventListener('click', () => {
+                if (!vosiSettings.voiceInput) { setVoiceStatus('Turn on Voice input in the sidebar first.'); return; }
+                if (isListening && recognitionMode === 'push') stopVoiceRecognition();
+                else startVoiceRecognition('push');
+            });
+            document.getElementById('setting-voice-input')?.addEventListener('change', event => {
+                if (!event.currentTarget.checked) {
+                    const handsFree = document.getElementById('setting-hands-free');
+                    if (handsFree?.checked) { handsFree.checked = false; handsFree.dispatchEvent(new Event('change', { bubbles: true })); }
+                    stopVoiceRecognition();
+                    setVoiceStatus('Voice input is off.');
+                }
+                else setVoiceStatus('Voice input is ready.');
+            });
+            document.getElementById('setting-hands-free')?.addEventListener('change', event => {
+                if (event.currentTarget.checked) {
+                    if (!startVoiceRecognition('handsfree')) { event.currentTarget.checked = false; saveVosiSettings(); }
+                }
+                else { stopVoiceRecognition(); setVoiceStatus('Hands-free listening is off.'); }
+            });
+            document.getElementById('voice-pause-button')?.addEventListener('click', () => {
+                const handsFree = document.getElementById('setting-hands-free');
+                const voiceInput = document.getElementById('setting-voice-input');
+                if (!handsFree || !voiceInput?.checked) return;
+                handsFree.checked = recognitionMode !== 'handsfree';
+                handsFree.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            document.getElementById('voice-test-button')?.addEventListener('click', async () => {
+                const button = document.getElementById('voice-test-button');
+                if (!navigator.mediaDevices?.getUserMedia) { setVoiceStatus('Microphone access is unavailable in this app window.'); return; }
+                button.disabled = true; setVoiceStatus('Checking microphone permission…');
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    setVoiceStatus('Microphone is ready. Enable hands-free to listen for the wake phrase.');
+                } catch (error) { setVoiceStatus('Microphone test failed. Check the app microphone permission.'); console.warn('Microphone test failed:', error); }
+                finally { button.disabled = false; }
+            });
+            setVoiceStatus(vosiSettings.handsFree ? 'Hands-free wake listening is starting…' : 'Voice input is ready. Hands-free listening is off.');
+            window.setTimeout(() => {
+                const handsFree = document.getElementById('setting-hands-free');
+                if (handsFree?.checked && vosiSettings.voiceInput && !startVoiceRecognition('handsfree')) {
+                    setVoiceStatus('Hands-free is enabled. Allow microphone access to start wake listening.');
+                }
+            }, 0);
+            window.addEventListener('vosi-settings-reset', () => { stopVoiceRecognition(); window.speechSynthesis?.cancel(); setVoiceStatus('Settings restored to defaults.'); });
+            window.addEventListener('vosi-settings-reset', () => { if (window.notifyCompanionObserving) void window.notifyCompanionObserving(!!screenStream); });
 
             const responseBox = document.getElementById('response-box');
             const responseText = document.getElementById('response-text');
@@ -1087,6 +1645,7 @@
                     await refreshWorkflow();
                     if (data.success && data.brain) {
                         const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
+                        speakVosi(answer);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
@@ -1131,8 +1690,15 @@
                     e.preventDefault();
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
+                    const deviceCommand = parseDeviceCommand(query);
+                    if (deviceCommand) {
+                        userInput.value = '';
+                        requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm);
+                        return;
+                    }
                     if (!screenStream && (query.toLowerCase().includes("my screen") || query.toLowerCase().includes("where to click") || query.toLowerCase().includes("latest shared screen"))) {
                         showResponse("Screen sharing is off", "Start observing first and choose the screen you want VOSI to analyze.");
+                        speakVosi("Screen sharing is off. Start observing first and choose the screen you want Vosi to analyze.");
                         return;
                     }
 
@@ -1148,22 +1714,29 @@
                         await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                         if (data.success && data.brain) {
+                            const answer = data.brain.suggestion || data.brain.understanding || "How else can I help?";
                             showResponse(
                                 data.brain.understanding || "Understood",
-                                data.brain.suggestion || "How else can I help?"
+                                answer
                             );
+                            speakVosi(answer);
                         } else {
-                            showResponse("AI Error", data?.brain?.error || data?.error || "Something went wrong");
+                            const message = data?.brain?.error || data?.error || "Something went wrong";
+                            showResponse("AI Error", message);
+                            speakVosi(message);
                             console.error("VOSI AI error:", data);
                         }
                     } catch (err) {
+                        const offlineMessage = "Backend is offline. Start the FastAPI server on port 8001 to get real answers.";
                         showResponse(
                             `You asked: "${query}"`,
-                            "Backend is offline. Start the FastAPI server on port 8001 to get real answers."
+                            offlineMessage
                         );
+                        speakVosi(offlineMessage);
                     }
                 });
             }
         }
     </script>
+
 
