@@ -1100,18 +1100,18 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
-                const flipkartIntent = /\\b(flipkart)\\b/.test(text) && /\\b(search|find|compare|best|buy|look for)\\b/.test(text);
+                const flipkartIntent = /\b(flipkart)\b/.test(text) && /\b(search|find|compare|best|buy|look for)\b/.test(text);
                 if (flipkartIntent) {
-                    const budgetMatch = text.match(/(?:under|below|less than|within)\\s*(?:₹|rs\\.?\\s*)?([\\d,]+)/i);
+                    const budgetMatch = text.match(/(?:under|below|less than|within)\s*(?:₹|rs\.?\s*)?([\d,]+)/i);
                     let productQuery = raw
-                        .replace(/^\\s*(?:hey\\s+vosi[,!: ]*)?/i, '')
-                        .replace(/\\b(?:on|in)\\s+flipkart\\b/i, '')
-                        .replace(/\\b(?:open|search|find|compare|look for|show me|buy)\\b/ig, '')
-                        .replace(/\\b(?:the )?best\\b/ig, '')
-                        .replace(/\\b(?:under|below|less than|within)\\s*(?:₹|rs\\.?\\s*)?[\\d,]+\\s*(?:rupees|rs)?/ig, '')
-                        .replace(/\\b(?:flipkart|rupees|rs|and)\\b/ig, '')
+                        .replace(/^\s*(?:hey\s+vosi[,!: ]*)?/i, '')
+                        .replace(/\b(?:on|in)\s+flipkart\b/i, '')
+                        .replace(/\b(?:open|search|find|compare|look for|show me|buy)\b/ig, '')
+                        .replace(/\b(?:the )?best\b/ig, '')
+                        .replace(/\b(?:under|below|less than|within)\s*(?:₹|rs\.?\s*)?[\d,]+\s*(?:rupees|rs)?/ig, '')
+                        .replace(/\b(?:flipkart|rupees|rs|and)\b/ig, '')
                         .replace(/[₹,]/g, ' ')
-                        .replace(/\\s+/g, ' ').trim();
+                        .replace(/\s+/g, ' ').trim();
                     if (!productQuery) productQuery = 'popular products';
                     return { target: 'flipkart-search', query: productQuery, budget: budgetMatch ? Number(budgetMatch[1].replace(/,/g, '')) : null };
                 }
