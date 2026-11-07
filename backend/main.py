@@ -15,6 +15,55 @@ from pipeline import ScreenPipeline
 from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
+# Local bridge used only by the VOSI Chrome extension.
+browser_pending_command = None
+browser_results = {}
+
+class BrowserSearchRequest(BaseModel):
+    request_id: str
+    query: str
+    budget: Optional[float] = None
+
+class BrowserResultsRequest(BaseModel):
+    request_id: str
+    products: list[dict] = []
+
+@app.post("/browser/search")
+def queue_browser_search(req: BrowserSearchRequest):
+    global browser_pending_command
+    query = (req.query or "").strip()
+    if not query or len(query) > 180 or len(req.request_id) > 100:
+        return {"success": False, "error": "Enter a product search under 180 characters."}
+    browser_pending_command = {"request_id": req.request_id, "query": query, "budget": req.budget}
+    browser_results.pop(req.request_id, None)
+    return {"success": True, "message": "Waiting for the VOSI Chrome extension."}
+
+@app.get("/browser/command")
+def get_browser_command():
+    return {"success": True, "command": browser_pending_command}
+
+@app.post("/browser/ack/{request_id}")
+def acknowledge_browser_command(request_id: str):
+    global browser_pending_command
+    if browser_pending_command and browser_pending_command.get("request_id") == request_id:
+        browser_pending_command = None
+    return {"success": True}
+
+@app.post("/browser/results")
+def receive_browser_results(req: BrowserResultsRequest):
+    if len(req.products) > 30:
+        req.products = req.products[:30]
+    browser_results[req.request_id] = {"products": req.products}
+    return {"success": True}
+
+@app.get("/browser/results/{request_id}")
+def read_browser_results(request_id: str):
+    result = browser_results.get(request_id)
+    if not result:
+        return {"success": False, "pending": True}
+    return {"success": True, "results": result}
+
+
 app = FastAPI(title="VOSI Screen AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
