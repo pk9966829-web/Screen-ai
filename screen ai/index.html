@@ -1124,6 +1124,19 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                const alarmMatch = text.match(/\b(?:set|create|make)\s+(?:an?\s+)?alarm\s+(?:for\s+|at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+                if (alarmMatch) {
+                    let hour=Number(alarmMatch[1]), minute=Number(alarmMatch[2]||0), period=alarmMatch[3];
+                    if (minute>59 || hour<1 || hour>12 && period || hour>23) return {target:"invalid-time"};
+                    if (period==="pm" && hour<12) hour+=12;
+                    if (period==="am" && hour===12) hour=0;
+                    return {target:"set-alarm",hour,minute};
+                }
+                const timerMatch=text.match(/\b(?:set\s+)?timer\s+(?:for\s+)?(\d+)\s*(seconds?|secs?|minutes?|mins?)\b/);
+                if(timerMatch){const amount=Number(timerMatch[1]),unit=timerMatch[2];return {target:"set-timer",seconds:amount*(unit.startsWith("s")?1:60)};}
+                if (/\b(lock|lock down)\s+(?:my\s+)?(?:computer|pc|laptop|device)\b/.test(text)) return {target:"lock-pc"};
+                if (/\b(shut down|shutdown|power off)\b/.test(text)) return {target:"shutdown-pc",confirm:true};
+                if (/\b(restart|reboot)\s+(?:my\s+)?(?:computer|pc|laptop|device)\b/.test(text)) return {target:"restart-pc",confirm:true};
                 if (/\b(write|draft|compose|create)\b/.test(text) && /\b(letter|cover letter|resignation letter|thank[- ]you letter)\b/.test(text)) return { target: 'write-letter', seed: raw, announce: true };
                 const hotelIntent = /\b(best|find|compare|research|recommend)\b/.test(text) && /\b(hotel|hotels|accommodation|place to stay)\b/.test(text);
                 if (hotelIntent) {
@@ -1201,6 +1214,29 @@
                 } catch (_) {}
             }
             async function dispatchDeviceCommand(command) {
+                if (command.target === 'invalid-time') { showResponse('Invalid time','Please say a valid time, such as “set an alarm for 5 PM”.'); return; }
+                if (command.target === 'set-alarm' || command.target === 'set-timer') {
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(!invoke){showResponse('Desktop app required','Alarms and timers are available in the installed VOSI desktop app.');return;}
+                    try {
+                        const result=command.target==='set-alarm'
+                            ? await invoke('set_alarm',{hour:command.hour,minute:command.minute})
+                            : await invoke('set_timer',{seconds:command.seconds});
+                        showResponse(command.target==='set-alarm'?'Alarm set':'Timer started',result); speakVosi(result);
+                    } catch(error){const message=String(error?.message||error);showResponse('Could not set it',message);speakVosi(message);}
+                    return;
+                }
+                if(command.target==='lock-pc'||command.target==='shutdown-pc'||command.target==='restart-pc'){
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(!invoke){showResponse('Desktop app required','This device action needs the installed VOSI desktop app.');return;}
+                    if(command.target!=='lock-pc'){
+                        pendingDeviceAction={target:command.target,query:''};
+                        if(deviceActionDescription)deviceActionDescription.textContent=command.target==='shutdown-pc'?'VOSI will shut down Windows after a 10-second delay. Save your work before confirming.':'VOSI will restart Windows after a 10-second delay. Save your work before confirming.';
+                        deviceActionDialog?.classList.add('is-open');deviceActionDialog?.setAttribute('aria-hidden','false'); return;
+                    }
+                    try{const result=await invoke('lock_pc');showResponse('Device locked',result);speakVosi(result);}catch(error){showResponse('Could not lock device',String(error));}
+                    return;
+                }
                 if (!command) return null;
                 if (command.target === 'write-letter') {
                     await focusMainWindow();
@@ -1232,7 +1268,10 @@
             document.getElementById('device-action-confirm')?.addEventListener('click', () => {
                 const action = pendingDeviceAction;
                 closeDeviceActionDialog();
-                if (action) void launchDeviceTarget(action.target, action.query);
+                if (action?.target === 'shutdown-pc' || action?.target === 'restart-pc') {
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakVosi(message);}).catch(error=>showResponse('Action failed',String(error)));
+                } else if (action) void launchDeviceTarget(action.target, action.query);
             });
             sidebarToggle?.addEventListener('click', () => {
                 const expanded = sidebarToggle.getAttribute('aria-expanded') !== 'true';
