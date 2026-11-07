@@ -124,6 +124,41 @@ fn launch_device_app(target: String) -> Result<(), String> {
     }
 }
 
+/// Schedule a one-time Windows alarm through Task Scheduler.
+#[tauri::command]
+fn set_alarm(hour: u32, minute: u32) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use chrono::{Local, Duration};
+        if hour > 23 || minute > 59 { return Err("Please provide a valid time.".into()); }
+        let now = Local::now();
+        let mut alarm = now.date_naive().and_hms_opt(hour, minute, 0).ok_or("Invalid alarm time")?;
+        if alarm <= now.naive_local() { alarm += Duration::days(1); }
+        let date=alarm.format("%m/%d/%Y").to_string(); let time=alarm.format("%H:%M").to_string();
+        let task_name=format!("VOSI_Alarm_{}",alarm.format("%Y%m%d_%H%M"));
+        let script="Add-Type -AssemblyName System.Windows.Forms; 1..8 | ForEach-Object { [System.Media.SystemSounds]::Exclamation.Play(); Start-Sleep -Milliseconds 700 }; [System.Windows.Forms.MessageBox]::Show('Your VOSI alarm is ringing.','VOSI Alarm') | Out-Null";
+        use base64::Engine;
+        let encoded=base64::engine::general_purpose::STANDARD.encode(script.encode_utf16().flat_map(|c|c.to_le_bytes()).collect::<Vec<u8>>());
+        let action=format!("powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand {encoded}");
+        let output=Command::new("schtasks.exe").args(["/Create","/F","/SC","ONCE","/SD",&date,"/ST",&time,"/TN",&task_name,"/TR",&action,"/IT"]).output().map_err(|e|format!("Could not create alarm: {e}"))?;
+        if !output.status.success(){return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());}
+        return Ok(format!("Alarm set for {}. Windows will trigger it while your account is signed in and the computer is awake.",alarm.format("%-I:%M %p")));
+    }
+    #[cfg(not(target_os = "windows"))] { let _=(hour,minute); Err("VOSI alarms are supported on Windows.".into()) }
+}
+#[tauri::command]
+fn set_timer(seconds: u64) -> Result<String,String> {
+    if seconds==0||seconds>86400{return Err("Choose a timer between 1 second and 24 hours.".into());}
+    std::thread::spawn(move||{std::thread::sleep(std::time::Duration::from_secs(seconds));#[cfg(target_os="windows")]{let _=Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command","Add-Type -AssemblyName System.Windows.Forms; 1..5 | ForEach-Object { [System.Media.SystemSounds]::Asterisk.Play(); Start-Sleep -Milliseconds 600 }; [System.Windows.Forms.MessageBox]::Show('Your VOSI timer is complete.','VOSI Timer') | Out-Null"]).spawn();}});
+    Ok(format!("Timer started for {}.",if seconds>=60{format!("{} minute(s)",seconds/60)}else{format!("{} second(s)",seconds)}))
+}
+#[tauri::command]
+fn lock_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("rundll32.exe").args(["user32.dll,LockWorkStation"]).spawn().map_err(|e|e.to_string())?;return Ok("Locking your Windows device.".into());}#[cfg(not(target_os="windows"))]{Err("Locking is supported in the Windows VOSI app.".into())}}
+#[tauri::command]
+fn shutdown_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("shutdown.exe").args(["/s","/t","10"]).spawn().map_err(|e|e.to_string())?;return Ok("Windows will shut down in 10 seconds. Run shutdown /a to cancel.".into());}#[cfg(not(target_os="windows"))]{Err("Shutdown is supported in Windows.".into())}}
+#[tauri::command]
+fn restart_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("shutdown.exe").args(["/r","/t","10"]).spawn().map_err(|e|e.to_string())?;return Ok("Windows will restart in 10 seconds. Run shutdown /a to cancel.".into());}#[cfg(not(target_os="windows"))]{Err("Restart is supported in Windows.".into())}}
+
 /// Force the floating companion character to appear on top of everything
 #[tauri::command]
 async fn show_companion(app: tauri::AppHandle) -> Result<(), String> {
@@ -188,7 +223,7 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide])
         .setup(|app| {
             #[cfg(desktop)]
             {
