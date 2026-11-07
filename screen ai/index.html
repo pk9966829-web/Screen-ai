@@ -522,45 +522,6 @@
             <div class="dialog-actions"><button id="letter-cancel" class="dialog-button" type="button">Cancel</button><button id="letter-back" class="dialog-button" type="button" hidden>Back</button><button id="letter-speak" class="dialog-button" type="button">Speak answer</button><button id="letter-next" class="dialog-button primary" type="button">Next</button><button id="letter-draft-button" class="dialog-button primary" type="button" hidden>Create and open in Word</button><button id="letter-open-button" class="dialog-button primary" type="button" hidden>Open again in Word</button></div>
         </section>
     </div>
-    <div id="hotel-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="hotel-title" aria-hidden="true">
-        <section class="vosi-dialog">
-            <h2 id="hotel-title">Compare hotels</h2>
-            <p id="hotel-step-prompt">Which city should VOSI research?</p>
-            <div id="hotel-details-form">
-                <label class="dialog-field">City<input id="hotel-city" type="text" maxlength="160" placeholder="City or destination"></label>
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="dialog-field">Check-in<input id="hotel-checkin" type="date"></label>
-                    <label class="dialog-field">Check-out<input id="hotel-checkout" type="date"></label>
-                </div>
-                <label class="dialog-field">Budget per night (optional)<input id="hotel-budget" type="text" maxlength="120" placeholder="For example: ₹8,000 or no preference"></label>
-                <label class="dialog-field">Travelers<select id="hotel-guests"><option value="1">1 traveler</option><option value="2" selected>2 travelers</option><option value="3">3 travelers</option><option value="4">4 travelers</option><option value="5">5 travelers</option><option value="6">6 travelers</option></select></label>
-                <label class="dialog-field">What matters to you? (optional)<textarea id="hotel-preferences" maxlength="600" placeholder="For example: near the city center, breakfast, quiet rooms"></textarea></label>
-                <label class="dialog-field">Sources to compare<select id="hotel-source-count"><option value="10">10 sources</option><option value="20" selected>20 sources</option><option value="30">30 sources</option></select></label>
-            </div>
-            <p class="safety-note">VOSI will search current public web results and link its sources. Hotel prices and availability can change; confirm them with the hotel or booking site.</p>
-            <div id="hotel-research-status" class="side-note" aria-live="polite"></div>
-            <div id="hotel-research-results" hidden class="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
-                <div id="hotel-research-report" class="whitespace-pre-wrap text-xs leading-relaxed text-slate-200"></div>
-                <ol id="hotel-source-list" class="mt-3 space-y-2 border-t border-white/10 pt-3 text-xs"></ol>
-            </div>
-            <div class="dialog-actions"><button id="hotel-cancel" class="dialog-button" type="button">Close</button><button id="hotel-research-button" class="dialog-button primary" type="button">Search and compare</button></div>
-        </section>
-    </div>
-    <div id="web-research-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="web-research-title" aria-hidden="true">
-        <section class="vosi-dialog">
-            <h2 id="web-research-title">Search the web</h2>
-            <p>Ask VOSI to research a topic across current public web results. It will summarize findings and link the sources it used.</p>
-            <label class="dialog-field">What should I search for?<textarea id="web-research-query" maxlength="500" placeholder="For example: Compare current electric car safety ratings"></textarea></label>
-            <label class="dialog-field">Sources to review<select id="web-research-source-count"><option value="10">10 sources</option><option value="20" selected>20 sources</option><option value="30">30 sources</option></select></label>
-            <p class="safety-note">Web search is broad, but no search can cover every page on the internet. Check linked sources, especially for changing or high impact information.</p>
-            <div id="web-research-status" class="side-note" aria-live="polite"></div>
-            <div id="web-research-results" hidden class="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
-                <div id="web-research-report" class="whitespace-pre-wrap text-xs leading-relaxed text-slate-200"></div>
-                <ol id="web-research-source-list" class="mt-3 space-y-2 border-t border-white/10 pt-3 text-xs"></ol>
-            </div>
-            <div class="dialog-actions"><button id="web-research-close" class="dialog-button" type="button">Close</button><button id="web-research-button" class="dialog-button primary" type="button">Search and summarize</button></div>
-        </section>
-    </div>
     <!-- Soft ambient orbs that move slowly -->
     <div class="ambient-orb orb-1"></div>
     <div class="ambient-orb orb-2"></div>
@@ -1095,146 +1056,36 @@
                 }
             }
             letterOpenButton?.addEventListener('click', openGeneratedLetter);
-            const hotelDialog = document.getElementById('hotel-dialog');
-            const hotelStatus = document.getElementById('hotel-research-status');
             function openHotelDialog(city = '', announce = false) {
-                document.getElementById('hotel-city').value = city;
-                document.getElementById('hotel-research-results').hidden = true;
-                document.getElementById('hotel-research-report').textContent = '';
-                document.getElementById('hotel-source-list').replaceChildren();
-                if (hotelStatus) hotelStatus.textContent = 'Add travel dates and a budget for a more useful comparison; both are optional.';
-                hotelDialog?.classList.add('is-open');
-                hotelDialog?.setAttribute('aria-hidden', 'false');
-                if (announce) speakVosi(city ? `I can compare hotels in ${city}. What dates and budget should I use?` : 'Which city should I research, and what are your dates and budget?');
-                window.setTimeout(() => document.getElementById('hotel-city')?.focus(), 0);
-            }
-            function closeHotelDialog() {
-                hotelDialog?.classList.remove('is-open');
-                hotelDialog?.setAttribute('aria-hidden', 'true');
-            }
-            document.getElementById('hotel-cancel')?.addEventListener('click', closeHotelDialog);
-            hotelDialog?.addEventListener('click', event => { if (event.target === hotelDialog) closeHotelDialog(); });
-            const webResearchDialog = document.getElementById('web-research-dialog');
-            const webResearchStatus = document.getElementById('web-research-status');
-            function openWebResearchDialog(query = '', announce = false) {
-                const queryInput = document.getElementById('web-research-query');
-                queryInput.value = query;
-                document.getElementById('web-research-results').hidden = true;
-                document.getElementById('web-research-report').textContent = '';
-                document.getElementById('web-research-source-list').replaceChildren();
-                if (webResearchStatus) webResearchStatus.textContent = 'Choose up to 30 sources. Your Tavily search key must be configured in backend/.env.';
-                webResearchDialog?.classList.add('is-open');
-                webResearchDialog?.setAttribute('aria-hidden', 'false');
-                if (announce) speakVosi(query ? `I’ll search public web sources for ${query}.` : 'What topic should I search for across the web?');
-                window.setTimeout(() => queryInput?.focus(), 0);
-            }
-            document.getElementById('web-research-close')?.addEventListener('click', () => {
-                webResearchDialog?.classList.remove('is-open');
-                webResearchDialog?.setAttribute('aria-hidden', 'true');
-            });
-            webResearchDialog?.addEventListener('click', event => {
-                if (event.target === webResearchDialog) {
-                    webResearchDialog.classList.remove('is-open');
-                    webResearchDialog.setAttribute('aria-hidden', 'true');
+                if (!city) {
+                    showResponse('Which city?', 'Tell VOSI the city, for example: “Find hotels in Chennai.”');
+                    userInput?.focus();
+                    return;
                 }
-            });
-            document.getElementById('web-research-button')?.addEventListener('click', async event => {
-                const button = event.currentTarget;
-                const query = document.getElementById('web-research-query').value.trim();
-                if (!query) { if (webResearchStatus) webResearchStatus.textContent = 'Enter a question or topic to search.'; document.getElementById('web-research-query').focus(); return; }
-                button.disabled = true; button.textContent = 'Searching…';
-                if (webResearchStatus) webResearchStatus.textContent = 'Searching public web sources and preparing a cited summary…';
-                try {
-                    const response = await fetch(API_BASE + '/research/web', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ query, source_count: Number(document.getElementById('web-research-source-count').value) })
-                    });
-                    const data = await response.json();
-                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not search the web.');
-                    document.getElementById('web-research-report').textContent = data.report || 'No summary was returned.';
-                    const list = document.getElementById('web-research-source-list');
-                    list.replaceChildren();
-                    (data.sources || []).forEach((source, index) => {
-                        const item = document.createElement('li');
-                        const link = document.createElement('a');
-                        const parsedUrl = new URL(source.url);
-                        if (!['https:', 'http:'].includes(parsedUrl.protocol)) return;
-                        link.href = parsedUrl.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
-                        link.textContent = `[${index + 1}] ${source.title || parsedUrl.hostname}`;
-                        link.className = 'text-sky-300 hover:underline';
-                        item.appendChild(link); list.appendChild(item);
-                    });
-                    document.getElementById('web-research-results').hidden = false;
-                    if (webResearchStatus) webResearchStatus.textContent = `Summary based on ${data.source_count} public sources${data.source_count < data.requested_source_count ? ` (requested ${data.requested_source_count})` : ''}. Open the source links to check details and dates.`;
-                } catch (error) {
-                    if (webResearchStatus) webResearchStatus.textContent = String(error?.message || error || 'Web search failed.');
-                } finally { button.disabled = false; button.textContent = 'Search and summarize'; }
-            });
-            document.getElementById('hotel-research-button')?.addEventListener('click', async event => {
-                const button = event.currentTarget;
-                const city = document.getElementById('hotel-city').value.trim();
-                if (!city) { if (hotelStatus) hotelStatus.textContent = 'Enter the city you want VOSI to research.'; document.getElementById('hotel-city').focus(); return; }
-                const checkIn = document.getElementById('hotel-checkin').value;
-                const checkOut = document.getElementById('hotel-checkout').value;
-                if (checkIn && checkOut && checkOut <= checkIn) { if (hotelStatus) hotelStatus.textContent = 'Check-out must be after check-in.'; return; }
-                button.disabled = true; button.textContent = 'Researching…';
-                if (hotelStatus) hotelStatus.textContent = 'Searching public sources and comparing the results…';
-                try {
-                    const response = await fetch(API_BASE + '/research/hotels', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            city, check_in: checkIn, check_out: checkOut,
-                            budget: document.getElementById('hotel-budget').value.trim(),
-                            guests: Number(document.getElementById('hotel-guests').value),
-                            preferences: document.getElementById('hotel-preferences').value.trim(),
-                            source_count: Number(document.getElementById('hotel-source-count').value)
-                        })
-                    });
-                    const data = await response.json();
-                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not complete hotel research.');
-                    document.getElementById('hotel-research-report').textContent = data.report || 'No comparison was returned.';
-                    const list = document.getElementById('hotel-source-list');
-                    list.replaceChildren();
-                    (data.sources || []).forEach((source, index) => {
-                        const item = document.createElement('li');
-                        const link = document.createElement('a');
-                        link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
-                        link.textContent = `[${index + 1}] ${source.title || source.url}`;
-                        link.className = 'text-sky-300 hover:underline';
-                        item.appendChild(link); list.appendChild(item);
-                    });
-                    document.getElementById('hotel-research-results').hidden = false;
-                    if (hotelStatus) hotelStatus.textContent = `Compared ${data.source_count} public sources${data.source_count < data.requested_source_count ? ` (requested ${data.requested_source_count})` : ''}. Confirm current prices and availability with the booking source.`;
-                } catch (error) {
-                    if (hotelStatus) hotelStatus.textContent = String(error?.message || error || 'Hotel research failed.');
-                } finally { button.disabled = false; button.textContent = 'Search and compare'; }
-            });
-            async function playYoutubeSong(query) {
+                const query = `best hotels in ${city}`;
+                void launchDeviceTarget('search-google', query);
+                if (announce) speakVosi(`Searching Google for hotels in ${city}.`);
+            }
+            function openWebResearchDialog(query = '', announce = false) {
+                const searchQuery = query.trim();
+                if (!searchQuery) {
+                    showResponse('What should I search for?', 'Say or type a topic, such as “Search the web for best budget laptops.”');
+                    userInput?.focus();
+                    return;
+                }
+                void launchDeviceTarget('search-google', searchQuery);
+                if (announce) speakVosi(`Searching Google for ${searchQuery}.`);
+            }            async function playYoutubeSong(query) {
                 const song = String(query || '').trim();
                 if (!song) {
                     const message = 'Which song should I search for on YouTube? Type the title and artist, then send it.';
                     showResponse('Which song?', message); speakVosi(message); userInput?.focus(); return;
                 }
-                showResponse('Finding your song', `Searching YouTube for “${song}”…`);
                 try {
-                    const response = await fetch(API_BASE + '/youtube/play', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: song })
-                    });
-                    const data = await response.json();
-                    if (!response.ok || !data.success) throw new Error(data.error || 'YouTube search did not return a video.');
-                    const invoke = window.__TAURI__?.core?.invoke;
-                    if (invoke) await invoke('play_youtube_video', { videoId: data.video_id });
-                    else window.open(`https://www.youtube.com/watch?v=${encodeURIComponent(data.video_id)}&autoplay=1`, '_blank', 'noopener');
-                    const message = `Opened “${data.title}”${data.channel ? ` by ${data.channel}` : ''} on YouTube. If playback does not start automatically, press Play.`;
-                    showResponse('YouTube opened', message); speakVosi(message);
+                    await launchDeviceTarget('search-youtube', song);
                 } catch (error) {
                     const message = String(error?.message || error || 'Could not find that video.');
-                    const invoke = window.__TAURI__?.core?.invoke;
-                    try {
-                        if (invoke) await invoke('search_device_web', { provider: 'youtube', query: song });
-                        else window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`, '_blank', 'noopener');
-                        showResponse('YouTube search opened', `${message} I opened YouTube search results so you can choose a video.`);
-                    } catch { showResponse('Could not open YouTube', message); }
+                    showResponse('Could not open YouTube', message);
                 }
             }
             function closeDeviceActionDialog() {
@@ -1357,14 +1208,12 @@
                     return 'I opened the letter form in VOSI. Tell me the recipient first, then the letter details.';
                 }
                 if (command.target === 'web-research') {
-                    await focusMainWindow();
                     openWebResearchDialog(command.query || '', true);
-                    return command.query ? 'I opened the web research panel in VOSI. Review the summary and source links there.' : 'I opened web search. Tell me what topic to search.';
+                    return command.query ? `Searching Google for ${command.query}.` : 'Tell me what you want to search for.';
                 }
                 if (command.target === 'hotel-research') {
-                    await focusMainWindow();
                     openHotelDialog(command.city || '', !!command.announce);
-                    return 'I opened the hotel research form in VOSI. Add any dates or budget, then start the comparison.';
+                    return command.city ? `Searching Google for hotels in ${command.city}.` : 'Tell me which city to search for hotels in.';
                 }
                 if (command.target === 'youtube-play') {
                     await playYoutubeSong(command.query || '');
