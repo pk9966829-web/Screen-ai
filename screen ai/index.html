@@ -1100,6 +1100,21 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                const flipkartIntent = /\\b(flipkart)\\b/.test(text) && /\\b(search|find|compare|best|buy|look for)\\b/.test(text);
+                if (flipkartIntent) {
+                    const budgetMatch = text.match(/(?:under|below|less than|within)\\s*(?:₹|rs\\.?\\s*)?([\\d,]+)/i);
+                    let productQuery = raw
+                        .replace(/^\\s*(?:hey\\s+vosi[,!: ]*)?/i, '')
+                        .replace(/\\b(?:on|in)\\s+flipkart\\b/i, '')
+                        .replace(/\\b(?:search|find|compare|look for|show me|buy)\\b/ig, '')
+                        .replace(/\\b(?:the )?best\\b/ig, '')
+                        .replace(/\\b(?:under|below|less than|within)\\s*(?:₹|rs\\.?\\s*)?[\\d,]+\\s*(?:rupees|rs)?/ig, '')
+                        .replace(/\\b(?:flipkart|rupees|rs)\\b/ig, '')
+                        .replace(/[₹,]/g, ' ')
+                        .replace(/\\s+/g, ' ').trim();
+                    if (!productQuery) productQuery = 'popular products';
+                    return { target: 'flipkart-search', query: productQuery, budget: budgetMatch ? Number(budgetMatch[1].replace(/,/g, '')) : null };
+                }
                 const alarmMatch = text.match(/\b(?:set|create|make|keep)\s+(?:the\s+)?(?:an?\s+)?alarm\s+(?:for\s+|at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/) || text.match(/\bwake\s+me\s+up\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
                 if (alarmMatch) {
                     let hour=Number(alarmMatch[1]), minute=Number(alarmMatch[2]||0), period=alarmMatch[3];
@@ -1187,6 +1202,51 @@
                 if (/\b(open|show)\b.*\b(windows )?settings\b/.test(text)) return { target: 'windows-settings' };
                 return null;
             }
+            async function runFlipkartSearch(query, budget = null) {
+                const cleanQuery = String(query || '').trim();
+                if (!cleanQuery) { showResponse('What should I find?', 'Say a product, for example: “Find the best body spray under 1000 rupees on Flipkart.”'); return; }
+                const requestId = 'vosi-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+                showResponse('Searching Flipkart', 'VOSI is asking your Chrome extension to search for ' + cleanQuery + (budget ? ' under ₹' + budget : '') + '. Keep Chrome open.');
+                speakVosi('I am searching Flipkart for ' + cleanQuery + (budget ? ' under ' + budget + ' rupees.' : '.'));
+                try {
+                    const start = await fetch(API_BASE + '/browser/search', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, query: cleanQuery, budget })
+                    });
+                    const started = await start.json();
+                    if (!start.ok || !started.success) throw new Error(started.error || 'Could not send the request to the Chrome extension.');
+                    const deadline = Date.now() + 45000;
+                    let result = null;
+                    while (Date.now() < deadline) {
+                        await new Promise(resolve => setTimeout(resolve, 1200));
+                        const response = await fetch(API_BASE + '/browser/results/' + encodeURIComponent(requestId));
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success && data.results) { result = data.results; break; }
+                        }
+                    }
+                    if (!result) throw new Error('No product results arrived. Check that the VOSI Flipkart Chrome extension is installed and enabled.');
+                    const products = (result.products || []).slice(0, 8);
+                    if (!products.length) throw new Error('Flipkart opened, but VOSI could not read product cards. Try scrolling the results page and ask again.');
+                    const ranked = products.map(item => {
+                        const price = Number(String(item.price || '').replace(/[^0-9.]/g, '')) || null;
+                        const rating = Number(item.rating) || 0;
+                        const reviews = Number(String(item.reviews || '').replace(/[^0-9]/g, '')) || 0;
+                        const withinBudget = !budget || !price || price <= budget;
+                        const score = (withinBudget ? 100 : -100) + rating * 10 + Math.min(Math.log10(reviews + 1), 5);
+                        return { ...item, priceValue: price, score };
+                    }).filter(item => !budget || !item.priceValue || item.priceValue <= budget).sort((a,b) => b.score-a.score);
+                    const best = ranked[0] || products[0];
+                    const lines = ranked.slice(0, 5).map((item, i) => (i + 1) + '. ' + item.name + ' — ' + (item.price || 'price not shown') + (item.rating ? ' · ' + item.rating + '★' : '')).join('\n');
+                    const recommendation = 'VOSI found ' + products.length + ' visible listings. ' + (best?.name ? 'My top visible match is ' + best.name + (best.price ? ' at ' + best.price : '') + (best.rating ? ', rated ' + best.rating + ' stars.' : '.') : 'I could not determine a clear best option.');
+                    showResponse('Flipkart comparison', recommendation + '\n\n' + lines + '\n\nThis is a ranking of visible listings, not a guarantee of product quality. Check seller, ingredients, reviews and delivery details before buying.');
+                    speakVosi(recommendation);
+                } catch (error) {
+                    const message = String(error?.message || error);
+                    showResponse('Flipkart search needs attention', message);
+                    speakVosi(message);
+                }
+            }
             async function focusMainWindow() {
                 try {
                     const mainWindow = await window.__TAURI__?.webviewWindow?.getByLabel('main');
@@ -1225,6 +1285,10 @@
                     return;
                 }
                 if (!command) return null;
+                if (command.target === 'flipkart-search') {
+                    await runFlipkartSearch(command.query, command.budget);
+                    return null;
+                }
                 if (command.target === 'write-letter') {
                     await focusMainWindow();
                     openLetterDialog(command.seed || '', true);
