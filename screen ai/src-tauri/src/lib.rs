@@ -41,6 +41,7 @@ fn open_device_target(app: tauri::AppHandle, target: String) -> Result<(), Strin
         "mouse-settings" => "ms-settings:mousetouchpad",
         "power-settings" => "ms-settings:powersleep",
         "update-settings" => "ms-settings:windowsupdate",
+        "screenshot" => "ms-screenclip:",
         _ => return Err("That device action is not supported yet.".into()),
     };
 
@@ -122,6 +123,23 @@ fn launch_device_app(target: String) -> Result<(), String> {
         let _ = target;
         Err("Built-in app shortcuts are available in the Windows VOSI app.".into())
     }
+}
+
+/// Adjust Windows master volume or toggle mute using the standard media keys.
+#[tauri::command]
+fn control_volume(action: String) -> Result<String,String> {
+    #[cfg(target_os = "windows")]
+    {
+        let key = match action.as_str() { "up" => 0xAFu16, "down" => 0xAEu16, "mute" => 0xADu16, "unmute" => 0xAFu16, _ => return Err("Choose volume up, down, mute, or unmute.".into()) };
+        let script = if action == "mute" || action == "unmute" {
+            format("$w=New-Object -ComObject WScript.Shell; $w.SendKeys([char]{key})")
+        } else {
+            format("$w=New-Object -ComObject WScript.Shell; 1..5 | ForEach-Object {{ $w.SendKeys([char]{key}); Start-Sleep -Milliseconds 80 }}")
+        };
+        Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command",&script]).spawn().map_err(|e|format!("Could not adjust volume: {e}"))?;
+        return Ok(match action.as_str() { "up"=>"Increasing volume.", "down"=>"Decreasing volume.", "mute"=>"Toggling mute.", _=>"Sending the unmute command." }.into());
+    }
+    #[cfg(not(target_os = "windows"))] { let _=action; Err("Volume controls are supported in the Windows VOSI app.".into()) }
 }
 
 /// Schedule a one-time Windows alarm through Task Scheduler.
@@ -223,7 +241,7 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide])
         .setup(|app| {
             #[cfg(desktop)]
             {
