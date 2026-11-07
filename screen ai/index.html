@@ -1106,10 +1106,10 @@
                     let productQuery = raw
                         .replace(/^\\s*(?:hey\\s+vosi[,!: ]*)?/i, '')
                         .replace(/\\b(?:on|in)\\s+flipkart\\b/i, '')
-                        .replace(/\\b(?:search|find|compare|look for|show me|buy)\\b/ig, '')
+                        .replace(/\\b(?:open|search|find|compare|look for|show me|buy)\\b/ig, '')
                         .replace(/\\b(?:the )?best\\b/ig, '')
                         .replace(/\\b(?:under|below|less than|within)\\s*(?:₹|rs\\.?\\s*)?[\\d,]+\\s*(?:rupees|rs)?/ig, '')
-                        .replace(/\\b(?:flipkart|rupees|rs)\\b/ig, '')
+                        .replace(/\\b(?:flipkart|rupees|rs|and)\\b/ig, '')
                         .replace(/[₹,]/g, ' ')
                         .replace(/\\s+/g, ' ').trim();
                     if (!productQuery) productQuery = 'popular products';
