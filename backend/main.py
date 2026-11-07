@@ -15,6 +15,8 @@ from pipeline import ScreenPipeline
 from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
+app = FastAPI(title="VOSI Screen AI")
+
 # Local bridge used only by the VOSI Chrome extension.
 browser_pending_command = None
 browser_results = {}
@@ -64,7 +66,6 @@ def read_browser_results(request_id: str):
     return {"success": True, "results": result}
 
 
-app = FastAPI(title="VOSI Screen AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 UPLOAD_DIR = Path("uploads")
