@@ -10,15 +10,10 @@ async function checkForVosiCommand() {
     const data = await response.json();
     const command = data.command;
     if (!command?.request_id || !command.query) return;
-    const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    let tab = tabs[0];
-    if (!tab?.id) {
-      const created = await chrome.tabs.create({ url: "https://www.flipkart.com/" });
-      tab = created;
-    }
     const url = "https://www.flipkart.com/search?q=" + encodeURIComponent(command.query) +
       "&vosi_request=" + encodeURIComponent(command.request_id);
-    await chrome.tabs.update(tab.id, { url, active: true });
+    // Open a new Chrome tab so the user's current page is left untouched.
+    await chrome.tabs.create({ url, active: true });
     await fetch(API + "/browser/ack/" + encodeURIComponent(command.request_id), { method: "POST" });
   } catch (error) {
     console.warn("VOSI bridge could not reach the local backend:", error);
@@ -26,7 +21,7 @@ async function checkForVosiCommand() {
     checking = false;
   }
 }
-chrome.alarms.create("vosi-poll", { periodInMinutes: 0.05 });
+chrome.alarms.create("vosi-poll", { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === "vosi-poll") void checkForVosiCommand();
 });
