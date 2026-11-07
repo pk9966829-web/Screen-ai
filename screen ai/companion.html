@@ -192,10 +192,11 @@
     </div>
     <div id="answer" style="display:none;max-height:150px;overflow:auto;margin:8px 0;padding:9px;border-radius:9px;background:rgba(255,255,255,0.05);color:#dbeafe;font-size:10px;line-height:1.5;white-space:pre-wrap;"></div>
     <form id="ask-form" style="display:flex;gap:6px;margin-bottom:6px;">
-      <input id="ask-input" type="text" placeholder="Ask about this screen..." autocomplete="off"
+      <input id="ask-input" type="text" placeholder="Ask VOSI or give a command…" autocomplete="off"
         style="flex:1;min-width:0;padding:8px 9px;border-radius:8px;background:rgba(255,255,255,.07);color:#fff;font-size:10px;border:1px solid rgba(56,189,248,.2)!important;">
       <button class="primary" id="btn-ask" type="submit" style="width:auto;margin:0;padding:8px 10px;text-align:center;">Ask</button>
     </form>
+    <button class="secondary" id="btn-speak" type="button">🎙 Speak to VOSI</button>
     <button class="secondary" id="btn-observe">Stop observing</button>
   </div>
 
@@ -212,6 +213,7 @@
     const statusEl = document.getElementById('bubble-status');
     const statusText = document.getElementById('status-text');
     const btnObserve = document.getElementById('btn-observe');
+    const btnSpeak = document.getElementById('btn-speak');
     const btnAsk = document.getElementById('btn-ask');
     const askForm = document.getElementById('ask-form');
     const askInput = document.getElementById('ask-input');
@@ -338,53 +340,82 @@
       e.preventDefault();
       const question = (askInput.value || '').trim();
       if (!question) return;
-
+      askInput.value = '';
       answerEl.style.display = 'block';
-      answerEl.textContent = 'VOSI is looking at your current screen…';
+      answerEl.textContent = 'Sending your request to VOSI…';
       setState('thinking');
-
       try {
-        // Ask the backend directly from the floating companion.
-        // This keeps working even when the main VOSI window is hidden.
-        const response = await fetch('http://127.0.0.1:8001/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: question, include_screen: true })
-        });
-
-        const data = await response.json();
-
-        try {
-          const guide = data?.brain?.guidance;
-          if (guide && Number(guide.confidence) >= 0.60) {
-            await window.__TAURI__.core.invoke('show_guide');
-            // Allow the transparent guide webview a moment to become visible before emitting.
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await emit('vosi-guidance', guide);
-          } else {
-            await window.__TAURI__.core.invoke('hide_guide');
-            await emit('vosi-guidance-clear');
-          }
-        } catch (guideError) {
-          console.warn('Could not display VOSI click guide:', guideError);
-        }
-
-        if (data.success && data.brain) {
-          const answer = data.brain.understanding || data.brain.suggestion || 'I understood your request.';
-          answerEl.textContent = answer;
-          setState(isObserving ? 'observing' : 'idle');
-          showSpeech('Here’s what I found', 2600);
-        } else {
-          const error = data?.brain?.error || data?.error || 'VOSI could not answer that.';
-          answerEl.textContent = error;
-          setState(isObserving ? 'observing' : 'idle');
-          showSpeech('I need a little help with that.', 2600);
-        }
+        // Route companion requests through the main VOSI command handler so
+        // searches, app actions, letters, and screen questions share one path.
+        await emit('companion-ask', { question });
       } catch (err) {
-        console.error('Companion AI request failed:', err);
-        answerEl.textContent = 'I could not reach the VOSI brain. Make sure the backend is running on port 8001.';
+        console.error('Could not send companion request:', err);
+        answerEl.textContent = 'Could not reach the main VOSI window. Make sure it is running.';
         setState(isObserving ? 'observing' : 'idle');
-        showSpeech('The AI brain is offline.', 2600);
+        showSpeech('Could not send that request.', 2600);
+      }
+    });
+
+    let companionRecognition = null;
+    btnSpeak.addEventListener('click', () => {
+      if (companionRecognition) {
+        try { companionRecognition.stop(); } catch (_) {}
+        return;
+      }
+      let settings = {};
+      try { settings = JSON.parse(localStorage.getItem('vosi.settings.v1') || '{}'); } catch (_) {}
+      if (settings.voiceInput === false) {
+        statusText.textContent = 'Turn on Voice input in VOSI settings first.';
+        showSpeech('Voice input is turned off in settings.', 3000);
+        return;
+      }
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognitionAPI) {
+        statusText.textContent = 'Voice recognition is unavailable in this app window.';
+        showSpeech('Voice input is unavailable here. Use the text box.', 3500);
+        return;
+      }
+      const recognition = new SpeechRecognitionAPI();
+      companionRecognition = recognition;
+      let submitted = false;
+      const language = settings.language === 'Hindi' ? 'hi-IN' : settings.language === 'Kannada' ? 'kn-IN' : settings.language === 'English' ? 'en-US' : navigator.language || 'en-US';
+      recognition.lang = language;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      btnSpeak.disabled = true;
+      btnSpeak.textContent = 'Listening…';
+      statusText.textContent = 'Listening…';
+      answerEl.style.display = 'block';
+      answerEl.textContent = 'Say your request now. Browser speech recognition may process audio online.';
+      try {
+        recognition.onresult = async (event) => {
+          const question = Array.from(event.results || []).map(result => result?.[0]?.transcript || '').join(' ').trim();
+          if (!question) return;
+          submitted = true;
+          statusText.textContent = 'VOSI is working…';
+          answerEl.textContent = 'I heard: “' + question + '”';
+          try { await emit('companion-ask', { question }); }
+          catch (_) { answerEl.textContent = 'Could not reach the main VOSI window.'; }
+        };
+        recognition.onerror = (event) => {
+          const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+            ? 'Microphone permission is blocked. Allow it in Windows or app settings.'
+            : 'Voice input stopped: ' + (event.error || 'try again') + '.';
+          statusText.textContent = message;
+          showSpeech(message, 3500);
+        };
+        recognition.onend = () => {
+          companionRecognition = null;
+          btnSpeak.disabled = false;
+          btnSpeak.textContent = '🎙 Speak to VOSI';
+          if (!submitted && statusText.textContent === 'Listening…') statusText.textContent = 'No speech heard. Tap Speak to try again.';
+        };
+        recognition.start();
+      } catch (err) {
+        companionRecognition = null;
+        btnSpeak.disabled = false;
+        btnSpeak.textContent = '🎙 Speak to VOSI';
+        statusText.textContent = 'Could not start voice input. Check microphone permission.';
       }
     });
 

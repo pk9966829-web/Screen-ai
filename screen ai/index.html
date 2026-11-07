@@ -1342,6 +1342,42 @@
                 if (/\b(open|show)\b.*\b(windows )?settings\b/.test(text)) return { target: 'windows-settings' };
                 return null;
             }
+            async function focusMainWindow() {
+                try {
+                    const mainWindow = await window.__TAURI__?.webviewWindow?.getByLabel('main');
+                    await mainWindow?.show();
+                    await mainWindow?.setFocus();
+                } catch (_) {}
+            }
+            async function dispatchDeviceCommand(command) {
+                if (!command) return null;
+                if (command.target === 'write-letter') {
+                    await focusMainWindow();
+                    openLetterDialog(command.seed || '', true);
+                    return 'I opened the letter form in VOSI. Tell me the recipient first, then the letter details.';
+                }
+                if (command.target === 'web-research') {
+                    await focusMainWindow();
+                    openWebResearchDialog(command.query || '', true);
+                    return command.query ? 'I opened the web research panel in VOSI. Review the summary and source links there.' : 'I opened web search. Tell me what topic to search.';
+                }
+                if (command.target === 'hotel-research') {
+                    await focusMainWindow();
+                    openHotelDialog(command.city || '', !!command.announce);
+                    return 'I opened the hotel research form in VOSI. Add any dates or budget, then start the comparison.';
+                }
+                if (command.target === 'youtube-play') {
+                    await playYoutubeSong(command.query || '');
+                    return command.query ? `I searched YouTube for ${command.query} and opened the result.` : 'Tell me the song title and artist to search YouTube.';
+                }
+                if (command.target.startsWith('search-')) {
+                    void launchDeviceTarget(command.target, command.query || '');
+                    return `I opened ${command.target.slice(7)} results for ${command.query}.`;
+                }
+                if (command.confirm) await focusMainWindow();
+                requestDeviceTarget(command.target, !!command.confirm, command.query || '');
+                return command.confirm ? 'I opened the related settings in VOSI so you can review them.' : `I opened ${command.target.replaceAll('-', ' ')}.`;
+            }
             document.getElementById('device-action-cancel')?.addEventListener('click', closeDeviceActionDialog);
             deviceActionDialog?.addEventListener('click', event => { if (event.target === deviceActionDialog) closeDeviceActionDialog(); });
             document.getElementById('device-action-confirm')?.addEventListener('click', () => {
@@ -1876,7 +1912,10 @@
                         if (document.getElementById('setting-hands-free')?.checked && vosiSettings.voiceInput) window.setTimeout(() => startVoiceRecognition('handsfree'), 500);
                     }
                 };
-                try { recognition.start(); isListening = true; return true; }
+                try {
+                    recognition.start(); isListening = true;
+                    return true;
+                }
                 catch (error) { voiceRecognition = null; recognitionMode = null; setVoiceStatus('Could not start voice input. Try again.'); return false; }
             }
             function speechPersona() { return document.getElementById('setting-voice-persona')?.value || vosiSettings.voicePersona || 'female'; }
@@ -2032,6 +2071,30 @@
                     }
                 } catch (e) {}
                 try {
+                    if (letterFlowStep !== null && letterDialog?.classList.contains('is-open')) {
+                        let answer;
+                        if (letterFlowStep === 0) {
+                            document.getElementById('letter-recipient').value = query;
+                            setLetterStep(1, true);
+                            answer = 'Got it. Now tell me what the letter should say.';
+                        } else if (letterFlowStep === 1) {
+                            letterPurpose.value = query;
+                            setLetterStep(2, true);
+                            answer = 'Got it. Add any optional details in the letter form, then choose Create and open in Word.';
+                        }
+                        if (answer) {
+                            speakVosi(answer);
+                            await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'Letter details', answer, observing: !!screenStream });
+                            return;
+                        }
+                    }
+                    const command = parseDeviceCommand(query);
+                    if (command) {
+                        const answer = await dispatchDeviceCommand(command);
+                        speakVosi(answer || 'I handled that request.');
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI command', answer: answer || 'I handled that request.', observing: !!screenStream });
+                        return;
+                    }
                     // The background observer keeps the latest screen frame fresh.
                     // The backend uses that latest frame for the answer.
                     if (window.captureLatestScreen) {
@@ -2097,11 +2160,7 @@
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
-                        if (deviceCommand.target === 'write-letter') { openLetterDialog(deviceCommand.seed || '', true); return; }
-                        if (deviceCommand.target === 'web-research') { openWebResearchDialog(deviceCommand.query || '', true); return; }
-                        if (deviceCommand.target === 'hotel-research') { openHotelDialog(deviceCommand.city || '', !!deviceCommand.announce); return; }
-                        if (deviceCommand.target === 'youtube-play') { void playYoutubeSong(deviceCommand.query || ''); return; }
-                        requestDeviceTarget(deviceCommand.target, !!deviceCommand.confirm, deviceCommand.query || '');
+                        await dispatchDeviceCommand(deviceCommand);
                         return;
                     }
                     if (!screenStream && (query.toLowerCase().includes("my screen") || query.toLowerCase().includes("where to click") || query.toLowerCase().includes("latest shared screen"))) {
