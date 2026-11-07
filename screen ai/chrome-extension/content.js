@@ -3,8 +3,8 @@
   const requestId = params.get("vosi_request");
   if (!requestId || !location.pathname.includes("/search")) return;
 
-  const clean = value => (value || "").replace(/\\s+/g, " ").trim();
-  const pricePattern = /₹\\s?[\\d,]+/;
+  const clean = value => (value || "").replace(/\s+/g, " ").trim();
+  const pricePattern = /₹\s?[\d,]+/;
   const sent = new Set();
 
   function collect() {
@@ -17,8 +17,8 @@
       const name = clean(nameNode?.getAttribute("title") || nameNode?.getAttribute("alt") || nameNode?.textContent || card.querySelector("a")?.innerText);
       const priceMatch = text.match(pricePattern);
       if (!name || !priceMatch || name.length < 4 || products.some(p => p.name === name)) continue;
-      const ratingMatch = text.match(/([0-5](?:\\.[0-9])?)\\s*★/);
-      const reviewsMatch = text.match(/([\\d,]+)\\s*(?:Ratings|Reviews)/i);
+      const ratingMatch = text.match(/([0-5](?:\.[0-9])?)\s*★/);
+      const reviewsMatch = text.match(/([\d,]+)\s*(?:Ratings|Reviews)/i);
       const link = card.matches("a") ? card.href : card.querySelector("a[href]")?.href;
       products.push({
         name: name.slice(0, 180),
