@@ -50,7 +50,7 @@ def _gmail_client_config():
 def _gmail_credentials():
     if not GMAIL_TOKEN_FILE.is_file():
         return None
-    credentials = Credentials.from_authorized_user_file(str(GMAIL_TOKEN_FILE), GMAIL_SCOPES)
+    credentials = Credentials.from_authorized_user_file(str(GMAIL_TOKEN_FILE))
     if credentials.expired and credentials.refresh_token:
         credentials.refresh(GoogleAuthRequest())
         GMAIL_TOKEN_FILE.write_text(credentials.to_json(), encoding="utf-8")
