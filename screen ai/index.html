@@ -1267,6 +1267,37 @@
                     speakVosi(message);
                 }
             }
+
+            async function runGmailLatest(count = 5) {
+                showResponse('Checking Gmail', 'VOSI is retrieving your latest messages directly from the Gmail backend. No AI API is used.');
+                try {
+                    const response = await fetch(API_BASE + '/gmail/messages?count=' + encodeURIComponent(count));
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not retrieve Gmail messages.');
+                    if (!data.messages?.length) {
+                        showResponse('Gmail is connected', 'There are no messages in your inbox.');
+                        speakVosi('Gmail is connected, but I could not find any messages in your inbox.');
+                        return 'Gmail is connected, but there are no messages in your inbox.';
+                    }
+                    const lines = data.messages.map((mail, index) =>
+                        (index + 1) + '. ' + mail.subject + '\\nFrom: ' + mail.sender + '\\nDate: ' + mail.date + '\\n' + mail.snippet
+                    );
+                    const summary = 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
+                        data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
+                    showResponse('Your latest Gmail messages', lines.join('\\n\\n'));
+                    speakVosi(summary);
+                    return summary;
+                } catch (error) {
+                    const message = String(error?.message || error);
+                    showResponse('Gmail connection', message);
+                    speakVosi(message);
+                    return message;
+                }
+            }
+            function isGmailLatestRequest(query) {
+                return /\\b(gmail|emails?|inbox)\\b/i.test(query) &&
+                    /\\b(latest|recent|newest|last|check|show|read|list)\\b/i.test(query);
+            }
             async function focusMainWindow() {
                 try {
                     const mainWindow = await window.__TAURI__?.webviewWindow?.getByLabel('main');
@@ -2047,6 +2078,7 @@
                             return;
                         }
                     }
+                    if (isGmailLatestRequest(query)) { await runGmailLatest(Number((query.match(/\\b(\\d{1,2})\\b/) || [])[1]) || 5); return; }
                     const command = parseDeviceCommand(query);
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
@@ -2116,6 +2148,7 @@
                         userInput.value = '';
                         return;
                     }
+                    if (isGmailLatestRequest(query)) { userInput.value = ''; await runGmailLatest(Number((query.match(/\\b(\\d{1,2})\\b/) || [])[1]) || 5); return; }
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
