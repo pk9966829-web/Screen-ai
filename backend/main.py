@@ -129,20 +129,25 @@ def _gmail_query_from_ai_intent(intent: dict):
         if item:
             parts.append(f"{operator}:({item})")
             filters[key] = item
-    for key in ("subject", "keywords"):
+    for key in ("subject", "keywords", "filename"):
         item = value(key)
         if item:
-            parts.append(f'subject:("{item}")' if key == "subject" else (f'"{item}"' if " " in item else item))
+            parts.append(f'{key}:("{item}")' if key in {"subject", "filename"} else (f'"{item}"' if " " in item else item))
             filters[key] = item
     for key in ("after", "before"):
         item = value(key)
         if item and re.fullmatch(r"\d{4}/\d{2}/\d{2}", item):
             parts.append(f"{key}:{item}")
             filters[key] = item
-    newer = value("newer_than")
-    if newer and re.fullmatch(r"\d{1,4}[dmy]", newer.lower()):
-        parts.append(f"newer_than:{newer.lower()}")
-        filters["newer_than"] = newer.lower()
+    for age_key in ("newer_than", "older_than"):
+        age = value(age_key)
+        if age and re.fullmatch(r"\d{1,4}[dmy]", age.lower()):
+            parts.append(f"{age_key}:{age.lower()}")
+            filters[age_key] = age.lower()
+    label = value("label")
+    if label:
+        parts.append(f"label:{label}")
+        filters["label"] = label
     read_status = value("read_status").lower()
     if read_status in {"read", "unread"}:
         parts.append(f"is:{read_status}")
