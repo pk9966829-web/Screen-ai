@@ -100,7 +100,8 @@ class GmailSearchRequest(BaseModel):
 
 
 def _gmail_clean_value(value: str) -> str:
-    value = re.sub(r"^[\s:]+|[\s,;:.!?]+$", "", value or "")
+    value = re.sub(r"[^\w@.+\-\s]", " ", value or "", flags=re.UNICODE)
+    value = re.sub(r"\b(?:OR|AND|NOT)\b", " ", value, flags=re.I)
     return re.sub(r"\s+", " ", value)[:120].strip()
 
 
@@ -158,7 +159,7 @@ def _gmail_natural_query(text: str):
     """Translate common natural-language Gmail requests into safe Gmail operators."""
     original = (text or "").strip()
     lower = original.lower()
-    count_match = re.search(r"\b(?:last|latest|show|find|get)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:emails?|messages?)\b", lower)
+    count_match = re.search(r"\b(?:last|latest|show|find|get)\s+(\d{1,2})(?=\s*(?:emails?|messages?)?\s*(?:$|[?.!,;]))|\b(\d{1,2})\s*(?:emails?|messages?)\b", lower)
     count_value = next((group for group in count_match.groups() if group), None) if count_match else None
     count = max(1, min(int(count_value), 50)) if count_value else (50 if re.search(r"\ball\b", lower) else 5)
     terms = []
