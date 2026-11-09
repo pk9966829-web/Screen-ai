@@ -38,3 +38,36 @@ The project uses Android Gradle Plugin 8.9.2, Kotlin 2.1.20, Java 17, compile SD
 
 ## Security boundaries
 VOSI Companion must not request or collect banking credentials, payment PINs, lock-screen credentials, passwords or OTPs. It must not attempt to bypass Android or HyperOS security controls. Pairing must use authentication and encrypted transport before remote commands are enabled.
+
+
+## Personal WhatsApp notification integration (first milestone)
+
+This milestone connects the Android companion to the user's existing WhatsApp installation without the WhatsApp Business API or AI credits.
+
+### What it supports
+- Reads notification previews posted by the official WhatsApp Android package (`com.whatsapp`).
+- Keeps up to 30 recent previews in private app-local preferences on the phone.
+- Shows recent previews in VOSI Companion.
+- Offers a reply button when the active WhatsApp notification exposes an Android `RemoteInput` reply action.
+- Opens a new WhatsApp chat using a `wa.me` link; the user reviews the recipient and taps Send inside WhatsApp.
+- Provides a button to clear locally saved notification previews.
+
+### Enable on the Redmi phone
+1. Build and install the updated `android` project.
+2. Open VOSI Companion.
+3. Tap **Enable WhatsApp notification access**.
+4. Android Settings opens. Find **VOSI WhatsApp notification access** / **VOSI Companion** and enable it.
+5. Return to VOSI Companion and tap **Refresh recent WhatsApp messages**.
+6. Send a test message to the phone from another WhatsApp account. Ensure WhatsApp notification previews are enabled.
+7. Tap **Reply** on a message to test notification quick reply, if WhatsApp exposes that action.
+
+HyperOS menu wording can vary. If notification access is not shown, look under Settings > Notifications > Device & app notifications / Notification access.
+
+### Important limitations and privacy
+- This is notification access, not full WhatsApp account or chat-database access. Messages hidden by notification privacy settings, muted chats, or notifications that WhatsApp does not post cannot be read this way.
+- Quick reply works only while the matching notification is still active and exposes a reply action.
+- Starting a new chat opens WhatsApp with a prefilled message; the user must review and tap Send.
+- Notification previews are stored locally on the phone (up to 30). Use the in-app clear button to erase them.
+- No WhatsApp message content is uploaded to VOSI's backend in this milestone.
+- This milestone does not yet connect the desktop VOSI voice assistant to the Android companion. Authenticated, encrypted device pairing is a separate next step; do not expose an unauthenticated network endpoint for message access.
+- The listener does not use Accessibility Service and does not request payment, PIN, password, or OTP access.
