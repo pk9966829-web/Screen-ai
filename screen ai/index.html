@@ -1004,7 +1004,7 @@
                                 success: false,
                                 title: 'VOSI request error',
                                 answer: String(error?.message || error || 'The request could not be processed.'),
-                                observing: !!screenStream
+                                observing: false
                             });
                         } catch (_) {}
                     }
@@ -2509,9 +2509,23 @@
                     }
                     const normalizedQuery = stripAssistantName(query);
                     const sendDraft = parseSendEmailRequest(normalizedQuery);
-                    if (sendDraft) { await runGmailSend(sendDraft, true); return; }
+                    if (sendDraft) {
+                        await runGmailSend(sendDraft, true);
+                        await window.__TAURI__?.event?.emit('companion-answer', {
+                            success: true, title: 'Email workflow', answer: 'The email workflow has finished. Check the VOSI chat for the send status and confirmation details.',
+                            observing: !!screenStream
+                        });
+                        return;
+                    }
                     const gmailRequest = parseGmailRequest(normalizedQuery);
-                    if (gmailRequest) { await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
+                    if (gmailRequest) {
+                        const gmailAnswer = await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel);
+                        await window.__TAURI__?.event?.emit('companion-answer', {
+                            success: true, title: 'Gmail', answer: gmailAnswer || 'Gmail request finished. Check the VOSI chat for details.',
+                            observing: !!screenStream
+                        });
+                        return;
+                    }
                     const command = parseDeviceCommand(normalizedQuery);
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
