@@ -782,48 +782,228 @@ taskBtn?.addEventListener(
 
 
 // =========================================================
-// MICROPHONE BUTTON
+// VOICE RECOGNITION
 // =========================================================
 
-micBtn?.addEventListener(
-  "click",
-  () => {
+// Use the browser's speech service with the Indian English locale.
+// Keep the constructor loosely typed because Web Speech API typings vary
+// between TypeScript DOM library versions.
+type VosiSpeechRecognition = any;
+const SpeechRecognitionConstructor =
+  (window as any).SpeechRecognition ||
+  (window as any).webkitSpeechRecognition;
 
-    recording =
-      !recording;
+let speechRecognition: VosiSpeechRecognition | null = null;
+let voiceFinalTranscript = "";
+let voiceInterimTranscript = "";
+let voiceSilenceTimer: number | null = null;
+let voiceRestartTimer: number | null = null;
 
+function updateVoiceTranscript() {
+  const combined = [voiceFinalTranscript, voiceInterimTranscript]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\\s+/g, " ")
+    .trim();
 
-    micBtn.classList.toggle(
-      "recording",
-      recording
-    );
-
-
-    if (recording) {
-
-      setStatus(
-        "LISTENING..."
-      );
-
-
-      addTimelineItem(
-        "Voice input",
-        "Screen AI is listening.",
-        "cyan"
-      );
-
-    } else {
-
-      setStatus(
-        awarenessEnabled
-          ? "SCREEN AWARENESS ACTIVE"
-          : "READY TO HELP"
-      );
-
-    }
-
+  if (askInput && combined) {
+    askInput.value = combined;
   }
-);
+}
+
+function clearVoiceTimers() {
+  if (voiceSilenceTimer !== null) {
+    window.clearTimeout(voiceSilenceTimer);
+    voiceSilenceTimer = null;
+  }
+  if (voiceRestartTimer !== null) {
+    window.clearTimeout(voiceRestartTimer);
+    voiceRestartTimer = null;
+  }
+}
+
+function finishVoiceCommand(submit: boolean) {
+  clearVoiceTimers();
+  const transcript = voiceFinalTranscript.replace(/\\s+/g, " ").trim();
+  recording = false;
+  micBtn?.classList.remove("recording");
+
+  try {
+    speechRecognition?.stop();
+  } catch {
+    // Recognition may already have stopped.
+  }
+
+  voiceFinalTranscript = "";
+  voiceInterimTranscript = "";
+
+  if (submit && transcript) {
+    if (askInput) askInput.value = transcript;
+    addTimelineItem("Voice command recognized", transcript, "cyan");
+    void askScreenAI(transcript);
+  } else if (submit) {
+    setStatus("I DIDN'T CATCH THAT — PLEASE TRY AGAIN");
+  } else {
+    setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
+  }
+}
+
+function startVoiceRecognition() {
+  if (!SpeechRecognitionConstructor) {
+    setStatus("VOICE RECOGNITION NOT SUPPORTED");
+    addTimelineItem(
+      "Voice recognition unavailable",
+      "This app runtime does not expose the Web Speech API. Use a supported Chrome browser or add a backend speech-to-text provider.",
+      "violet"
+    );
+    return;
+  }
+
+  voiceFinalTranscript = "";
+  voiceInterimTranscript = "";
+  if (askInput) askInput.value = "";
+
+  if (!speechRecognition) {
+    speechRecognition = new SpeechRecognitionConstructor();
+    speechRecognition.lang = "en-IN";
+    speechRecognition.continuous = true;
+    speechRecognition.interimResults = true;
+    speechRecognition.maxAlternatives = 3;
+
+    speechRecognition.onstart = () => {
+      if (!recording) return;
+      setStatus("LISTENING — SPEAK NATURALLY");
+    };
+
+    speechRecognition.onresult = (event: any) => {
+      if (!recording) return;
+
+      let newFinalText = "";
+      let interimText = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (!result || !result.length) continue;
+
+        // Prefer the alternative with the highest reported confidence.
+        let best = result[0];
+        for (let j = 1; j < result.length; j++) {
+          if (Number(result[j]?.confidence ?? 0) >
+              Number(best?.confidence ?? 0)) {
+            best = result[j];
+          }
+        }
+
+        const phrase = String(best?.transcript ?? "").trim();
+        if (!phrase) continue;
+
+        if (result.isFinal) {
+          newFinalText += (newFinalText ? " " : "") + phrase;
+        } else {
+          interimText += (interimText ? " " : "") + phrase;
+        }
+      }
+
+      if (newFinalText) {
+        voiceFinalTranscript = [voiceFinalTranscript, newFinalText]
+          .filter(Boolean)
+          .join(" ")
+          .replace(/\\s+/g, " ")
+          .trim();
+
+        // Submit after a short pause so a command is not cut off mid-sentence.
+        if (voiceSilenceTimer !== null) {
+          window.clearTimeout(voiceSilenceTimer);
+        }
+        voiceSilenceTimer = window.setTimeout(() => {
+          if (recording) finishVoiceCommand(true);
+        }, 1100);
+      }
+
+      voiceInterimTranscript = interimText;
+      updateVoiceTranscript();
+    };
+
+    speechRecognition.onerror = (event: any) => {
+      const error = String(event?.error ?? "unknown");
+      console.warn("VOSI speech recognition error:", error);
+
+      if (error === "not-allowed" || error === "service-not-allowed") {
+        recording = false;
+        micBtn?.classList.remove("recording");
+        clearVoiceTimers();
+        setStatus("MICROPHONE PERMISSION DENIED");
+        addTimelineItem(
+          "Microphone permission required",
+          "Allow microphone access for VOSI in Windows and the app's site permissions, then try again.",
+          "violet"
+        );
+      } else if (error === "audio-capture") {
+        recording = false;
+        micBtn?.classList.remove("recording");
+        clearVoiceTimers();
+        setStatus("MICROPHONE NOT AVAILABLE");
+      } else if (error === "network") {
+        recording = false;
+        micBtn?.classList.remove("recording");
+        clearVoiceTimers();
+        setStatus("VOICE SERVICE NETWORK ERROR");
+        addTimelineItem(
+          "Voice service unavailable",
+          "The browser speech service could not be reached. Check your internet connection and try again.",
+          "violet"
+        );
+      } else if (error !== "no-speech" && error !== "aborted") {
+        setStatus("VOICE RECOGNITION ERROR — TRY AGAIN");
+      }
+    };
+
+    speechRecognition.onend = () => {
+      if (!recording) return;
+
+      // Chrome may end a continuous session periodically; restart while the
+      // user still has the microphone button enabled.
+      if (voiceRestartTimer !== null) {
+        window.clearTimeout(voiceRestartTimer);
+      }
+      voiceRestartTimer = window.setTimeout(() => {
+        if (!recording || !speechRecognition) return;
+        try {
+          speechRecognition.start();
+        } catch (error) {
+          console.debug("VOSI speech recognition restart deferred:", error);
+        }
+      }, 250);
+    };
+  }
+
+  recording = true;
+  micBtn?.classList.add("recording");
+  setStatus("STARTING MICROPHONE...");
+  addTimelineItem(
+    "Voice input",
+    "VOSI is listening in Indian English. Speak clearly and pause briefly after your command.",
+    "cyan"
+  );
+
+  try {
+    speechRecognition.start();
+  } catch (error) {
+    recording = false;
+    micBtn?.classList.remove("recording");
+    setStatus("VOICE RECOGNITION BUSY — TRY AGAIN");
+    console.warn("Could not start VOSI speech recognition:", error);
+  }
+}
+
+// Microphone button: tap once to listen, tap again to finish the command.
+micBtn?.addEventListener("click", () => {
+  if (recording) {
+    finishVoiceCommand(true);
+  } else {
+    startVoiceRecognition();
+  }
+});
 
 
 // =========================================================
