@@ -292,7 +292,7 @@ Do not infer completion from a visual change alone. Do not invent buttons, dialo
 def interpret_gmail_search(question: str) -> Dict[str, Any] | None:
     """Optionally interpret varied Gmail wording with VOSI's configured model."""
     api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or not question or len(question) > 500:
+    if not api_key or api_key == "your_openai_api_key_here" or not question or len(question) > 500:
         return None
     prompt = f"""Convert this Gmail search request into one JSON object. Do not answer the user.
 Extract only explicitly requested filters. Never invent sender addresses or dates.
