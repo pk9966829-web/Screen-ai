@@ -167,7 +167,7 @@ def _gmail_query_from_ai_intent(intent: dict):
 
 def _gmail_parse_advanced_syntax(text: str):
     """Accept a limited, validated subset of Gmail's native search operators."""
-    matches = re.findall(r"\\b(from|to|subject|after|before|newer_than|older_than|is|has|filename|category|in):(\"[^\"]+\"|[^\\s]+)", text, re.I)
+    matches = re.findall(r"\b(from|to|subject|after|before|newer_than|older_than|is|has|filename|category|in):(\"[^\"]+\"|[^\s]+)", text, re.I)
     if not matches:
         return None
     parts = []
@@ -183,11 +183,11 @@ def _gmail_parse_advanced_syntax(text: str):
             filters[key] = safe
         elif key in {"after", "before"}:
             normalized = value.replace("-", "/")
-            if re.fullmatch(r"\\d{4}/\\d{2}/\\d{2}", normalized):
+            if re.fullmatch(r"\d{4}/\d{2}/\d{2}", normalized):
                 parts.append(f"{key}:{normalized}")
                 filters[key] = normalized
         elif key in {"newer_than", "older_than"}:
-            if re.fullmatch(r"\\d{1,4}[dmy]", value.lower()):
+            if re.fullmatch(r"\d{1,4}[dmy]", value.lower()):
                 parts.append(f"{key}:{value.lower()}")
                 filters[key] = value.lower()
         elif key == "is" and value.lower() in {"read", "unread", "starred", "important"}:
