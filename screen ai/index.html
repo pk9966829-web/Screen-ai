@@ -1414,9 +1414,10 @@
             }
 
             function parseSendEmailRequest(query) {
-                const original = String(query || '').trim();
-                // Explicit outgoing-email wording only; incoming-email searches stay searches.
-                if (!/^(?:(?:hey\s+)?vosi[, ]+)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original) ||
+                // Strip the saved assistant name so “Hey Mira, send email” is
+                // treated exactly like “send email”. Incoming-email searches remain separate.
+                const original = stripAssistantName(String(query || '').trim());
+                if (!/^(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original) ||
                     !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
 
                 const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -2478,7 +2479,7 @@
                     }
                     const normalizedQuery = stripAssistantName(query);
                     const sendDraft = parseSendEmailRequest(normalizedQuery);
-                    if (sendDraft) { await runGmailSend(sendDraft); return; }
+                    if (sendDraft) { await runGmailSend(sendDraft, true); return; }
                     const gmailRequest = parseGmailRequest(normalizedQuery);
                     if (gmailRequest) { await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
                     const command = parseDeviceCommand(normalizedQuery);
