@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.Settings
+import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
@@ -16,13 +17,19 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import org.json.JSONArray
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var contactName: EditText
     private lateinit var phoneNumber: EditText
     private lateinit var whatsappMessage: EditText
+    private lateinit var companionToken: EditText
+    private lateinit var syncButton: Button
     private lateinit var messagesContainer: LinearLayout
     private val contactsPermission = 100
     private val callPermission = 101
@@ -86,7 +93,7 @@ class MainActivity : Activity() {
             setPadding(0, 24, 0, 4)
         })
         root.addView(TextView(this).apply {
-            text = "VOSI reads WhatsApp notification previews on this phone only. It does not access WhatsApp's private chat database."
+            text = "VOSI reads WhatsApp notification previews. They stay on this phone unless you tap Sync with Desktop VOSI. It does not access WhatsApp's private chat database."
             textSize = 13f
             setPadding(0, 4, 0, 8)
         })
@@ -98,6 +105,23 @@ class MainActivity : Activity() {
             text = "Refresh recent WhatsApp messages"
             setOnClickListener { refreshWhatsAppMessages() }
         }, matchWidth())
+
+        companionToken = EditText(this).apply {
+            hint = "Paste your private desktop pairing token"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            isSingleLine = true
+            setText(
+                getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+                    .getString("pairing_token", "")
+            )
+        }
+        root.addView(companionToken, matchWidth())
+
+        syncButton = Button(this).apply {
+            text = "Sync WhatsApp with Desktop VOSI"
+            setOnClickListener { syncWhatsAppWithDesktop() }
+        }
+        root.addView(syncButton, matchWidth())
         root.addView(TextView(this).apply {
             text = "Send a new WhatsApp message"
             textSize = 14f
@@ -185,6 +209,81 @@ class MainActivity : Activity() {
                 text = "Reply to $sender"
                 setOnClickListener { promptNotificationReply(key, sender) }
             }, matchWidth())
+        }
+    }
+
+    private fun syncWhatsAppWithDesktop() {
+        val token = companionToken.text.toString().trim()
+        if (token.isBlank()) {
+            status.text = "Enter your private desktop pairing token first."
+            return
+        }
+        if (!WhatsAppNotificationListener.isNotificationAccessEnabled(this)) {
+            status.text = "Enable WhatsApp notification access before syncing."
+            return
+        }
+
+        getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+            .edit()
+            .putString("pairing_token", token)
+            .apply()
+
+        syncButton.isEnabled = false
+        status.text = "Connecting to desktop VOSI..."
+
+        thread {
+            var connection: HttpURLConnection? = null
+            try {
+                val recent = WhatsAppNotificationListener.recentMessages(this).take(30)
+                val messageArray = JSONArray().apply {
+                    recent.forEach { put(it) }
+                }
+                val payload = JSONObject().put("messages", messageArray)
+
+                connection = (URL(
+                    "http://127.0.0.1:8001/companion/whatsapp/sync"
+                ).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 10000
+                    readTimeout = 15000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+
+                connection.outputStream.use { output ->
+                    output.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+
+                val responseCode = connection.responseCode
+                val responseText = if (responseCode in 200..299) {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }
+                        ?: "HTTP $responseCode"
+                }
+
+                runOnUiThread {
+                    if (responseCode in 200..299) {
+                        val result = JSONObject(responseText)
+                        status.text =
+                            "Sync successful! ${result.optInt("received")} WhatsApp previews sent to desktop VOSI."
+                    } else if (responseCode == 401) {
+                        status.text = "Sync rejected. Check the desktop pairing token."
+                    } else {
+                        status.text = "Sync failed (HTTP $responseCode). Check that the VOSI backend is running."
+                    }
+                    syncButton.isEnabled = true
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    status.text =
+                        "Could not connect to desktop VOSI. Check USB connection and ADB forwarding. ${error.message ?: ""}"
+                    syncButton.isEnabled = true
+                }
+            } finally {
+                connection?.disconnect()
+            }
         }
     }
 
