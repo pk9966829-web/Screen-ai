@@ -1391,8 +1391,9 @@
                 const mailIntent = /\b(gmail|emails?|e-mail|inbox|mail|message|messages)\b/i.test(original) ||
                     /\b(did\s+.+\s+(?:send|sent|email|emailed|mail|mailed)|has\s+.+\s+(?:sent|emailed|mailed)|.+\s+email(?:ed)?\s+me|.+\s+mailed\s+me)\b/i.test(original);
                 if (!mailIntent) return null;
-                const countMatch = original.match(/\b(?:last|latest|show|find|get)?\s*(\d{1,2})\s*(?:emails?|messages?)?\b/i);
-                const count = countMatch ? Math.max(1, Math.min(Number(countMatch[1]), 10)) : (/\ball\b/i.test(original) ? 10 : 5);
+                const countMatch = original.match(/\b(?:last|latest|show|find|get)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:emails?|messages?)\b/i);
+                const countValue = countMatch ? (countMatch[1] || countMatch[2]) : null;
+                const count = countValue ? Math.max(1, Math.min(Number(countValue), 10)) : (/\ball\b/i.test(original) ? 10 : 5);
                 // Send the user's original wording to the backend intent engine.
                 // Do not guess Gmail operators in the browser.
                 return { count, gmailQuery: original, searchLabel: original };
