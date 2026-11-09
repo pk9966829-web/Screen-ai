@@ -710,7 +710,7 @@
                                 <a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Gmail">
                                     <i data-lucide="external-link" class="w-4 h-4"></i><span>Open Gmail</span>
                                 </a>
-                                <p id="gmail-connect-status" class="connector-note">Connect your Google account to let VOSI read message headers and previews. Read-only access.</p>
+                                <p id="gmail-connect-status" class="connector-note">Connect your Google account to let VOSI read and send emails. VOSI always asks before sending.</p>
                             </div>
                         </details>
                         <div class="absolute left-12 text-indigo-400 pointer-events-none"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
@@ -775,10 +775,11 @@
                     const response = await fetch(API_BASE + '/gmail/status');
                     const data = await response.json();
                     if (gmailStatus) gmailStatus.textContent = data.status === 'connected'
-                        ? 'Gmail connected. Try: “Check my 5 latest Gmail messages.”'
+                        ? 'Gmail connected. VOSI can read and send emails after your confirmation.'
+                        : data.status === 'reconnect_required' ? 'Gmail reading is connected. Choose Reconnect Gmail and approve the send permission.'
                         : data.status === 'connecting' ? 'Waiting for Google authorization…'
                         : data.error || 'Not connected yet. Choose Connect Gmail.';
-                    if (gmailButton) gmailButton.querySelector('span').textContent = data.status === 'connected' ? 'Gmail connected' : 'Connect Gmail';
+                    if (gmailButton) gmailButton.querySelector('span').textContent = data.status === 'connected' ? 'Gmail connected' : data.status === 'reconnect_required' ? 'Reconnect Gmail' : 'Connect Gmail';
                     return data.status;
                 } catch (_) {
                     if (gmailStatus) gmailStatus.textContent = 'Start the VOSI backend, then connect Gmail.';
