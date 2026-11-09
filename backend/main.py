@@ -104,6 +104,56 @@ def _gmail_clean_value(value: str) -> str:
     return re.sub(r"\s+", " ", value)[:120].strip()
 
 
+
+def _gmail_query_from_ai_intent(intent: dict):
+    """Validate model-produced fields and build Gmail syntax from an allow-list."""
+    if not isinstance(intent, dict):
+        return None
+    parts = []
+    filters = {}
+    def value(key):
+        item = intent.get(key)
+        return _gmail_clean_value(str(item)) if isinstance(item, str) else ""
+    for key, operator in (("sender", "from"), ("recipient", "to")):
+        item = value(key)
+        if item:
+            parts.append(f"{operator}:({item})")
+            filters[key] = item
+    for key in ("subject", "keywords"):
+        item = value(key)
+        if item:
+            parts.append(f'subject:("{item}")' if key == "subject" else (f'"{item}"' if " " in item else item))
+            filters[key] = item
+    for key in ("after", "before"):
+        item = value(key)
+        if item and re.fullmatch(r"\\d{4}/\\d{2}/\\d{2}", item):
+            parts.append(f"{key}:{item}")
+            filters[key] = item
+    newer = value("newer_than")
+    if newer and re.fullmatch(r"\\d{1,4}[dmy]", newer.lower()):
+        parts.append(f"newer_than:{newer.lower()}")
+        filters["newer_than"] = newer.lower()
+    read_status = value("read_status").lower()
+    if read_status in {"read", "unread"}:
+        parts.append(f"is:{read_status}")
+        filters["read_status"] = read_status
+    for key, operator in (("has_attachment", "has:attachment"), ("starred", "is:starred"), ("important", "is:important")):
+        if intent.get(key) is True:
+            parts.append(operator)
+            filters[key] = True
+    category = value("category").lower()
+    if category in {"primary", "social", "promotions", "updates", "forums"}:
+        parts.append(f"category:{category}")
+        filters["category"] = category
+    folder = value("folder").lower()
+    if folder in {"inbox", "sent", "drafts", "spam", "trash", "anywhere"}:
+        parts.append(f"in:{folder}")
+        filters["folder"] = folder
+    if not parts:
+        return None
+    return {"gmail_query": " ".join(parts), "filters": filters}
+
+
 def _gmail_natural_query(text: str):
     """Translate common natural-language Gmail requests into safe Gmail operators."""
     original = (text or "").strip()
@@ -236,7 +286,14 @@ def search_gmail_natural(req: GmailSearchRequest):
     original = (req.query or "").strip()
     if not original or len(original) > 500:
         return {"success": False, "error": "Enter a Gmail search under 500 characters."}
-    parsed = _gmail_natural_query(original)
+    parsed = None
+    try:
+        ai_intent = interpret_gmail_search(original)
+        parsed = _gmail_query_from_ai_intent(ai_intent) if ai_intent else None
+    except Exception:
+        parsed = None
+    if parsed is None:
+        parsed = _gmail_natural_query(original)
     try:
         credentials = _gmail_credentials()
         if not credentials:
@@ -308,7 +365,7 @@ def latest_gmail_messages(count: int = 5, q: str = ""):
 
 
 from pipeline import ScreenPipeline
-from brain import analyze_screen_question, draft_letter
+from brain import analyze_screen_question, draft_letter, interpret_gmail_search
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
 # Local bridge used only by the VOSI Chrome extension.
