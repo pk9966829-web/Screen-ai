@@ -2476,6 +2476,7 @@
                             return;
                         }
                     }
+                    const normalizedQuery = stripAssistantName(query);
                     const sendDraft = parseSendEmailRequest(normalizedQuery);
                     if (sendDraft) { await runGmailSend(sendDraft); return; }
                     const gmailRequest = parseGmailRequest(normalizedQuery);
@@ -2571,11 +2572,11 @@
                     }
                     const voiceMode = lastInputWasVoice;
                     lastInputWasVoice = false;
-                    const sendDraft = parseSendEmailRequest(query);
+                    const sendDraft = parseSendEmailRequest(normalizedQuery);
                     if (sendDraft) { userInput.value = ''; await runGmailSend(sendDraft, voiceMode); return; }
-                    const gmailRequest = parseGmailRequest(query);
+                    const gmailRequest = parseGmailRequest(normalizedQuery);
                     if (gmailRequest) { userInput.value = ''; await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
-                    const deviceCommand = parseDeviceCommand(query);
+                    const deviceCommand = parseDeviceCommand(normalizedQuery);
                     if (deviceCommand) {
                         userInput.value = '';
                         await dispatchDeviceCommand(deviceCommand);
