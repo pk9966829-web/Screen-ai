@@ -119,7 +119,7 @@ def send_gmail_message(req: GmailSendRequest):
     body = (req.body or "").strip()
     if not req.confirmed:
         return {"success": False, "error": "Email sending requires your confirmation in VOSI."}
-    if not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", recipient):
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", recipient):
         return {"success": False, "error": "Enter a valid recipient email address."}
     if not body:
         return {"success": False, "error": "The email message cannot be empty."}
