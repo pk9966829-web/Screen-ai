@@ -2181,7 +2181,14 @@
                     .replace(/\s+/g, ' ')
                     .trim();
             }
+            function addSirToQuestion(text) {
+                const value = String(text || '');
+                // Add a respectful "sir" only when VOSI is asking a question.
+                return value.replace(/\?\s*$/, match => /\bsir\s*\?$/i.test(value) ? match : ', sir?');
+            }
+
             function speakVosi(text) {
+                text = addSirToQuestion(text);
                 if (!vosiSettings.voiceReplies || !text || !window.speechSynthesis) return;
                 if (recognitionMode === 'handsfree') stopVoiceRecognition();
                 window.speechSynthesis.cancel();
@@ -2394,7 +2401,7 @@
             initializeVosiChatHistory();
 
             function showResponse(title, body) {
-                appendVosiChatMessage('assistant', title, body || '');
+                appendVosiChatMessage('assistant', addSirToQuestion(title), addSirToQuestion(body || ''));
                 if (responseBox) responseBox.classList.add('hidden');
             }
 
