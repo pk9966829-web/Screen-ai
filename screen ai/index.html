@@ -1327,11 +1327,11 @@
                         return 'Gmail is connected, but there are no messages in your inbox.';
                     }
                     const lines = data.messages.map((mail, index) =>
-                        (index + 1) + '. ' + mail.subject + '\\nFrom: ' + mail.sender + '\\nDate: ' + mail.date + '\\n' + mail.snippet
+                        (index + 1) + '. ' + mail.subject + '\nFrom: ' + mail.sender + '\nDate: ' + mail.date + '\n' + mail.snippet
                     );
                     const summary = 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
                         data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
-                    showResponse('Your latest Gmail messages', lines.join('\\n\\n'));
+                    showResponse('Your latest Gmail messages', lines.join('\n\n'));
                     speakVosi(summary);
                     return summary;
                 } catch (error) {
@@ -1342,8 +1342,8 @@
                 }
             }
             function isGmailLatestRequest(query) {
-                return /\\b(gmail|emails?|inbox)\\b/i.test(query) &&
-                    /\\b(latest|recent|newest|last|check|show|read|list)\\b/i.test(query);
+                return /\b(gmail|emails?|inbox)\b/i.test(query) &&
+                    /\b(latest|recent|newest|last|check|show|read|list)\b/i.test(query);
             }
             async function focusMainWindow() {
                 try {
@@ -2125,7 +2125,7 @@
                             return;
                         }
                     }
-                    if (isGmailLatestRequest(query)) { await runGmailLatest(Number((query.match(/\\b(\\d{1,2})\\b/) || [])[1]) || 5); return; }
+                    if (isGmailLatestRequest(query)) { await runGmailLatest(Number((query.match(/\b(\d{1,2})\b/) || [])[1]) || 5); return; }
                     const command = parseDeviceCommand(query);
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
@@ -2195,7 +2195,7 @@
                         userInput.value = '';
                         return;
                     }
-                    if (isGmailLatestRequest(query)) { userInput.value = ''; await runGmailLatest(Number((query.match(/\\b(\\d{1,2})\\b/) || [])[1]) || 5); return; }
+                    if (isGmailLatestRequest(query)) { userInput.value = ''; await runGmailLatest(Number((query.match(/\b(\d{1,2})\b/) || [])[1]) || 5); return; }
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
