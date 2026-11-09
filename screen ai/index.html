@@ -182,6 +182,26 @@
             box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.045);
         }
 
+
+        /* ChatGPT-style conversation surface. Connector markup and handlers remain untouched. */
+        #main-content { align-items:stretch!important; justify-content:flex-start!important; flex-direction:column!important; gap:18px!important; padding:28px clamp(16px,4vw,56px) 22px!important; }
+        #main-content > .text-center.space-y-2 { flex:0 0 auto; margin:0!important; }
+        #main-content > .text-center.space-y-2 h2 { font-size:clamp(25px,3vw,34px)!important; }
+        #vosi-chat-transcript { display:flex; flex:1 1 auto; flex-direction:column; gap:18px; width:min(900px,100%); min-height:180px; max-height:none; overflow-y:auto; margin:0 auto; padding:18px 12px 24px; scroll-behavior:smooth; }
+        #vosi-chat-transcript:empty { display:none; }
+        .vosi-chat-row { display:flex; width:100%; gap:12px; align-items:flex-start; }
+        .vosi-chat-row.user { justify-content:flex-end; }
+        .vosi-chat-avatar { width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.14); border-radius:50%; color:#dbeafe; background:rgba(255,255,255,.08); font-size:11px; font-weight:800; }
+        .vosi-chat-bubble { max-width:min(78%,720px); padding:13px 16px; border:1px solid rgba(255,255,255,.10); border-radius:17px; color:#f1f5f9; font-size:14px; line-height:1.75; white-space:pre-wrap; overflow-wrap:anywhere; background:rgba(255,255,255,.055); }
+        .vosi-chat-row.user .vosi-chat-bubble { background:rgba(37,99,235,.22); border-color:rgba(96,165,250,.25); border-top-right-radius:5px; }
+        .vosi-chat-row.assistant .vosi-chat-bubble { border-top-left-radius:5px; }
+        .vosi-chat-label { display:block; margin-bottom:5px; color:#93c5fd; font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+        #main-content > .w-full.max-w-2xl { flex:0 0 auto; width:min(900px,100%)!important; margin:0 auto!important; padding-bottom:env(safe-area-inset-bottom); }
+        #ai-prompt-form { min-height:58px; border:1px solid rgba(255,255,255,.16); border-radius:20px; background:rgba(20,20,23,.94); box-shadow:0 12px 40px rgba(0,0,0,.35); }
+        #user-input { min-height:56px; background:transparent!important; border:0!important; box-shadow:none!important; }
+        #response-box { display:none!important; }
+        @media(max-width:640px) { #main-content { padding:18px 12px 14px!important; } #vosi-chat-transcript { padding:12px 2px 18px; } .vosi-chat-bubble { max-width:88%; font-size:13px; } }
+
         @media (prefers-reduced-motion: reduce) {
             .bg-space-base::before,
             .bg-space-base::after,
@@ -436,6 +456,18 @@
         #sidebar-settings .task-state { font-size:9px; padding:3px 7px; }
         #sidebar-settings .side-note { padding:0 8px; color:#838383; font-size:10px; line-height:1.45; }
         #setting-save-status { min-height:14px; padding:0 8px; color:#8ee6bd; font-size:10px; }
+        /* Search-bar connector launcher */
+        #vosi-connectors { position:absolute; left:8px; top:50%; transform:translateY(-50%); z-index:30; }
+        #vosi-connectors > summary { list-style:none; display:flex; align-items:center; justify-content:center; width:34px; height:34px; border:1px solid rgba(255,255,255,.14); border-radius:11px; color:#dbeafe; background:rgba(255,255,255,.07); cursor:pointer; }
+        #vosi-connectors > summary::-webkit-details-marker { display:none; }
+        #vosi-connectors > summary:hover, #vosi-connectors[open] > summary { background:rgba(59,130,246,.22); border-color:rgba(96,165,250,.5); }
+        #vosi-connectors-menu { position:absolute; left:0; top:43px; width:220px; padding:9px; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(15,18,28,.98); box-shadow:0 16px 40px rgba(0,0,0,.45); backdrop-filter:blur(18px); }
+        #vosi-connectors-menu .connector-heading { padding:5px 8px 8px; color:#8e9bb0; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+        #vosi-connectors-menu a { display:flex; align-items:center; gap:10px; padding:10px 9px; border-radius:9px; color:#f1f5f9; font-size:12px; text-decoration:none; }
+        #vosi-connectors-menu a:hover { background:rgba(255,255,255,.09); }
+        #vosi-connectors-menu .connector-action { width:100%; display:flex; align-items:center; gap:10px; padding:10px 9px; border:0; border-radius:9px; color:#f1f5f9; background:transparent; font-size:12px; text-align:left; cursor:pointer; }
+        #vosi-connectors-menu .connector-action:hover { background:rgba(255,255,255,.09); }
+        #vosi-connectors-menu .connector-note { margin:6px 8px 3px; color:#9aa6b8; font-size:10px; line-height:1.45; }
         .quick-action { padding:9px 12px; border:1px solid rgba(255,255,255,.12); border-radius:999px; color:#dedede; background:rgba(255,255,255,.055); font-size:11px; transition:background .2s,border-color .2s,transform .2s; }
         .quick-action:hover { background:rgba(255,255,255,.11); border-color:rgba(125,190,255,.3); transform:translateY(-1px); }
         .preset-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:0 8px; }
@@ -587,6 +619,12 @@
                         </a>
                     </nav>
                     <div id="sidebar-settings" aria-label="Vosi settings">
+                        <section class="setting-group" aria-labelledby="side-conversation-title">
+                            <h2 class="setting-title" id="side-conversation-title">Conversation</h2>
+                            <button id="setting-new-chat" class="side-action" type="button"><i data-lucide="plus" class="w-4 h-4 inline-block mr-2"></i>New chat</button>
+                            <label class="setting-row" for="setting-chat-switch"><span>Switch chat</span><select id="setting-chat-switch" aria-label="Switch conversation"><option value="">Loading chats…</option></select></label>
+                            <p class="side-note">Your previous conversations stay saved on this device.</p>
+                        </section>
                         <section class="setting-group" aria-labelledby="side-awareness-title">
                             <h2 class="setting-title" id="side-awareness-title">Screen awareness</h2>
                             <div class="setting-row"><span>Observe shared screen</span><label class="settings-switch" aria-label="Screen awareness"><input type="checkbox" id="awareness-toggle"><span></span></label></div>
@@ -658,51 +696,42 @@
                     </p>
                 </div>
 
+                <section id="vosi-chat-transcript" aria-live="polite" aria-label="VOSI conversation"></section>
+
                 <div class="w-full max-w-2xl mt-6 space-y-4">
                     <form id="ai-prompt-form" class="relative flex items-center">
-                        <div class="absolute left-4 text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
-                        <input id="user-input" type="text" placeholder="Ask VOSI anything..." class="w-full pl-12 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
+                        <details id="vosi-connectors">
+                            <summary aria-label="Open connectors" title="Connectors"><i data-lucide="box" class="w-4 h-4"></i></summary>
+                            <div id="vosi-connectors-menu">
+                                <div class="connector-heading">Connectors</div>
+                                <button type="button" id="gmail-connect-button" class="connector-action">
+                                    <i data-lucide="mail" class="w-4 h-4 text-red-300"></i><span>Connect Gmail</span>
+                                </button>
+                                <a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Gmail">
+                                    <i data-lucide="external-link" class="w-4 h-4"></i><span>Open Gmail</span>
+                                </a>
+                                <p id="gmail-connect-status" class="connector-note">Connect your Google account to let VOSI read and send emails. VOSI always asks before sending.</p>
+                            </div>
+                        </details>
+                        <div class="absolute left-12 text-indigo-400 pointer-events-none"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
+                        <input id="user-input" type="text" placeholder="Ask VOSI anything..." class="w-full pl-20 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
                         <div class="absolute right-2 flex items-center space-x-1">
-                            <button type="button" id="mic-btn" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                            <button type="button" id="mic-btn" title="Speak to VOSI" aria-label="Speak to VOSI" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
                         </div>
                     </form>
                     <div class="flex flex-wrap justify-center gap-2">
-                        <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
+<button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
                             Explain my screen
                         </button>
-                        <button class="quick-action" type="button" data-prompt="Summarize my shared screen in three short bullet points.">
+<button class="quick-action" type="button" data-prompt="Summarize my shared screen in three short bullet points.">
                             Summarize screen
                         </button>
-                        <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
+<button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
                             Guide next step
                         </button>
-                        <button class="quick-action" type="button" data-action="awareness">
+<button class="quick-action" type="button" data-action="awareness">
                             Start screen sharing
-                        </button>
-                        <button class="quick-action" type="button" data-action="task">
-                            Plan a task
-                        </button>
-                        <button class="quick-action" type="button" data-action="letter">
-                            Write a letter
-                        </button>
-                        <button class="quick-action" type="button" data-action="web-research">
-                            Search the web
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="youtube">
-                            Open YouTube
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="wifi-settings">
-                            Wi-Fi settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="windows-settings">
-                            Windows settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="calculator">
-                            Open Calculator
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="file-explorer">
-                            Open File Explorer
                         </button>
                     </div>
                 </div>
@@ -739,8 +768,72 @@
             createCosmicDust();
             initCompanion();
             checkBackend();
+            const gmailButton = document.getElementById('gmail-connect-button');
+            const gmailStatus = document.getElementById('gmail-connect-status');
+            async function refreshGmailStatus() {
+                try {
+                    const response = await fetch(API_BASE + '/gmail/status');
+                    const data = await response.json();
+                    if (gmailStatus) gmailStatus.textContent = data.status === 'connected'
+                        ? 'Gmail connected. VOSI can read and send emails after your confirmation.'
+                        : data.status === 'reconnect_required' ? 'Gmail reading is connected. Choose Reconnect Gmail and approve the send permission.'
+                        : data.status === 'connecting' ? 'Waiting for Google authorization…'
+                        : data.error || 'Not connected yet. Choose Connect Gmail.';
+                    if (gmailButton) gmailButton.querySelector('span').textContent = data.status === 'connected' ? 'Gmail connected' : data.status === 'reconnect_required' ? 'Reconnect Gmail' : 'Connect Gmail';
+                    return data.status;
+                } catch (_) {
+                    if (gmailStatus) gmailStatus.textContent = 'Start the VOSI backend, then connect Gmail.';
+                    return 'offline';
+                }
+            }
+            gmailButton?.addEventListener('click', async () => {
+                gmailButton.disabled = true;
+                if (gmailStatus) gmailStatus.textContent = 'Opening Google authorization…';
+                try {
+                    const response = await fetch(API_BASE + '/gmail/connect', { method: 'POST' });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not start Gmail authorization.');
+                    if (gmailStatus) gmailStatus.textContent = data.message || 'Complete Google sign-in in the browser window.';
+                    const deadline = Date.now() + 120000;
+                    let status = 'connecting';
+                    while (Date.now() < deadline && status === 'connecting') {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        status = await refreshGmailStatus();
+                    }
+                    if (status === 'connected') {
+                        if (gmailStatus) gmailStatus.textContent = 'Connected! Ask VOSI: “Check my 5 latest Gmail messages.”';
+                    } else if (status === 'error') {
+                        if (gmailStatus) gmailStatus.textContent = gmailStatus.textContent || 'Gmail authorization failed. Check your Google OAuth setup.';
+                    }
+                } catch (error) {
+                    if (gmailStatus) gmailStatus.textContent = String(error?.message || error);
+                    if (gmailStatus) gmailStatus.textContent = String(error?.message || error);
+                } finally { gmailButton.disabled = false; }
+            });
+            void refreshGmailStatus();
         });
 
+        const VOSI_ASSISTANT_NAME_KEY = "vosi.assistant.name.v1";
+        let vosiAssistantName = "VOSI";
+        let waitingForAssistantName = false;
+        try { vosiAssistantName = (localStorage.getItem(VOSI_ASSISTANT_NAME_KEY) || "VOSI").trim().slice(0, 32) || "VOSI"; } catch (_) {}
+        function saveVosiAssistantName(name) {
+            const cleanName = String(name || "").trim().replace(/\s+/g, " ").slice(0, 32);
+            if (!cleanName) return false;
+            vosiAssistantName = cleanName;
+            try { localStorage.setItem(VOSI_ASSISTANT_NAME_KEY, cleanName); } catch (_) {}
+            vosiSettings.wakePhrase = cleanName.toLowerCase() === "vosi" ? "Hey Vosi" : cleanName;
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (_) {}
+            const wakeInput = document.getElementById("setting-wake-phrase");
+            if (wakeInput) wakeInput.value = vosiSettings.wakePhrase;
+            return true;
+        }
+        function stripAssistantName(text) {
+            const value = String(text || "").trim();
+            const names = [vosiAssistantName, "Hey " + vosiAssistantName].sort((a, b) => b.length - a.length);
+            const match = names.find(name => value.toLowerCase().startsWith(name.toLowerCase()) && /^[,.:;!\s]/.test(value.slice(name.length)));
+            return match ? (value.slice(match.length).replace(/^[,.:;!\s]+/, "").trim() || value) : value;
+        }
         const SETTINGS_KEY = "vosi.settings.v1";
         const ONBOARDING_KEY = "vosi.setup.complete.v1";
         const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey Vosi", reminders: true, companionOverlay: true };
@@ -899,7 +992,22 @@
                 await listen('companion-ask', async (event) => {
                     const question = (event?.payload?.question || '').trim();
                     if (!question) return;
-                    await answerFromCompanion(question);
+                    try {
+                        if (typeof window.answerFromCompanion !== 'function') {
+                            throw new Error('VOSI companion handler is not ready. Please reopen VOSI and try again.');
+                        }
+                        await window.answerFromCompanion(question);
+                    } catch (error) {
+                        console.error('Floating VOSI request failed:', error);
+                        try {
+                            await emit('companion-answer', {
+                                success: false,
+                                title: 'VOSI request error',
+                                answer: String(error?.message || error || 'The request could not be processed.'),
+                                observing: false
+                            });
+                        } catch (_) {}
+                    }
                 });
             } catch (err) { console.warn('Companion init error:', err); }
         }
@@ -1124,6 +1232,39 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                const flipkartIntent = /\b(flipkart)\b/.test(text) && /\b(search|find|compare|best|buy|look for)\b/.test(text);
+                if (flipkartIntent) {
+                    const budgetMatch = text.match(/(?:under|below|less than|within)\s*(?:₹|rs\.?\s*)?([\d,]+)/i);
+                    let productQuery = raw
+                        .replace(/^\s*(?:hey\s+vosi[,!: ]*)?/i, '')
+                        .replace(/\b(?:on|in)\s+flipkart\b/i, '')
+                        .replace(/\b(?:open|search|find|compare|look for|show me|buy)\b/ig, '')
+                        .replace(/\b(?:the )?best\b/ig, '')
+                        .replace(/\b(?:under|below|less than|within)\s*(?:₹|rs\.?\s*)?[\d,]+\s*(?:rupees|rs)?/ig, '')
+                        .replace(/\b(?:flipkart|rupees|rs|and)\b/ig, '')
+                        .replace(/[₹,]/g, ' ')
+                        .replace(/\s+/g, ' ').trim();
+                    if (!productQuery) productQuery = 'popular products';
+                    return { target: 'flipkart-search', query: productQuery, budget: budgetMatch ? Number(budgetMatch[1].replace(/,/g, '')) : null };
+                }
+                const alarmMatch = text.match(/\b(?:set|create|make|keep)\s+(?:the\s+)?(?:an?\s+)?alarm\s+(?:for\s+|at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/) || text.match(/\bwake\s+me\s+up\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+                if (alarmMatch) {
+                    let hour=Number(alarmMatch[1]), minute=Number(alarmMatch[2]||0), period=alarmMatch[3];
+                    if (minute>59 || hour<1 || hour>12 && period || hour>23) return {target:"invalid-time"};
+                    if (period==="pm" && hour<12) hour+=12;
+                    if (period==="am" && hour===12) hour=0;
+                    return {target:"set-alarm",hour,minute};
+                }
+                const timerMatch=text.match(/\b(?:set\s+)?timer\s+(?:for\s+)?(\d+)\s*(seconds?|secs?|minutes?|mins?)\b/);
+                if(timerMatch){const amount=Number(timerMatch[1]),unit=timerMatch[2];return {target:"set-timer",seconds:amount*(unit.startsWith("s")?1:60)};}
+                if (/\b(mute|silence)\s+(?:the\s+)?(?:sound|volume|audio)?\b/.test(text)) return {target:"volume-control",action:"mute"};
+                if (/\bunmute\b/.test(text)) return {target:"volume-control",action:"unmute"};
+                if (/\b(?:increase|raise|turn up)\s+(?:the\s+)?volume\b/.test(text)) return {target:"volume-control",action:"up"};
+                if (/\b(?:decrease|lower|turn down)\s+(?:the\s+)?volume\b/.test(text)) return {target:"volume-control",action:"down"};
+                if (/\b(take|capture)\s+(?:a\s+)?screenshot\b/.test(text)) return {target:"screenshot"};
+                if (/\b(lock|lock down)\s+(?:my\s+)?(?:computer|pc|laptop|device)\b/.test(text)) return {target:"lock-pc"};
+                if (/\b(shut down|shutdown|power off)\b/.test(text)) return {target:"shutdown-pc",confirm:true};
+                if (/\b(restart|reboot)\s+(?:my\s+)?(?:computer|pc|laptop|device)\b/.test(text)) return {target:"restart-pc",confirm:true};
                 if (/\b(write|draft|compose|create)\b/.test(text) && /\b(letter|cover letter|resignation letter|thank[- ]you letter)\b/.test(text)) return { target: 'write-letter', seed: raw, announce: true };
                 const hotelIntent = /\b(best|find|compare|research|recommend)\b/.test(text) && /\b(hotel|hotels|accommodation|place to stay)\b/.test(text);
                 if (hotelIntent) {
@@ -1193,6 +1334,237 @@
                 if (/\b(open|show)\b.*\b(windows )?settings\b/.test(text)) return { target: 'windows-settings' };
                 return null;
             }
+            async function runFlipkartSearch(query, budget = null) {
+                const cleanQuery = String(query || '').trim();
+                if (!cleanQuery) { showResponse('What should I find?', 'Say a product, for example: “Find the best body spray under 1000 rupees on Flipkart.”'); return; }
+                const requestId = 'vosi-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+                showResponse('Searching Flipkart', 'VOSI is asking your Chrome extension to search for ' + cleanQuery + (budget ? ' under ₹' + budget : '') + '. Keep Chrome open.');
+                speakVosi('I am searching Flipkart for ' + cleanQuery + (budget ? ' under ' + budget + ' rupees.' : '.'));
+                try {
+                    const start = await fetch(API_BASE + '/browser/search', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: requestId, query: cleanQuery, budget })
+                    });
+                    const started = await start.json();
+                    if (!start.ok || !started.success) throw new Error(started.error || 'Could not send the request to the Chrome extension.');
+                    const deadline = Date.now() + 45000;
+                    let result = null;
+                    while (Date.now() < deadline) {
+                        await new Promise(resolve => setTimeout(resolve, 1200));
+                        const response = await fetch(API_BASE + '/browser/results/' + encodeURIComponent(requestId));
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success && data.results) { result = data.results; break; }
+                        }
+                    }
+                    if (!result) throw new Error('No product results arrived. Check that the VOSI Flipkart Chrome extension is installed and enabled.');
+                    const products = (result.products || []).slice(0, 8);
+                    if (!products.length) throw new Error('Flipkart opened, but VOSI could not read product cards. Try scrolling the results page and ask again.');
+                    const ranked = products.map(item => {
+                        const price = Number(String(item.price || '').replace(/[^0-9.]/g, '')) || null;
+                        const rating = Number(item.rating) || 0;
+                        const reviews = Number(String(item.reviews || '').replace(/[^0-9]/g, '')) || 0;
+                        const withinBudget = !budget || !price || price <= budget;
+                        const score = (withinBudget ? 100 : -100) + rating * 10 + Math.min(Math.log10(reviews + 1), 5);
+                        return { ...item, priceValue: price, score };
+                    }).filter(item => !budget || !item.priceValue || item.priceValue <= budget).sort((a,b) => b.score-a.score);
+                    const best = ranked[0] || products[0];
+                    const lines = ranked.slice(0, 5).map((item, i) => (i + 1) + '. ' + item.name + ' — ' + (item.price || 'price not shown') + (item.rating ? ' · ' + item.rating + '★' : '')).join('\n');
+                    const recommendation = 'VOSI found ' + products.length + ' visible listings. ' + (best?.name ? 'My top visible match is ' + best.name + (best.price ? ' at ' + best.price : '') + (best.rating ? ', rated ' + best.rating + ' stars.' : '.') : 'I could not determine a clear best option.');
+                    showResponse('Flipkart comparison', recommendation + '\n\n' + lines + '\n\nThis is a ranking of visible listings, not a guarantee of product quality. Check seller, ingredients, reviews and delivery details before buying.');
+                    speakVosi(recommendation);
+                } catch (error) {
+                    const message = String(error?.message || error);
+                    showResponse('Flipkart search needs attention', message);
+                    speakVosi(message);
+                }
+            }
+
+            async function runGmailLatest(count = 5, naturalLanguage = '', searchLabel = '') {
+                const isSearch = !!naturalLanguage;
+                showResponse(isSearch ? 'Searching Gmail' : 'Checking Gmail',
+                    isSearch ? 'VOSI is understanding your request and searching Gmail for matching messages.' : 'VOSI is retrieving your latest messages directly from Gmail.');
+                try {
+                    const response = await fetch(API_BASE + '/gmail/search', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: naturalLanguage || 'show my latest emails', count })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Could not retrieve Gmail messages.');
+                    if (!data.messages?.length) {
+                        const emptyMessage = isSearch
+                            ? 'I could not find any Gmail messages matching your request: ' + searchLabel + '.'
+                            : 'Gmail is connected, but there are no messages in your inbox.';
+                        showResponse('No matching Gmail messages', emptyMessage);
+                        speakVosi(emptyMessage);
+                        return emptyMessage;
+                    }
+                    const lines = data.messages.map((mail, index) =>
+                        (index + 1) + '. ' + mail.subject + '\nFrom: ' + mail.sender +
+                        (mail.recipient ? '\nTo: ' + mail.recipient : '') +
+                        '\nDate: ' + mail.date +
+                        (mail.unread ? '\nUnread' : '') +
+                        (mail.has_attachment ? '\nHas attachment' : '') +
+                        '\n' + mail.snippet
+                    );
+                    const filterSummary = Object.entries(data.filters || {})
+                        .map(([key, value]) => key.replace(/_/g, ' ') + ': ' + value)
+                        .join(', ');
+                    const summary = isSearch
+                        ? 'I found ' + data.messages.length + ' matching email' + (data.messages.length === 1 ? '' : 's') +
+                            (filterSummary ? ' using ' + filterSummary + '. ' : '. ') +
+                            data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ')
+                        : 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
+                            data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
+                    showResponse(isSearch ? 'Gmail search results' : 'Your latest Gmail messages', lines.join('\n\n'));
+                    speakVosi(summary);
+                    return summary;
+                } catch (error) {
+                    const message = String(error?.message || error);
+                    showResponse('Gmail connection', message);
+                    speakVosi(message);
+                    return message;
+                }
+            }
+
+            function parseSendEmailRequest(query) {
+                // Normalize common speech-to-text variations so “send email”,
+                // “send e-mail”, and “send an email” all reach the Gmail send flow.
+                const original = stripAssistantName(String(query || '').trim())
+                    .replace(/[–—]/g, '-')
+                    .replace(/\be[\s-]?mail\b/gi, 'email')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                const outgoingEmailIntent = /^(?:(?:hey\s+)?please\s+)?(?:(?:i\s+)?(?:want|need)\s+(?:(?:you\s+to|to)\s+)?)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original);
+                const mentionsEmail = /\b(?:email|mail)\b/i.test(original);
+                if (!outgoingEmailIntent || !mentionsEmail) return null;
+
+                const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+                const spokenAddressMatch = !addressMatch ? original.match(/([A-Z0-9._%+-]+(?:\s+(?:dot|underscore|dash|hyphen)\s+[A-Z0-9._%+-]+)*)\s+at\s+([A-Z0-9.-]+(?:\s+dot\s+[A-Z]{2,})+)/i) : null;
+                const recipient = addressMatch ? addressMatch[0] : spokenAddressMatch
+                    ? (spokenAddressMatch[1].replace(/\s+(dot|underscore|dash|hyphen)\s+/gi, (_, word) => word.toLowerCase() === 'dot' ? '.' : word.toLowerCase() === 'underscore' ? '_' : '-').replace(/\s+/g, '') + '@' + spokenAddressMatch[2].replace(/\s+dot\s+/gi, '.').replace(/\s+/g, ''))
+                    : '';
+                const subjectMatch = original.match(/\bsubject\s*(?:is|:)?\s*["']?(.+?)["']?(?=\s+(?:saying|message|body|content|text|that)\b|[?.!,;]|$)/i);
+                const bodyMatch = original.match(/\b(?:saying|message|body|content|text|tell them)\s*(?:is|:|,|-)?\s*(.+)$/i);
+                const body = bodyMatch ? bodyMatch[1].trim().replace(/[?.!]+$/, '') : '';
+                return {
+                    recipient,
+                    subject: subjectMatch ? subjectMatch[1].trim() : '',
+                    body
+                };
+            }
+
+            async function askForVoiceEmailAnswer(prompt) {
+                if (!SpeechRecognitionAPI) {
+                    showResponse('Voice input unavailable', 'Use Chrome or Edge with microphone permission, or type the missing email details.');
+                    return null;
+                }
+                showResponse('VOSI is listening', prompt);
+                speakVosi(prompt);
+                await new Promise(resolve => window.setTimeout(resolve, 500));
+                return await new Promise(resolve => {
+                    const finish = value => {
+                        if (voiceAnswerResolver !== finish) return;
+                        voiceAnswerResolver = null;
+                        window.clearTimeout(timeoutId);
+                        resolve(value);
+                    };
+                    const timeoutId = window.setTimeout(() => {
+                        finish(null);
+                        stopVoiceRecognition();
+                        showResponse('Voice input timed out', 'Tap the microphone and try that email detail again.');
+                    }, 30000);
+                    voiceAnswerResolver = finish;
+                    if (!startVoiceRecognition('push')) finish(null);
+                });
+            }
+
+            async function runGmailSend(draft, voiceMode = false) {
+                let recipient = draft.recipient || '';
+                let subject = draft.subject || '';
+                let body = draft.body || '';
+
+                if (voiceMode) {
+                    if (!recipient) recipient = (await askForVoiceEmailAnswer('Who should I send this email to? Please say the full email address.')) || '';
+                    recipient = recipient.trim().toLowerCase()
+                        .replace(/\s+at\s+/g, '@')
+                        .replace(/\s+dot\s+/g, '.')
+                        .replace(/\s+underscore\s+/g, '_')
+                        .replace(/\s+(?:dash|hyphen)\s+/g, '-')
+                        .replace(/\s+/g, '');
+                    if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakVosi('I did not send the email.'); return; }
+                    if (!subject) subject = (await askForVoiceEmailAnswer('What should the email subject be?')) || '';
+                    if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakVosi('I did not send the email.'); return; }
+                    if (!body) body = (await askForVoiceEmailAnswer('What would you like the email to say?')) || '';
+                    if (!body) { showResponse('Email not sent', 'I did not receive the email message.'); speakVosi('I did not send the email.'); return; }
+                } else {
+                    if (!recipient) recipient = (window.prompt('What email address should VOSI send this to?') || '').trim();
+                    if (!recipient) { showResponse('Email not sent', 'No recipient email address was provided.'); return; }
+                    if (!body) body = (window.prompt('What should the email say?') || '').trim();
+                    if (!body) { showResponse('Email not sent', 'The email message is empty.'); return; }
+                    if (!subject) {
+                        const chosenSubject = window.prompt('Email subject:');
+                        if (chosenSubject === null) { showResponse('Email not sent', 'You cancelled the email draft.'); return; }
+                        subject = chosenSubject.trim();
+                    }
+                }
+
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+                    showResponse('Email not sent', 'That recipient address does not look valid. Please try again.');
+                    speakVosi('That email address does not look valid. I did not send the email.');
+                    return;
+                }
+                const preview = 'To: ' + recipient + '\nSubject: ' + subject + '\n\n' + body;
+                showResponse('Review email before sending', preview + (voiceMode ? '\n\nSay “send it” to confirm, or say “cancel”.' : '\n\nWaiting for your confirmation…'));
+                speakVosi(voiceMode ? 'Here is your email. ' + preview + '. Say send it to confirm, or cancel.' : 'Please review the email details. I will send it only after you confirm.');
+
+                let approved = false;
+                if (voiceMode) {
+                    const confirmation = (await askForVoiceEmailAnswer('Do you want me to send this email? Say “send it” to confirm, or “cancel” to stop.')) || '';
+                    approved = /\b(?:yes|send|send it|confirm|go ahead|approve)\b/i.test(confirmation) &&
+                        !/\b(?:no|cancel|stop|do not|don't)\b/i.test(confirmation);
+                } else {
+                    approved = window.confirm('Send this email?\n\n' + preview);
+                }
+                if (!approved) {
+                    showResponse('Email not sent', 'You cancelled or did not confirm. VOSI has not sent this email.');
+                    speakVosi('Okay. I did not send the email.');
+                    return;
+                }
+                try {
+                    const response = await fetch(API_BASE + '/gmail/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ recipient, subject, body, confirmed: true })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Email sending failed.');
+                    const result = 'Email sent successfully to ' + recipient + '. Subject: ' + subject + '.';
+                    showResponse('Email sent', result);
+                    speakVosi(result);
+                } catch (error) {
+                    const message = String(error?.message || error);
+                    showResponse('Email could not be sent', message);
+                    speakVosi(message);
+                }
+            }
+
+            function parseGmailRequest(query) {
+                const original = String(query || '').trim();
+                if (!original) return null;
+                const mailIntent = /\b(gmail|emails?|e-mail|inbox|mail|message|messages)\b/i.test(original) ||
+                    /\b(did\s+.+\s+(?:send|sent|email|emailed|mail|mailed)|has\s+.+\s+(?:sent|emailed|mailed)|.+\s+email(?:ed)?\s+me|.+\s+mailed\s+me)\b/i.test(original) ||
+                    /\b(from\s+\w+|sender|subject\s*:|unread|starred|important|attachments?|promotions\s+tab|social\s+tab|primary\s+tab|sent\s+mail|spam\s+mail|trash\s+mail)\b/i.test(original) ||
+                    /\b(?:from|to|subject|after|before|newer_than|older_than|is|has|filename|label|category|in):/i.test(original);
+                if (!mailIntent) return null;
+                const countMatch = original.match(/\b(?:last|latest|show|find|get)\s+(\d{1,2})(?=\s*(?:emails?|messages?)?\s*(?:$|[?.!,;]))|\b(\d{1,2})\s*(?:emails?|messages?)\b/i);
+                const countValue = countMatch ? (countMatch[1] || countMatch[2]) : null;
+                const count = countValue ? Math.max(1, Math.min(Number(countValue), 50)) : (/\ball\b/i.test(original) ? 50 : 5);
+                // Send the user's original wording to the backend intent engine.
+                // Do not guess Gmail operators in the browser.
+                return { count, gmailQuery: original, searchLabel: original };
+            }
             async function focusMainWindow() {
                 try {
                     const mainWindow = await window.__TAURI__?.webviewWindow?.getByLabel('main');
@@ -1201,7 +1573,40 @@
                 } catch (_) {}
             }
             async function dispatchDeviceCommand(command) {
+                if (command.target === 'invalid-time') { showResponse('Invalid time','Please say a valid time, such as “set an alarm for 5 PM”.'); return; }
+                if (command.target === 'set-alarm' || command.target === 'set-timer') {
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(!invoke){showResponse('Desktop app required','Alarms and timers are available in the installed VOSI desktop app.');return;}
+                    try {
+                        const result=command.target==='set-alarm'
+                            ? await invoke('set_alarm',{hour:command.hour,minute:command.minute})
+                            : await invoke('set_timer',{seconds:command.seconds});
+                        showResponse(command.target==='set-alarm'?'Alarm set':'Timer started',result); speakVosi(result);
+                    } catch(error){const message=String(error?.message||error);showResponse('Could not set it',message);speakVosi(message);}
+                    return;
+                }
+                if(command.target==='volume-control'){
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(!invoke){showResponse('Desktop app required','Volume controls need the installed VOSI desktop app.');return;}
+                    try{const result=await invoke('control_volume',{action:command.action});showResponse('Volume control',result);speakVosi(result);}catch(error){showResponse('Volume control failed',String(error));}return;
+                }
+                if(command.target==='screenshot'){await launchDeviceTarget('screenshot');return;}
+                if(command.target==='lock-pc'||command.target==='shutdown-pc'||command.target==='restart-pc'){
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(!invoke){showResponse('Desktop app required','This device action needs the installed VOSI desktop app.');return;}
+                    if(command.target!=='lock-pc'){
+                        pendingDeviceAction={target:command.target,query:''};
+                        if(deviceActionDescription)deviceActionDescription.textContent=command.target==='shutdown-pc'?'VOSI will shut down Windows after a 10-second delay. Save your work before confirming.':'VOSI will restart Windows after a 10-second delay. Save your work before confirming.';
+                        deviceActionDialog?.classList.add('is-open');deviceActionDialog?.setAttribute('aria-hidden','false'); return;
+                    }
+                    try{const result=await invoke('lock_pc');showResponse('Device locked',result);speakVosi(result);}catch(error){showResponse('Could not lock device',String(error));}
+                    return;
+                }
                 if (!command) return null;
+                if (command.target === 'flipkart-search') {
+                    await runFlipkartSearch(command.query, command.budget);
+                    return null;
+                }
                 if (command.target === 'write-letter') {
                     await focusMainWindow();
                     openLetterDialog(command.seed || '', true);
@@ -1232,7 +1637,10 @@
             document.getElementById('device-action-confirm')?.addEventListener('click', () => {
                 const action = pendingDeviceAction;
                 closeDeviceActionDialog();
-                if (action) void launchDeviceTarget(action.target, action.query);
+                if (action?.target === 'shutdown-pc' || action?.target === 'restart-pc') {
+                    const invoke=window.__TAURI__?.core?.invoke;
+                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakVosi(message);}).catch(error=>showResponse('Action failed',String(error)));
+                } else if (action) void launchDeviceTarget(action.target, action.query);
             });
             sidebarToggle?.addEventListener('click', () => {
                 const expanded = sidebarToggle.getAttribute('aria-expanded') !== 'true';
@@ -1674,6 +2082,8 @@
             let recognitionMode = null;
             let isListening = false;
             let wakePendingUntil = 0;
+            let voiceAnswerResolver = null;
+            let lastInputWasVoice = false;
             function setVoiceStatus(text) {
                 if (voiceSettingStatus) voiceSettingStatus.textContent = text;
                 const listening = !!recognitionMode || /listening|speaking/i.test(text);
@@ -1721,6 +2131,14 @@
                     transcript = transcript.trim();
                     if (!transcript) return;
                     if (mode === 'push') {
+                        if (voiceAnswerResolver) {
+                            const resolveVoiceAnswer = voiceAnswerResolver;
+                            resolveVoiceAnswer(transcript);
+                            isListening = false;
+                            try { recognition.stop(); } catch (_) {}
+                            return;
+                        }
+                        lastInputWasVoice = true;
                         if (userInput) userInput.value = transcript;
                         isListening = false;
                         if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
@@ -1728,16 +2146,29 @@
                         document.getElementById('ai-prompt-form')?.requestSubmit();
                         return;
                     }
-                    const phrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim().toLowerCase();
-                    const heard = transcript.toLowerCase();
-                    const wakeAt = phrase ? heard.indexOf(phrase) : -1;
+                    const configuredPhrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim();
+                    const wakeNames = [...new Set([vosiAssistantName, configuredPhrase.replace(/^hey\s+/i, '')].filter(Boolean))];
+                    const lowerTranscript = transcript.toLowerCase();
+                    let wakeAt = -1;
+                    let wakeLength = 0;
+                    for (const name of wakeNames.sort((a, b) => b.length - a.length)) {
+                        const at = lowerTranscript.indexOf(name.toLowerCase());
+                        if (at < 0) continue;
+                        const before = at === 0 ? '' : lowerTranscript[at - 1];
+                        const after = lowerTranscript[at + name.length] || '';
+                        if ((before && /[a-z0-9]/i.test(before)) || (after && /[a-z0-9]/i.test(after))) continue;
+                        wakeAt = at;
+                        wakeLength = name.length;
+                        break;
+                    }
                     let command = '';
                     if (wakeAt >= 0) {
-                        command = transcript.slice(wakeAt + phrase.length).replace(/^[\s,.:;-]+/, '').trim();
-                        if (!command) { wakePendingUntil = Date.now() + 8000; setVoiceStatus('I’m listening. Say your request after the wake phrase.'); return; }
+                        command = transcript.slice(wakeAt + wakeLength).replace(/^[\s,.:;-]+/, '').trim();
+                        if (!command) { wakePendingUntil = Date.now() + 10000; setVoiceStatus('I’m listening. Say your request after ' + vosiAssistantName + '.'); return; }
                     } else if (Date.now() < wakePendingUntil) command = transcript;
                     else return;
                     wakePendingUntil = 0;
+                    lastInputWasVoice = true;
                     if (userInput) userInput.value = command;
                     document.getElementById('ai-prompt-form')?.requestSubmit();
                 };
@@ -1804,7 +2235,14 @@
                     .replace(/\s+/g, ' ')
                     .trim();
             }
+            function addSirToQuestion(text) {
+                const value = String(text || '');
+                // Add a respectful "sir" only when VOSI is asking a question.
+                return value.replace(/\?\s*$/, match => /\bsir\s*\?$/i.test(value) ? match : ', sir?');
+            }
+
             function speakVosi(text) {
+                text = addSirToQuestion(text);
                 if (!vosiSettings.voiceReplies || !text || !window.speechSynthesis) return;
                 if (recognitionMode === 'handsfree') stopVoiceRecognition();
                 window.speechSynthesis.cancel();
@@ -1884,10 +2322,141 @@
                 closeResponse.addEventListener('click', () => responseBox.classList.add('hidden'));
             }
 
+            const CHAT_SESSIONS_KEY = 'vosi.chat.sessions.v1';
+            let chatSessions = [];
+            let activeChatId = null;
+
+            function renderVosiChatMessage(role, label, body) {
+                const transcript = document.getElementById('vosi-chat-transcript');
+                if (!transcript) return;
+                const row = document.createElement('div');
+                row.className = 'vosi-chat-row ' + (role === 'user' ? 'user' : 'assistant');
+                const bubble = document.createElement('div');
+                bubble.className = 'vosi-chat-bubble';
+                if (role !== 'user') {
+                    const heading = document.createElement('span');
+                    heading.className = 'vosi-chat-label';
+                    heading.textContent = label || 'VOSI';
+                    bubble.appendChild(heading);
+                }
+                const message = document.createElement('div');
+                message.textContent = String(body || '');
+                bubble.appendChild(message);
+                if (role !== 'user') {
+                    const avatar = document.createElement('div');
+                    avatar.className = 'vosi-chat-avatar';
+                    avatar.textContent = 'V';
+                    row.append(avatar, bubble);
+                } else {
+                    row.appendChild(bubble);
+                }
+                transcript.appendChild(row);
+                transcript.scrollTop = transcript.scrollHeight;
+            }
+
+            function saveChatSessions() {
+                try { localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(chatSessions.slice(-40))); }
+                catch (error) { console.warn('VOSI could not save chat history:', error); }
+            }
+
+            function refreshChatSwitcher() {
+                const select = document.getElementById('setting-chat-switch');
+                if (!select) return;
+                select.replaceChildren();
+                const sorted = [...chatSessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                sorted.forEach(chat => {
+                    const option = document.createElement('option');
+                    option.value = chat.id;
+                    option.textContent = chat.title || 'New chat';
+                    option.selected = chat.id === activeChatId;
+                    select.appendChild(option);
+                });
+                if (!sorted.length) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No saved chats';
+                    select.appendChild(option);
+                }
+            }
+
+            function activateChat(chatId) {
+                const chat = chatSessions.find(item => item.id === chatId);
+                if (!chat) return;
+                activeChatId = chat.id;
+                const transcript = document.getElementById('vosi-chat-transcript');
+                if (transcript) {
+                    transcript.replaceChildren();
+                    (chat.messages || []).forEach(message => renderVosiChatMessage(message.role, message.label, message.body));
+                }
+                refreshChatSwitcher();
+                saveChatSessions();
+            }
+
+            function createVosiChat() {
+                const chat = {
+                    id: 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+                    title: 'New chat',
+                    updatedAt: Date.now(),
+                    messages: []
+                };
+                chatSessions.push(chat);
+                activeChatId = chat.id;
+                const transcript = document.getElementById('vosi-chat-transcript');
+                if (transcript) transcript.replaceChildren();
+                const input = document.getElementById('user-input');
+                if (input) { input.value = ''; input.focus(); }
+                saveChatSessions();
+                refreshChatSwitcher();
+                return chat;
+            }
+
+            function initializeVosiChatHistory() {
+                try {
+                    const stored = JSON.parse(localStorage.getItem(CHAT_SESSIONS_KEY) || '[]');
+                    if (Array.isArray(stored)) {
+                        chatSessions = stored.filter(chat => chat && typeof chat.id === 'string' && Array.isArray(chat.messages))
+                            .slice(-40);
+                    }
+                } catch (_) { chatSessions = []; }
+                if (!chatSessions.length) {
+                    const initial = {
+                        id: 'chat-' + Date.now().toString(36),
+                        title: 'New chat',
+                        updatedAt: Date.now(),
+                        messages: []
+                    };
+                    chatSessions.push(initial);
+                    activeChatId = initial.id;
+                    saveChatSessions();
+                } else {
+                    const mostRecent = [...chatSessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+                    activateChat(mostRecent.id);
+                }
+                refreshChatSwitcher();
+            }
+
+            function appendVosiChatMessage(role, label, body) {
+                const chat = chatSessions.find(item => item.id === activeChatId) || createVosiChat();
+                const messageBody = String(body || '');
+                const message = { role: role === 'user' ? 'user' : 'assistant', label: label || '', body: messageBody };
+                chat.messages.push(message);
+                if (chat.messages.length > 200) chat.messages = chat.messages.slice(-200);
+                if (role === 'user' && chat.title === 'New chat') {
+                    chat.title = messageBody.replace(/\s+/g, ' ').slice(0, 38) || 'New chat';
+                }
+                chat.updatedAt = Date.now();
+                renderVosiChatMessage(message.role, message.label, message.body);
+                saveChatSessions();
+                refreshChatSwitcher();
+            }
+
+            document.getElementById('setting-new-chat')?.addEventListener('click', createVosiChat);
+            document.getElementById('setting-chat-switch')?.addEventListener('change', event => activateChat(event.target.value));
+            initializeVosiChatHistory();
+
             function showResponse(title, body) {
-                if (!responseBox || !responseText) return;
-                responseBox.classList.remove('hidden');
-                responseText.innerHTML = `<strong>${escapeHtml(title)}</strong><br><span class="text-slate-300 text-sm">${escapeHtml(body || "")}</span>`;
+                appendVosiChatMessage('assistant', addSirToQuestion(title), addSirToQuestion(body || ''));
+                if (responseBox) responseBox.classList.add('hidden');
             }
 
             function escapeHtml(str) {
@@ -1914,6 +2483,7 @@
             }
 
             async function answerFromCompanion(query) {
+                appendVosiChatMessage('user', 'You', query);
                 try {
                     if (window.__TAURI__?.event?.emit) {
                         await window.__TAURI__.event.emit('companion-state', { state: 'thinking', observing: !!screenStream });
@@ -1937,24 +2507,62 @@
                             return;
                         }
                     }
-                    const command = parseDeviceCommand(query);
-                    if (command) {
-                        const answer = await dispatchDeviceCommand(command);
-                        speakVosi(answer || 'I handled that request.');
-                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI command', answer: answer || 'I handled that request.', observing: !!screenStream });
+                    const normalizedQuery = stripAssistantName(query);
+                    const sendDraft = parseSendEmailRequest(normalizedQuery);
+                    if (sendDraft) {
+                        await runGmailSend(sendDraft, true);
+                        await window.__TAURI__?.event?.emit('companion-answer', {
+                            success: true, title: 'Email workflow', answer: 'The email workflow has finished. Check the VOSI chat for the send status and confirmation details.',
+                            observing: !!screenStream
+                        });
                         return;
                     }
-                    // The background observer keeps the latest screen frame fresh.
-                    // The backend uses that latest frame for the answer.
+                    const gmailRequest = parseGmailRequest(normalizedQuery);
+                    if (gmailRequest) {
+                        const gmailAnswer = await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel);
+                        await window.__TAURI__?.event?.emit('companion-answer', {
+                            success: true, title: 'Gmail', answer: gmailAnswer || 'Gmail request finished. Check the VOSI chat for details.',
+                            observing: !!screenStream
+                        });
+                        return;
+                    }
+                    const command = parseDeviceCommand(normalizedQuery);
+                    if (command) {
+                        const answer = await dispatchDeviceCommand(command);
+                        const finalAnswer = answer || 'I handled that request.';
+                        speakVosi(finalAnswer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI command', answer: finalAnswer, observing: !!screenStream });
+                        return;
+                    }
+
+                    // Only screen-awareness questions should call the AI brain from
+                    // the floating companion. Normal supported tasks are handled above
+                    // by the same local command handlers used by the main search bar.
+                    const screenGuidanceIntent = /\b(?:this|current|open|running|visible|active)\s+(?:screen|website|webpage|page|tab|window|site)\b|\b(?:where|what|which)\s+(?:should i\s+)?(?:click|tap|press|select)\b|\b(?:where to click|what to click|click next|next step|guide me through|walk me through|on this page|on this website|this button|this form|this error|screen awareness)\b/i.test(normalizedQuery);
+                    if (!screenGuidanceIntent) {
+                        const answer = 'I can handle supported tasks here without an AI API, including Gmail, email sending, device controls, opening apps, and web or Flipkart searches. For questions about the live screen, ask me what to click or what to do next while screen observing is active.';
+                        speakVosi(answer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI', answer, observing: !!screenStream });
+                        return;
+                    }
+                    if (!screenStream || observationPaused) {
+                        const answer = 'Start or resume screen observing first, then ask me about the website or where to click.';
+                        speakVosi(answer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: false, title: 'Screen observing is off', answer, observing: !!screenStream });
+                        return;
+                    }
+
+                    // Screen guidance uses the AI API and the latest live screen frame.
                     if (window.captureLatestScreen) {
                         await window.captureLatestScreen();
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
-                    const data = await apiPost("/ask", { message: prepareVosiPrompt(query), include_screen: !!screenStream });
+                    const data = await apiPost("/ask", { message: prepareVosiPrompt(normalizedQuery), include_screen: true });
                     await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                     if (data.success && data.brain) {
-                        const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
+                        // Match the main chat: the suggestion is the user-facing answer.
+                        const answer = data.brain.suggestion || data.brain.understanding || "How else can I help?";
                         speakVosi(answer);
                         try {
                             if (window.__TAURI__?.event?.emit) {
@@ -1969,6 +2577,8 @@
                         showResponse("VOSI", answer);
                     } else {
                         const error = data?.brain?.error || data?.error || "Something went wrong";
+                        showResponse("AI Error", error);
+                        speakVosi(error);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
@@ -1981,12 +2591,13 @@
                         } catch (e) {}
                     }
                 } catch (err) {
+                    console.error('VOSI companion handler error:', err);
                     try {
                         if (window.__TAURI__?.event?.emit) {
                             await window.__TAURI__.event.emit('companion-answer', {
                                 success: false,
-                                title: "VOSI",
-                                answer: "I couldn't reach the VOSI brain. Check the backend.",
+                                title: "VOSI request error",
+                                answer: String(err?.message || err || "I couldn't process that request."),
                                 observing: !!screenStream
                             });
                         }
@@ -1994,25 +2605,55 @@
                 }
             }
 
+            // initCompanion() is outside this setup function. Expose the handler
+            // explicitly so the floating window can call the same closure safely.
+            window.answerFromCompanion = answerFromCompanion;
+
             const form = document.getElementById('ai-prompt-form');
             if (form) {
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
+                    appendVosiChatMessage('user', 'You', query);
+                    if (waitingForAssistantName) {
+                        waitingForAssistantName = false;
+                        if (saveVosiAssistantName(query)) {
+                            const reply = 'Thank you, sir. You can call me ' + vosiAssistantName + ' from now on.';
+                            showResponse('Name updated', reply); speakVosi(reply);
+                        } else {
+                            waitingForAssistantName = true;
+                            const reply = 'Please tell me the name you would like me to use, sir.';
+                            showResponse('Choose my name', reply); speakVosi(reply);
+                        }
+                        userInput.value = ''; return;
+                    }
+                    if (/\b(?:change|rename|give|set|choose|pick)\b.{0,45}\b(?:your|assistant)\s+name\b|\bwhat should i call you\b|\bi want to (?:keep|give) (?:your|you a) name\b/i.test(query)) {
+                        waitingForAssistantName = true;
+                        const reply = 'What name would you like to call me, sir?';
+                        showResponse('Choose my name', reply); speakVosi(reply);
+                        userInput.value = ''; return;
+                    }
+                    const normalizedQuery = stripAssistantName(query);
                     if (letterFlowStep !== null && letterDialog?.classList.contains('is-open')) {
                         if (letterFlowStep === 0) { document.getElementById('letter-recipient').value = query; setLetterStep(1, true); }
                         else if (letterFlowStep === 1) { letterPurpose.value = query; setLetterStep(2, true); }
                         userInput.value = '';
                         return;
                     }
-                    const deviceCommand = parseDeviceCommand(query);
+                    const voiceMode = lastInputWasVoice;
+                    lastInputWasVoice = false;
+                    const sendDraft = parseSendEmailRequest(normalizedQuery);
+                    if (sendDraft) { userInput.value = ''; await runGmailSend(sendDraft, voiceMode); return; }
+                    const gmailRequest = parseGmailRequest(normalizedQuery);
+                    if (gmailRequest) { userInput.value = ''; await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
+                    const deviceCommand = parseDeviceCommand(normalizedQuery);
                     if (deviceCommand) {
                         userInput.value = '';
                         await dispatchDeviceCommand(deviceCommand);
                         return;
                     }
-                    if (!screenStream && (query.toLowerCase().includes("my screen") || query.toLowerCase().includes("where to click") || query.toLowerCase().includes("latest shared screen"))) {
+                    if (!screenStream && (normalizedQuery.toLowerCase().includes("my screen") || normalizedQuery.toLowerCase().includes("where to click") || normalizedQuery.toLowerCase().includes("latest shared screen"))) {
                         showResponse("Screen sharing is off", "Start observing first and choose the screen you want VOSI to analyze.");
                         speakVosi("Screen sharing is off. Start observing first and choose the screen you want Vosi to analyze.");
                         return;
@@ -2026,7 +2667,7 @@
                         if (screenStream && window.captureLatestScreen) {
                             await window.captureLatestScreen();
                         }
-                        const data = await apiPost("/ask", { message: query, include_screen: !!screenStream && !observationPaused });
+                        const data = await apiPost("/ask", { message: normalizedQuery, include_screen: !!screenStream && !observationPaused });
                         await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                         if (data.success && data.brain) {
