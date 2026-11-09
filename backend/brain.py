@@ -304,7 +304,7 @@ Use null for unknown strings and false for unspecified booleans. Return JSON onl
 User request: {question}
 """
     try:
-        client = OpenAI(api_key=api_key, base_url=BASE_URL)
+        client = OpenAI(api_key=api_key, base_url=BASE_URL, timeout=8, max_retries=0)
         response = client.responses.create(
             model=MODEL,
             input=[{"role": "user", "content": [{"type": "input_text", "text": prompt}]}],
