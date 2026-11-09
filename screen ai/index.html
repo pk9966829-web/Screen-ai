@@ -2514,7 +2514,8 @@
                     await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                     if (data.success && data.brain) {
-                        const answer = data.brain.understanding || data.brain.suggestion || "I understood your request.";
+                        // Match the main chat: the suggestion is the user-facing answer.
+                        const answer = data.brain.suggestion || data.brain.understanding || "How else can I help?";
                         speakVosi(answer);
                         try {
                             if (window.__TAURI__?.event?.emit) {
@@ -2529,6 +2530,8 @@
                         showResponse("VOSI", answer);
                     } else {
                         const error = data?.brain?.error || data?.error || "Something went wrong";
+                        showResponse("AI Error", error);
+                        speakVosi(error);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
