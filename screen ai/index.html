@@ -1394,10 +1394,8 @@
 
             function parseSendEmailRequest(query) {
                 const original = String(query || '').trim();
-                // Only treat an explicit outgoing action at the start as a send request.
-                // This prevents Gmail searches such as "Did GitHub send me an email?"
-                // from accidentally opening the outgoing-email flow.
-                if (!/^(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original) ||
+                // Explicit outgoing-email wording only; incoming-email searches stay searches.
+                if (!/^(?:(?:hey\s+)?vosi[, ]+)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original) ||
                     !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
 
                 const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -1406,29 +1404,79 @@
                 const body = bodyMatch ? bodyMatch[1].trim().replace(/[?.!]+$/, '') : '';
                 return {
                     recipient: addressMatch ? addressMatch[0] : '',
-                    subject: subjectMatch ? subjectMatch[1].trim() : 'Message from VOSI',
+                    subject: subjectMatch ? subjectMatch[1].trim() : '',
                     body
                 };
             }
 
-            async function runGmailSend(draft) {
-                let recipient = draft.recipient;
-                let subject = draft.subject || 'Message from VOSI';
-                let body = draft.body;
-                if (!recipient) recipient = (window.prompt('What email address should VOSI send this to?') || '').trim();
-                if (!recipient) { showResponse('Email not sent', 'No recipient email address was provided.'); return; }
-                if (!body) body = (window.prompt('What should the email say?') || '').trim();
-                if (!body) { showResponse('Email not sent', 'The email message is empty.'); return; }
-                if (subject === 'Message from VOSI') {
-                    const chosenSubject = window.prompt('Email subject:', subject);
-                    if (chosenSubject === null) { showResponse('Email not sent', 'You cancelled the email draft.'); return; }
-                    subject = chosenSubject.trim() || subject;
+            async function askForVoiceEmailAnswer(prompt) {
+                if (!SpeechRecognitionAPI) {
+                    showResponse('Voice input unavailable', 'Use Chrome or Edge with microphone permission, or type the missing email details.');
+                    return null;
+                }
+                showResponse('VOSI is listening', prompt);
+                speakVosi(prompt);
+                await new Promise(resolve => window.setTimeout(resolve, 500));
+                return await new Promise(resolve => {
+                    const finish = value => {
+                        if (voiceAnswerResolver !== finish) return;
+                        voiceAnswerResolver = null;
+                        window.clearTimeout(timeoutId);
+                        resolve(value);
+                    };
+                    const timeoutId = window.setTimeout(() => {
+                        finish(null);
+                        stopVoiceRecognition();
+                        showResponse('Voice input timed out', 'Tap the microphone and try that email detail again.');
+                    }, 30000);
+                    voiceAnswerResolver = finish;
+                    if (!startVoiceRecognition('push')) finish(null);
+                });
+            }
+
+            async function runGmailSend(draft, voiceMode = false) {
+                let recipient = draft.recipient || '';
+                let subject = draft.subject || '';
+                let body = draft.body || '';
+
+                if (voiceMode) {
+                    if (!recipient) recipient = (await askForVoiceEmailAnswer('Who should I send this email to? Please say the full email address.')) || '';
+                    if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakVosi('I did not send the email.'); return; }
+                    if (!subject) subject = (await askForVoiceEmailAnswer('What should the email subject be?')) || '';
+                    if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakVosi('I did not send the email.'); return; }
+                    if (!body) body = (await askForVoiceEmailAnswer('What would you like the email to say?')) || '';
+                    if (!body) { showResponse('Email not sent', 'I did not receive the email message.'); speakVosi('I did not send the email.'); return; }
+                } else {
+                    if (!recipient) recipient = (window.prompt('What email address should VOSI send this to?') || '').trim();
+                    if (!recipient) { showResponse('Email not sent', 'No recipient email address was provided.'); return; }
+                    if (!body) body = (window.prompt('What should the email say?') || '').trim();
+                    if (!body) { showResponse('Email not sent', 'The email message is empty.'); return; }
+                    if (!subject) {
+                        const chosenSubject = window.prompt('Email subject:');
+                        if (chosenSubject === null) { showResponse('Email not sent', 'You cancelled the email draft.'); return; }
+                        subject = chosenSubject.trim();
+                    }
+                }
+
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+                    showResponse('Email not sent', 'That recipient address does not look valid. Please try again.');
+                    speakVosi('That email address does not look valid. I did not send the email.');
+                    return;
                 }
                 const preview = 'To: ' + recipient + '\nSubject: ' + subject + '\n\n' + body;
-                showResponse('Review email before sending', preview + '\n\nWaiting for your confirmation…');
-                speakVosi('Please review the email details. I will send it only after you confirm.');
-                if (!window.confirm('Send this email?\n\n' + preview)) {
-                    showResponse('Email not sent', 'You cancelled. VOSI has not sent this email.');
+                showResponse('Review email before sending', preview + (voiceMode ? '\n\nSay “send it” to confirm, or say “cancel”.' : '\n\nWaiting for your confirmation…'));
+                speakVosi(voiceMode ? 'Here is your email. ' + preview + '. Say send it to confirm, or cancel.' : 'Please review the email details. I will send it only after you confirm.');
+
+                let approved = false;
+                if (voiceMode) {
+                    const confirmation = (await askForVoiceEmailAnswer('Do you want me to send this email? Say “send it” to confirm, or “cancel” to stop.')) || '';
+                    approved = /\b(?:yes|send|send it|confirm|go ahead|approve)\b/i.test(confirmation) &&
+                        !/\b(?:no|cancel|stop|do not|don't)\b/i.test(confirmation);
+                } else {
+                    approved = window.confirm('Send this email?\n\n' + preview);
+                }
+                if (!approved) {
+                    showResponse('Email not sent', 'You cancelled or did not confirm. VOSI has not sent this email.');
                     speakVosi('Okay. I did not send the email.');
                     return;
                 }
@@ -1982,6 +2030,8 @@
             let recognitionMode = null;
             let isListening = false;
             let wakePendingUntil = 0;
+            let voiceAnswerResolver = null;
+            let lastInputWasVoice = false;
             function setVoiceStatus(text) {
                 if (voiceSettingStatus) voiceSettingStatus.textContent = text;
                 const listening = !!recognitionMode || /listening|speaking/i.test(text);
@@ -2029,6 +2079,14 @@
                     transcript = transcript.trim();
                     if (!transcript) return;
                     if (mode === 'push') {
+                        if (voiceAnswerResolver) {
+                            const resolveVoiceAnswer = voiceAnswerResolver;
+                            resolveVoiceAnswer(transcript);
+                            isListening = false;
+                            try { recognition.stop(); } catch (_) {}
+                            return;
+                        }
+                        lastInputWasVoice = true;
                         if (userInput) userInput.value = transcript;
                         isListening = false;
                         if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
@@ -2451,8 +2509,10 @@
                         userInput.value = '';
                         return;
                     }
+                    const voiceMode = lastInputWasVoice;
+                    lastInputWasVoice = false;
                     const sendDraft = parseSendEmailRequest(query);
-                    if (sendDraft) { userInput.value = ''; await runGmailSend(sendDraft); return; }
+                    if (sendDraft) { userInput.value = ''; await runGmailSend(sendDraft, voiceMode); return; }
                     const gmailRequest = parseGmailRequest(query);
                     if (gmailRequest) { userInput.value = ''; await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
                     const deviceCommand = parseDeviceCommand(query);
