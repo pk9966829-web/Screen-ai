@@ -93,6 +93,186 @@ def gmail_status():
     return {"success": True, **gmail_auth_state}
 
 
+
+class GmailSearchRequest(BaseModel):
+    query: str
+    count: int = 5
+
+
+def _gmail_clean_value(value: str) -> str:
+    value = re.sub(r"^[\s:]+|[\s,;:.!?]+$", "", value or "")
+    return re.sub(r"\s+", " ", value)[:120].strip()
+
+
+def _gmail_natural_query(text: str):
+    """Translate common natural-language Gmail requests into safe Gmail operators."""
+    original = (text or "").strip()
+    lower = original.lower()
+    count_match = re.search(r"\b(?:last|latest|show|find|get)?\s*(\d{1,2})\s*(?:emails?|messages?)?\b", lower)
+    count = max(1, min(int(count_match.group(1)), 10)) if count_match else (10 if re.search(r"\ball\b", lower) else 5)
+    terms = []
+    filters = {}
+
+    def add(key, value):
+        if value:
+            filters[key] = value
+
+    # Sender and recipient can be expressed in different word orders.
+    sender_match = re.search(r"\b(?:from|by|sent\s+by)\s+(.+?)(?=\s+(?:about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment|having\s+attachment|to:)|[?.!,;]|$)", original, re.I)
+    if not sender_match:
+        sender_match = re.search(r"\b(?:did|has|have)\s+(.+?)\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b", original, re.I)
+    if sender_match:
+        sender = _gmail_clean_value(sender_match.group(1))
+        sender = re.sub(r"^(?:the\s+)?", "", sender, flags=re.I)
+        if sender and sender.lower() not in {"someone", "anyone", "anybody"}:
+            add("sender", sender)
+            terms.append(("from", sender))
+
+    recipient_match = re.search(r"\bto\s+([a-z0-9][a-z0-9._@+\-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2})", original, re.I)
+    if recipient_match:
+        recipient = _gmail_clean_value(recipient_match.group(1))
+        add("recipient", recipient)
+        terms.append(("to", recipient))
+
+    subject_match = re.search(r"\bsubject\s*(?:is|:)?\s*[\"']?(.+?)[\"']?(?=\s+(?:from|to|before|after|since|until|unread|read|has\s+attachment)|[?.!,;]|$)", original, re.I)
+    if subject_match:
+        subject = _gmail_clean_value(subject_match.group(1))
+        add("subject", subject)
+        terms.append(("subject", subject))
+
+    # Relative dates.
+    today = datetime.now().date()
+    date_terms = []
+    if re.search(r"\btoday\b", lower):
+        date_terms = [f"after:{today.strftime('%Y/%m/%d')}", f"before:{(today.fromordinal(today.toordinal()+1)).strftime('%Y/%m/%d')}"]
+        add("date", "today")
+    elif re.search(r"\byesterday\b", lower):
+        day = today.fromordinal(today.toordinal()-1)
+        date_terms = [f"after:{day.strftime('%Y/%m/%d')}", f"before:{today.strftime('%Y/%m/%d')}"]
+        add("date", "yesterday")
+    elif re.search(r"\b(last|past)\s+(\d+)\s+days?\b", lower):
+        days = min(3650, int(re.search(r"\b(?:last|past)\s+(\d+)\s+days?\b", lower).group(1)))
+        date_terms = [f"newer_than:{days}d"]
+        add("date", f"last {days} days")
+    elif re.search(r"\b(this|current)\s+week\b", lower):
+        monday = today.fromordinal(today.toordinal() - today.weekday())
+        date_terms = [f"after:{monday.strftime('%Y/%m/%d')}"]
+        add("date", "this week")
+    elif re.search(r"\blast\s+week\b", lower):
+        monday = today.fromordinal(today.toordinal() - today.weekday())
+        previous = monday.fromordinal(monday.toordinal()-7)
+        date_terms = [f"after:{previous.strftime('%Y/%m/%d')}", f"before:{monday.strftime('%Y/%m/%d')}"]
+        add("date", "last week")
+    elif re.search(r"\blast\s+month\b", lower):
+        first_this = today.replace(day=1)
+        last_month_end = first_this.fromordinal(first_this.toordinal()-1)
+        first_last = last_month_end.replace(day=1)
+        date_terms = [f"after:{first_last.strftime('%Y/%m/%d')}", f"before:{first_this.strftime('%Y/%m/%d')}"]
+        add("date", "last month")
+
+    if re.search(r"\bunread\b", lower):
+        date_terms.append("is:unread"); add("read_status", "unread")
+    elif re.search(r"\bread\b", lower):
+        date_terms.append("is:read"); add("read_status", "read")
+    if re.search(r"\b(?:has|with|having)\s+(?:an?\s+)?attachments?\b|\battachments?\b", lower):
+        date_terms.append("has:attachment"); add("attachment", True)
+    if re.search(r"\bstarred\b|\bstarred\s+emails?\b", lower):
+        date_terms.append("is:starred"); add("starred", True)
+    if re.search(r"\bimportant\b|\bpriority\s+emails?\b", lower):
+        date_terms.append("is:important"); add("important", True)
+    if re.search(r"\bsent\s+(?:emails?|messages?)\b|\bin\s+my\s+sent\b", lower):
+        date_terms.append("in:sent"); add("folder", "sent")
+    if re.search(r"\bin\s+spam\b|\bspam\s+emails?\b", lower):
+        date_terms.append("in:spam"); add("folder", "spam")
+    if re.search(r"\bin\s+trash\b|\bdeleted\s+emails?\b", lower):
+        date_terms.append("in:trash"); add("folder", "trash")
+    if re.search(r"\b(?:anywhere|all\s+mail)\b", lower):
+        date_terms.append("in:anywhere"); add("folder", "anywhere")
+
+    category_match = re.search(r"\b(?:in\s+)?(primary|social|promotions|updates|forums)\s+(?:tab|category|emails?|messages?)?\b", lower)
+    if category_match:
+        category = category_match.group(1)
+        date_terms.append(f"category:{category}")
+        add("category", category)
+
+    # Remove intent/control words and extracted values to leave topic/body keywords.
+    cleaned = original
+    for pattern in [
+        r"\b(?:from|by|sent\s+by)\s+.+?(?=\s+(?:about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment)|[?.!,;]|$)",
+        r"\b(?:did|has|have)\s+.+?\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b",
+        r"\bto\s+[a-z0-9][a-z0-9._@+\-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2}",
+        r"\bsubject\s*(?:is|:)?\s*[\"']?.+?[\"']?(?=\s+(?:from|to|before|after|since|until|unread|read)|[?.!,;]|$)",
+    ]:
+        cleaned = re.sub(pattern, " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\b(?:please|can|could|would|you|vosi|gmail|emails?|e-mail|mail|messages?|message|inbox|check|search|find|look|show|read|list|tell|me|my|i|the|a|an|is|are|was|were|did|do|does|have|has|had|got|get|any|all|latest|recent|newest|last|first|whether|if|there|something|anything|for|about|regarding|with|without|attachment|attachments|unread|read|starred|important|today|yesterday|this|week|month|sent|received|from|by|to|on|before|after|since|until|in|tab|category)\b", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\b\d{1,2}\b", " ", cleaned)
+    cleaned = re.sub(r"[^a-z0-9@._+\-\"'\s]", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" '\"")
+    if cleaned and len(cleaned) > 1:
+        add("keywords", cleaned)
+        # Quoted phrase is more predictable for multi-word natural-language topics.
+        terms.append(("text", cleaned))
+
+    query_parts = []
+    for kind, value in terms:
+        safe = _gmail_clean_value(value).replace('"', "")
+        if not safe:
+            continue
+        if kind == "from":
+            query_parts.append(f"from:({safe})")
+        elif kind == "to":
+            query_parts.append(f"to:({safe})")
+        elif kind == "subject":
+            query_parts.append(f'subject:("{safe}")')
+        else:
+            query_parts.append(f'"{safe}"' if " " in safe else safe)
+    query_parts.extend(date_terms)
+    return {"gmail_query": " ".join(query_parts), "count": count, "filters": filters}
+
+
+@app.post("/gmail/search")
+def search_gmail_natural(req: GmailSearchRequest):
+    original = (req.query or "").strip()
+    if not original or len(original) > 500:
+        return {"success": False, "error": "Enter a Gmail search under 500 characters."}
+    parsed = _gmail_natural_query(original)
+    try:
+        credentials = _gmail_credentials()
+        if not credentials:
+            return {"success": False, "connected": False, "error": "Gmail is not connected. Use the VOSI Connectors menu and choose Connect Gmail first."}
+        service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
+        safe_count = max(1, min(int(req.count or parsed["count"]), 10))
+        response = service.users().messages().list(
+            userId="me", maxResults=safe_count, q=parsed["gmail_query"] or None
+        ).execute()
+        messages = []
+        for item in response.get("messages", []):
+            message = service.users().messages().get(
+                userId="me", id=item["id"], format="metadata",
+                metadataHeaders=["From", "To", "Subject", "Date"]
+            ).execute()
+            headers = {h["name"].lower(): h["value"] for h in message.get("payload", {}).get("headers", [])}
+            messages.append({
+                "id": message.get("id"),
+                "sender": headers.get("from", "Unknown sender"),
+                "recipient": headers.get("to", ""),
+                "subject": headers.get("subject", "(No subject)"),
+                "date": headers.get("date", ""),
+                "snippet": message.get("snippet", ""),
+                "unread": "UNREAD" in message.get("labelIds", []),
+                "starred": "STARRED" in message.get("labelIds", []),
+                "important": "IMPORTANT" in message.get("labelIds", []),
+                "has_attachment": any(part.get("filename") for part in message.get("payload", {}).get("parts", []))
+            })
+        return {
+            "success": True, "connected": True, "count": len(messages),
+            "search_text": original, "gmail_query": parsed["gmail_query"],
+            "filters": parsed["filters"], "messages": messages
+        }
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
 @app.get("/gmail/messages")
 def latest_gmail_messages(count: int = 5, q: str = ""):
     """Read latest Gmail messages, or search using Gmail's native query syntax."""
