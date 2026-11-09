@@ -287,3 +287,39 @@ Do not infer completion from a visual change alone. Do not invent buttons, dialo
         }
     except Exception as exc:
         return {"success": False, "error": f"Transition analysis failed: {exc}"}
+
+
+def interpret_gmail_search(question: str) -> Dict[str, Any] | None:
+    """Optionally interpret varied Gmail wording with VOSI's configured model."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or not question or len(question) > 500:
+        return None
+    prompt = f"""Convert this Gmail search request into one JSON object. Do not answer the user.
+Extract only explicitly requested filters. Never invent sender addresses or dates.
+Allowed keys: sender, recipient, subject, keywords, after (YYYY/MM/DD), before (YYYY/MM/DD),
+newer_than (7d, 2m), read_status (unread/read), has_attachment (boolean),
+starred (boolean), important (boolean), category (primary/social/promotions/updates/forums),
+folder (inbox/sent/drafts/spam/trash/anywhere).
+Use null for unknown strings and false for unspecified booleans. Return JSON only.
+User request: {question}
+"""
+    try:
+        client = OpenAI(api_key=api_key, base_url=BASE_URL)
+        response = client.responses.create(
+            model=MODEL,
+            input=[{"role": "user", "content": [{"type": "input_text", "text": prompt}]}],
+        )
+        raw = (response.output_text or "").strip()
+        fence = chr(96) * 3
+        if raw.startswith(fence):
+            raw = re.sub(r"^" + fence + r"(?:json)?\\s*|\\s*" + fence + r"$", "", raw, flags=re.I).strip()
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            return None
+        allowed = {"sender", "recipient", "subject", "keywords", "after", "before",
+                   "newer_than", "read_status", "has_attachment", "starred",
+                   "important", "category", "folder"}
+        return {key: parsed.get(key) for key in allowed if key in parsed}
+    except Exception:
+        return None
+
