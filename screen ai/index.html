@@ -1377,7 +1377,7 @@
                 const original = String(query || '').trim();
                 const text = original.toLowerCase();
                 const mailIntent = /\b(gmail|emails?|e-mail|inbox|mail|message|messages)\b/i.test(original) ||
-                    /\b(did\s+.+\s+email\s+me|email(?:ed)?\s+me|mailed\s+me|check\s+my\s+mail)\b/i.test(original);
+                    /\b(did\s+.+\s+(?:send|sent)\s+me|has\s+.+\s+sent\s+me|email(?:ed)?\s+me|mailed\s+me|check\s+my\s+mail)\b/i.test(original);
                 if (!mailIntent) return null;
 
                 const countMatch = original.match(/\b(\d{1,2})\b/);
