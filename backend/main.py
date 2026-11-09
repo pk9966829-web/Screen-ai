@@ -11,6 +11,8 @@ import re
 from docx import Document
 from docx.shared import Inches, Pt
 
+app = FastAPI(title="VOSI Screen AI")
+
 # Gmail access is handled locally by this backend; no VOSI AI provider is used.
 import os
 import threading
@@ -122,8 +124,6 @@ def latest_gmail_messages(count: int = 5):
 from pipeline import ScreenPipeline
 from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
-
-app = FastAPI(title="VOSI Screen AI")
 
 # Local bridge used only by the VOSI Chrome extension.
 browser_pending_command = None
