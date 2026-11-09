@@ -8,6 +8,8 @@ from pathlib import Path
 from uuid import uuid4
 from datetime import datetime
 import re
+import base64
+from email.mime.text import MIMEText
 from docx import Document
 from docx.shared import Inches, Pt
 
@@ -23,7 +25,9 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from googleapiclient.discovery import build
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
-GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
+GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
 GMAIL_TOKEN_FILE = Path(__file__).resolve().parent / "gmail_token.json"
 gmail_auth_state = {"status": "disconnected", "error": None}
 gmail_auth_lock = threading.Lock()
@@ -58,8 +62,9 @@ def _run_gmail_oauth():
         flow = InstalledAppFlow.from_client_config(_gmail_client_config(), GMAIL_SCOPES)
         credentials = flow.run_local_server(
             host="localhost", port=0, open_browser=True,
-            authorization_prompt_message="Complete Gmail access in your browser.",
-            success_message="Gmail is connected to VOSI. You can close this browser tab."
+            authorization_prompt_message="Approve Gmail read and send access for VOSI in your browser.",
+            success_message="Gmail is connected to VOSI. You can close this browser tab.",
+            access_type="offline", prompt="consent"
         )
         GMAIL_TOKEN_FILE.write_text(credentials.to_json(), encoding="utf-8")
         gmail_auth_state.update({"status": "connected", "error": None})
@@ -75,7 +80,7 @@ def connect_gmail():
         return {"success": True, **gmail_auth_state, "message": "Gmail authorization is already running."}
     gmail_auth_state.update({"status": "connecting", "error": None})
     threading.Thread(target=_run_gmail_oauth, daemon=True).start()
-    return {"success": True, "status": "connecting", "message": "A Google sign-in window should open. Approve read-only Gmail access."}
+    return {"success": True, "status": "connecting", "message": "A Google sign-in window should open. Approve Gmail read and send access."}
 
 
 @app.get("/gmail/status")
@@ -84,8 +89,10 @@ def gmail_status():
         return {"success": True, **gmail_auth_state}
     try:
         credentials = _gmail_credentials()
-        if credentials:
+        if credentials and credentials.has_scopes([GMAIL_SEND_SCOPE]):
             gmail_auth_state.update({"status": "connected", "error": None})
+        elif credentials:
+            gmail_auth_state.update({"status": "reconnect_required", "error": "Reconnect Gmail and approve the send permission."})
         elif gmail_auth_state["status"] != "error":
             gmail_auth_state.update({"status": "disconnected", "error": None})
     except Exception as exc:
@@ -97,6 +104,43 @@ def gmail_status():
 class GmailSearchRequest(BaseModel):
     query: str
     count: int = 5
+
+class GmailSendRequest(BaseModel):
+    recipient: str
+    subject: str = "Message from VOSI"
+    body: str
+    confirmed: bool = False
+
+
+@app.post("/gmail/send")
+def send_gmail_message(req: GmailSendRequest):
+    recipient = (req.recipient or "").strip()
+    subject = (req.subject or "Message from VOSI").strip()
+    body = (req.body or "").strip()
+    if not req.confirmed:
+        return {"success": False, "error": "Email sending requires your confirmation in VOSI."}
+    if not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", recipient):
+        return {"success": False, "error": "Enter a valid recipient email address."}
+    if not body:
+        return {"success": False, "error": "The email message cannot be empty."}
+    if len(recipient) > 254 or len(subject) > 250 or len(body) > 20000:
+        return {"success": False, "error": "The email is too long. Shorten the recipient, subject, or message."}
+    try:
+        credentials = _gmail_credentials()
+        if not credentials:
+            return {"success": False, "connected": False, "error": "Gmail is not connected. Connect Gmail from VOSI Connectors first."}
+        if not credentials.has_scopes([GMAIL_SEND_SCOPE]):
+            return {"success": False, "connected": True, "reconnect_required": True, "error": "Reconnect Gmail and approve the new send permission before sending."}
+        message = MIMEText(body, _charset="utf-8")
+        message["to"] = recipient
+        message["subject"] = subject
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+        service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
+        sent = service.users().messages().send(userId="me", body={"raw": raw}).execute()
+        return {"success": True, "message_id": sent.get("id"), "recipient": recipient, "subject": subject, "message": "Email sent successfully."}
+    except Exception as exc:
+        return {"success": False, "error": f"Could not send the email: {exc}"}
+
 
 
 def _gmail_clean_value(value: str) -> str:
