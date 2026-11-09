@@ -11,6 +11,114 @@ import re
 from docx import Document
 from docx.shared import Inches, Pt
 
+# Gmail access is handled locally by this backend; no VOSI AI provider is used.
+import os
+import threading
+from dotenv import load_dotenv
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request as GoogleAuthRequest
+from googleapiclient.discovery import build
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+GMAIL_TOKEN_FILE = Path(__file__).resolve().parent / "gmail_token.json"
+gmail_auth_state = {"status": "disconnected", "error": None}
+gmail_auth_lock = threading.Lock()
+
+
+def _gmail_client_config():
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    if not client_id or not client_secret:
+        raise RuntimeError("Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to backend/.env, then restart VOSI backend.")
+    return {"installed": {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": ["http://localhost"]
+    }}
+
+
+def _gmail_credentials():
+    if not GMAIL_TOKEN_FILE.is_file():
+        return None
+    credentials = Credentials.from_authorized_user_file(str(GMAIL_TOKEN_FILE), GMAIL_SCOPES)
+    if credentials.expired and credentials.refresh_token:
+        credentials.refresh(GoogleAuthRequest())
+        GMAIL_TOKEN_FILE.write_text(credentials.to_json(), encoding="utf-8")
+    return credentials if credentials.valid else None
+
+
+def _run_gmail_oauth():
+    try:
+        flow = InstalledAppFlow.from_client_config(_gmail_client_config(), GMAIL_SCOPES)
+        credentials = flow.run_local_server(
+            host="localhost", port=0, open_browser=True,
+            authorization_prompt_message="Complete Gmail access in your browser.",
+            success_message="Gmail is connected to VOSI. You can close this browser tab."
+        )
+        GMAIL_TOKEN_FILE.write_text(credentials.to_json(), encoding="utf-8")
+        gmail_auth_state.update({"status": "connected", "error": None})
+    except Exception as exc:
+        gmail_auth_state.update({"status": "error", "error": str(exc)})
+    finally:
+        gmail_auth_lock.release()
+
+
+@app.post("/gmail/connect")
+def connect_gmail():
+    if not gmail_auth_lock.acquire(blocking=False):
+        return {"success": True, **gmail_auth_state, "message": "Gmail authorization is already running."}
+    gmail_auth_state.update({"status": "connecting", "error": None})
+    threading.Thread(target=_run_gmail_oauth, daemon=True).start()
+    return {"success": True, "status": "connecting", "message": "A Google sign-in window should open. Approve read-only Gmail access."}
+
+
+@app.get("/gmail/status")
+def gmail_status():
+    if gmail_auth_state["status"] == "connecting":
+        return {"success": True, **gmail_auth_state}
+    try:
+        credentials = _gmail_credentials()
+        if credentials:
+            gmail_auth_state.update({"status": "connected", "error": None})
+        elif gmail_auth_state["status"] != "error":
+            gmail_auth_state.update({"status": "disconnected", "error": None})
+    except Exception as exc:
+        gmail_auth_state.update({"status": "error", "error": str(exc)})
+    return {"success": True, **gmail_auth_state}
+
+
+@app.get("/gmail/messages")
+def latest_gmail_messages(count: int = 5):
+    safe_count = max(1, min(count, 10))
+    try:
+        credentials = _gmail_credentials()
+        if not credentials:
+            return {"success": False, "connected": False, "error": "Gmail is not connected. Use the VOSI Connectors menu and choose Connect Gmail first."}
+        service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
+        response = service.users().messages().list(userId="me", maxResults=safe_count).execute()
+        messages = []
+        for item in response.get("messages", []):
+            message = service.users().messages().get(
+                userId="me", id=item["id"], format="metadata",
+                metadataHeaders=["From", "Subject", "Date"]
+            ).execute()
+            headers = {header["name"].lower(): header["value"] for header in message.get("payload", {}).get("headers", [])}
+            messages.append({
+                "id": message.get("id"),
+                "sender": headers.get("from", "Unknown sender"),
+                "subject": headers.get("subject", "(No subject)"),
+                "date": headers.get("date", ""),
+                "snippet": message.get("snippet", "")
+            })
+        return {"success": True, "connected": True, "count": len(messages), "messages": messages}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
 from pipeline import ScreenPipeline
 from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
