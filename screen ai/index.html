@@ -1414,11 +1414,16 @@
             }
 
             function parseSendEmailRequest(query) {
-                // Strip the saved assistant name so “Hey Mira, send email” is
-                // treated exactly like “send email”. Incoming-email searches remain separate.
-                const original = stripAssistantName(String(query || '').trim());
-                const outgoingEmailIntent = /^(?:(?:i\s+)?(?:want|need)\s+(?:you\s+to\s+)?)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original);
-                if (!outgoingEmailIntent || !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
+                // Normalize common speech-to-text variations so “send email”,
+                // “send e-mail”, and “send an email” all reach the Gmail send flow.
+                const original = stripAssistantName(String(query || '').trim())
+                    .replace(/[–—]/g, '-')
+                    .replace(/\be[\s-]?mail\b/gi, 'email')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                const outgoingEmailIntent = /^(?:(?:hey\s+)?please\s+)?(?:(?:i\s+)?(?:want|need)\s+(?:(?:you\s+to|to)\s+)?)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original);
+                const mentionsEmail = /\b(?:email|mail)\b/i.test(original);
+                if (!outgoingEmailIntent || !mentionsEmail) return null;
 
                 const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
                 const spokenAddressMatch = !addressMatch ? original.match(/([A-Z0-9._%+-]+(?:\s+(?:dot|underscore|dash|hyphen)\s+[A-Z0-9._%+-]+)*)\s+at\s+([A-Z0-9.-]+(?:\s+dot\s+[A-Z]{2,})+)/i) : null;
