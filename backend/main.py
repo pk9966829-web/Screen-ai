@@ -108,8 +108,9 @@ def _gmail_natural_query(text: str):
     """Translate common natural-language Gmail requests into safe Gmail operators."""
     original = (text or "").strip()
     lower = original.lower()
-    count_match = re.search(r"\b(?:last|latest|show|find|get)?\s*(\d{1,2})\s*(?:emails?|messages?)?\b", lower)
-    count = max(1, min(int(count_match.group(1)), 10)) if count_match else (10 if re.search(r"\ball\b", lower) else 5)
+    count_match = re.search(r"\b(?:last|latest|show|find|get)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:emails?|messages?)\b", lower)
+    count_value = next((group for group in count_match.groups() if group), None) if count_match else None
+    count = max(1, min(int(count_value), 10)) if count_value else (10 if re.search(r"\ball\b", lower) else 5)
     terms = []
     filters = {}
 
@@ -118,7 +119,7 @@ def _gmail_natural_query(text: str):
             filters[key] = value
 
     # Sender and recipient can be expressed in different word orders.
-    sender_match = re.search(r"\b(?:from|by|sent\s+by)\s+(.+?)(?=\s+(?:about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment|having\s+attachment|to:)|[?.!,;]|$)", original, re.I)
+    sender_match = re.search(r"\b(?:from|by|sent\s+by)\s+(.+?)(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment|having\s+attachment|to:)|[?.!,;]|$)", original, re.I)
     if not sender_match:
         sender_match = re.search(r"\b(?:did|has|have)\s+(.+?)\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b", original, re.I)
     if sender_match:
@@ -198,7 +199,7 @@ def _gmail_natural_query(text: str):
     # Remove intent/control words and extracted values to leave topic/body keywords.
     cleaned = original
     for pattern in [
-        r"\b(?:from|by|sent\s+by)\s+.+?(?=\s+(?:about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment)|[?.!,;]|$)",
+        r"\b(?:from|by|sent\s+by)\s+.+?(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment)|[?.!,;]|$)",
         r"\b(?:did|has|have)\s+.+?\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b",
         r"\bto\s+[a-z0-9][a-z0-9._@+\-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2}",
         r"\bsubject\s*(?:is|:)?\s*[\"']?.+?[\"']?(?=\s+(?:from|to|before|after|since|until|unread|read)|[?.!,;]|$)",
