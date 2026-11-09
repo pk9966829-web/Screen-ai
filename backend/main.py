@@ -164,10 +164,56 @@ def _gmail_query_from_ai_intent(intent: dict):
     return {"gmail_query": " ".join(parts), "filters": filters}
 
 
+
+def _gmail_parse_advanced_syntax(text: str):
+    """Accept a limited, validated subset of Gmail's native search operators."""
+    matches = re.findall(r"\\b(from|to|subject|after|before|newer_than|older_than|is|has|filename|category|in):(\"[^\"]+\"|[^\\s]+)", text, re.I)
+    if not matches:
+        return None
+    parts = []
+    filters = {}
+    for operator, raw in matches:
+        key = operator.lower()
+        value = raw.strip('"')
+        if key in {"from", "to", "subject", "filename"}:
+            safe = _gmail_clean_value(value)
+            if not safe:
+                continue
+            parts.append(f'{key}:("{safe}")' if key in {"subject", "filename"} else f"{key}:({safe})")
+            filters[key] = safe
+        elif key in {"after", "before"}:
+            normalized = value.replace("-", "/")
+            if re.fullmatch(r"\\d{4}/\\d{2}/\\d{2}", normalized):
+                parts.append(f"{key}:{normalized}")
+                filters[key] = normalized
+        elif key in {"newer_than", "older_than"}:
+            if re.fullmatch(r"\\d{1,4}[dmy]", value.lower()):
+                parts.append(f"{key}:{value.lower()}")
+                filters[key] = value.lower()
+        elif key == "is" and value.lower() in {"read", "unread", "starred", "important"}:
+            parts.append(f"is:{value.lower()}")
+            filters[key] = value.lower()
+        elif key == "has" and value.lower() in {"attachment", "userlabels", "nouserlabels"}:
+            parts.append(f"has:{value.lower()}")
+            filters[key] = value.lower()
+        elif key == "category" and value.lower() in {"primary", "social", "promotions", "updates", "forums"}:
+            parts.append(f"category:{value.lower()}")
+            filters[key] = value.lower()
+        elif key == "in" and value.lower() in {"inbox", "sent", "drafts", "spam", "trash", "anywhere"}:
+            parts.append(f"in:{value.lower()}")
+            filters[key] = value.lower()
+    if not parts:
+        return None
+    return {"gmail_query": " ".join(parts), "count": 5, "filters": filters}
+
+
 def _gmail_natural_query(text: str):
     """Translate common natural-language Gmail requests into safe Gmail operators."""
     original = (text or "").strip()
     lower = original.lower()
+    advanced = _gmail_parse_advanced_syntax(original)
+    if advanced:
+        return advanced
     count_match = re.search(r"\b(?:last|latest|show|find|get)\s+(\d{1,2})(?=\s*(?:emails?|messages?)?\s*(?:$|[?.!,;]))|\b(\d{1,2})\s*(?:emails?|messages?)\b", lower)
     count_value = next((group for group in count_match.groups() if group), None) if count_match else None
     count = max(1, min(int(count_value), 50)) if count_value else (50 if re.search(r"\ball\b", lower) else 5)
