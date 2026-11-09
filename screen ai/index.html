@@ -1374,22 +1374,50 @@
                 }
             }
             function parseGmailRequest(query) {
-                const text = String(query || '').trim();
-                if (!/\b(gmail|emails?|e-mail|inbox|mail)\b/i.test(text)) return null;
-                const senderMatch = text.match(/\b(?:from|by|sent\s+by|come|came|coming)\s+(?:from\s+)?([a-z0-9][a-z0-9._-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,3})/i);
-                if (senderMatch) {
-                    let sender = senderMatch[1].trim();
-                    sender = sender.replace(/\b(?:email|emails|gmail|message|messages|mail|inbox|have|has|did|do|i|me|today|yesterday|recently|received|arrived|come|came|coming|please|check|search|find|show|any)\b.*$/i, '').trim();
-                    if (sender) {
-                        const gmailQuery = sender.includes('@')
-                            ? 'from:' + sender
-                            : 'from:(' + sender.replace(/\s+/g, ' ') + ')';
-                        return { count: 5, gmailQuery, searchLabel: 'from ' + sender };
+                const original = String(query || '').trim();
+                const text = original.toLowerCase();
+                const mailIntent = /\b(gmail|emails?|e-mail|inbox|mail|message|messages)\b/i.test(original) ||
+                    /\b(did\s+.+\s+email\s+me|email(?:ed)?\s+me|mailed\s+me|check\s+my\s+mail)\b/i.test(original);
+                if (!mailIntent) return null;
+
+                const countMatch = original.match(/\b(\d{1,2})\b/);
+                const count = countMatch ? Math.max(1, Math.min(Number(countMatch[1]), 10)) : 5;
+                const stopWords = /\b(?:email|emails|e-mail|gmail|message|messages|mail|inbox|have|has|had|did|do|does|i|me|my|today|yesterday|recently|received|arrived|come|came|coming|please|check|search|find|show|read|list|look|see|tell|whether|if|any|the|a|an|is|are|was|were|from|by|sent|send|got|get|have|there|something|anything|what|which|about|regarding)\b/ig;
+                let sender = '';
+                const senderPatterns = [
+                    /\b(?:from|by|sent\s+by)\s+([a-z0-9][a-z0-9._@-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,3})/i,
+                    /\b(?:did|has|have)\s+([a-z0-9][a-z0-9._-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2})\s+(?:send|sent|email|emailed|mail|mailed)/i,
+                    /\b([a-z0-9][a-z0-9._-]*)\s+(?:email|mail)\s+me\b/i
+                ];
+                for (const pattern of senderPatterns) {
+                    const match = original.match(pattern);
+                    if (match?.[1]) {
+                        sender = match[1].replace(/[?.!,;:]+$/g, '').trim();
+                        sender = sender.replace(stopWords, '').trim();
+                        break;
                     }
                 }
-                if (/\b(latest|recent|newest|last|check|show|read|list|any|received|arrived)\b/i.test(text)) {
-                    const number = text.match(/\b(\d{1,2})\b/);
-                    return { count: number ? Math.max(1, Math.min(Number(number[1]), 10)) : 5, gmailQuery: '', searchLabel: '' };
+
+                if (sender) {
+                    const gmailQuery = sender.includes('@')
+                        ? 'from:' + sender
+                        : 'from:(' + sender.replace(/\s+/g, ' ') + ')';
+                    return { count, gmailQuery, searchLabel: 'from ' + sender };
+                }
+
+                // If the user asks about a subject/topic rather than a sender,
+                // search Gmail for the meaningful words instead of showing the inbox.
+                const keywords = original
+                    .replace(/\b(?:please|can|could|would|you|vosi|check|search|find|look|show|read|list|tell|me|my|in|the|a|an|is|are|was|were|did|do|does|i|have|has|had|got|get|any|email|emails|e-mail|gmail|mail|inbox|message|messages|whether|if|there|something|anything|for|about|regarding|received|arrived|come|came|coming|today|yesterday)\b/ig, ' ')
+                    .replace(/\b\d{1,2}\b/g, ' ')
+                    .replace(/[^a-z0-9@._+\-\s]/ig, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (keywords) {
+                    return { count, gmailQuery: keywords, searchLabel: 'matching "' + keywords + '"' };
+                }
+                if (/\b(latest|recent|newest|last|all|any|check|show|read|list)\b/i.test(original)) {
+                    return { count, gmailQuery: '', searchLabel: '' };
                 }
                 return null;
             }
