@@ -619,6 +619,12 @@
                         </a>
                     </nav>
                     <div id="sidebar-settings" aria-label="Vosi settings">
+                        <section class="setting-group" aria-labelledby="side-conversation-title">
+                            <h2 class="setting-title" id="side-conversation-title">Conversation</h2>
+                            <button id="setting-new-chat" class="side-action" type="button"><i data-lucide="plus" class="w-4 h-4 inline-block mr-2"></i>New chat</button>
+                            <label class="setting-row" for="setting-chat-switch"><span>Switch chat</span><select id="setting-chat-switch" aria-label="Switch conversation"><option value="">Loading chats…</option></select></label>
+                            <p class="side-note">Your previous conversations stay saved on this device.</p>
+                        </section>
                         <section class="setting-group" aria-labelledby="side-awareness-title">
                             <h2 class="setting-title" id="side-awareness-title">Screen awareness</h2>
                             <div class="setting-row"><span>Observe shared screen</span><label class="settings-switch" aria-label="Screen awareness"><input type="checkbox" id="awareness-toggle"><span></span></label></div>
@@ -2127,7 +2133,11 @@
                 closeResponse.addEventListener('click', () => responseBox.classList.add('hidden'));
             }
 
-            function appendVosiChatMessage(role, label, body) {
+            const CHAT_SESSIONS_KEY = 'vosi.chat.sessions.v1';
+            let chatSessions = [];
+            let activeChatId = null;
+
+            function renderVosiChatMessage(role, label, body) {
                 const transcript = document.getElementById('vosi-chat-transcript');
                 if (!transcript) return;
                 const row = document.createElement('div');
@@ -2154,6 +2164,106 @@
                 transcript.appendChild(row);
                 transcript.scrollTop = transcript.scrollHeight;
             }
+
+            function saveChatSessions() {
+                try { localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(chatSessions.slice(-40))); }
+                catch (error) { console.warn('VOSI could not save chat history:', error); }
+            }
+
+            function refreshChatSwitcher() {
+                const select = document.getElementById('setting-chat-switch');
+                if (!select) return;
+                select.replaceChildren();
+                const sorted = [...chatSessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                sorted.forEach(chat => {
+                    const option = document.createElement('option');
+                    option.value = chat.id;
+                    option.textContent = chat.title || 'New chat';
+                    option.selected = chat.id === activeChatId;
+                    select.appendChild(option);
+                });
+                if (!sorted.length) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No saved chats';
+                    select.appendChild(option);
+                }
+            }
+
+            function activateChat(chatId) {
+                const chat = chatSessions.find(item => item.id === chatId);
+                if (!chat) return;
+                activeChatId = chat.id;
+                const transcript = document.getElementById('vosi-chat-transcript');
+                if (transcript) {
+                    transcript.replaceChildren();
+                    (chat.messages || []).forEach(message => renderVosiChatMessage(message.role, message.label, message.body));
+                }
+                refreshChatSwitcher();
+                saveChatSessions();
+            }
+
+            function createVosiChat() {
+                const chat = {
+                    id: 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+                    title: 'New chat',
+                    updatedAt: Date.now(),
+                    messages: []
+                };
+                chatSessions.push(chat);
+                activeChatId = chat.id;
+                const transcript = document.getElementById('vosi-chat-transcript');
+                if (transcript) transcript.replaceChildren();
+                const input = document.getElementById('user-input');
+                if (input) { input.value = ''; input.focus(); }
+                saveChatSessions();
+                refreshChatSwitcher();
+                return chat;
+            }
+
+            function initializeVosiChatHistory() {
+                try {
+                    const stored = JSON.parse(localStorage.getItem(CHAT_SESSIONS_KEY) || '[]');
+                    if (Array.isArray(stored)) {
+                        chatSessions = stored.filter(chat => chat && typeof chat.id === 'string' && Array.isArray(chat.messages))
+                            .slice(-40);
+                    }
+                } catch (_) { chatSessions = []; }
+                if (!chatSessions.length) {
+                    const initial = {
+                        id: 'chat-' + Date.now().toString(36),
+                        title: 'New chat',
+                        updatedAt: Date.now(),
+                        messages: []
+                    };
+                    chatSessions.push(initial);
+                    activeChatId = initial.id;
+                    saveChatSessions();
+                } else {
+                    const mostRecent = [...chatSessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+                    activateChat(mostRecent.id);
+                }
+                refreshChatSwitcher();
+            }
+
+            function appendVosiChatMessage(role, label, body) {
+                const chat = chatSessions.find(item => item.id === activeChatId) || createVosiChat();
+                const messageBody = String(body || '');
+                const message = { role: role === 'user' ? 'user' : 'assistant', label: label || '', body: messageBody };
+                chat.messages.push(message);
+                if (chat.messages.length > 200) chat.messages = chat.messages.slice(-200);
+                if (role === 'user' && chat.title === 'New chat') {
+                    chat.title = messageBody.replace(/\s+/g, ' ').slice(0, 38) || 'New chat';
+                }
+                chat.updatedAt = Date.now();
+                renderVosiChatMessage(message.role, message.label, message.body);
+                saveChatSessions();
+                refreshChatSwitcher();
+            }
+
+            document.getElementById('setting-new-chat')?.addEventListener('click', createVosiChat);
+            document.getElementById('setting-chat-switch')?.addEventListener('change', event => activateChat(event.target.value));
+            initializeVosiChatHistory();
 
             function showResponse(title, body) {
                 appendVosiChatMessage('assistant', title, body || '');
