@@ -813,6 +813,27 @@
             void refreshGmailStatus();
         });
 
+        const VOSI_ASSISTANT_NAME_KEY = "vosi.assistant.name.v1";
+        let vosiAssistantName = "VOSI";
+        let waitingForAssistantName = false;
+        try { vosiAssistantName = (localStorage.getItem(VOSI_ASSISTANT_NAME_KEY) || "VOSI").trim().slice(0, 32) || "VOSI"; } catch (_) {}
+        function saveVosiAssistantName(name) {
+            const cleanName = String(name || "").trim().replace(/\s+/g, " ").slice(0, 32);
+            if (!cleanName) return false;
+            vosiAssistantName = cleanName;
+            try { localStorage.setItem(VOSI_ASSISTANT_NAME_KEY, cleanName); } catch (_) {}
+            vosiSettings.wakePhrase = cleanName.toLowerCase() === "vosi" ? "Hey Vosi" : cleanName;
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (_) {}
+            const wakeInput = document.getElementById("setting-wake-phrase");
+            if (wakeInput) wakeInput.value = vosiSettings.wakePhrase;
+            return true;
+        }
+        function stripAssistantName(text) {
+            const value = String(text || "").trim();
+            const names = [vosiAssistantName, "Hey " + vosiAssistantName].sort((a, b) => b.length - a.length);
+            const match = names.find(name => value.toLowerCase().startsWith(name.toLowerCase()) && /^[,.:;!\s]/.test(value.slice(name.length)));
+            return match ? (value.slice(match.length).replace(/^[,.:;!\s]+/, "").trim() || value) : value;
+        }
         const SETTINGS_KEY = "vosi.settings.v1";
         const ONBOARDING_KEY = "vosi.setup.complete.v1";
         const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey Vosi", reminders: true, companionOverlay: true };
@@ -2104,12 +2125,14 @@
                         document.getElementById('ai-prompt-form')?.requestSubmit();
                         return;
                     }
-                    const phrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim().toLowerCase();
+                    const configuredPhrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim();
+                    const wakePhrases = [...new Set([vosiAssistantName, 'Hey ' + vosiAssistantName, configuredPhrase].filter(Boolean))].sort((a, b) => b.length - a.length);
                     const heard = transcript.toLowerCase();
-                    const wakeAt = phrase ? heard.indexOf(phrase) : -1;
+                    const matchedPhrase = wakePhrases.find(item => heard.includes(item.toLowerCase()));
+                    const wakeAt = matchedPhrase ? heard.indexOf(matchedPhrase.toLowerCase()) : -1;
                     let command = '';
                     if (wakeAt >= 0) {
-                        command = transcript.slice(wakeAt + phrase.length).replace(/^[\s,.:;-]+/, '').trim();
+                        command = transcript.slice(wakeAt + matchedPhrase.length).replace(/^[\s,.:;-]+/, '').trim();
                         if (!command) { wakePendingUntil = Date.now() + 8000; setVoiceStatus('I’m listening. Say your request after the wake phrase.'); return; }
                     } else if (Date.now() < wakePendingUntil) command = transcript;
                     else return;
@@ -2453,11 +2476,11 @@
                             return;
                         }
                     }
-                    const sendDraft = parseSendEmailRequest(query);
+                    const sendDraft = parseSendEmailRequest(normalizedQuery);
                     if (sendDraft) { await runGmailSend(sendDraft); return; }
-                    const gmailRequest = parseGmailRequest(query);
+                    const gmailRequest = parseGmailRequest(normalizedQuery);
                     if (gmailRequest) { await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
-                    const command = parseDeviceCommand(query);
+                    const command = parseDeviceCommand(normalizedQuery);
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
                         speakVosi(answer || 'I handled that request.');
@@ -2521,6 +2544,25 @@
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
                     appendVosiChatMessage('user', 'You', query);
+                    if (waitingForAssistantName) {
+                        waitingForAssistantName = false;
+                        if (saveVosiAssistantName(query)) {
+                            const reply = 'Thank you, sir. You can call me ' + vosiAssistantName + ' from now on.';
+                            showResponse('Name updated', reply); speakVosi(reply);
+                        } else {
+                            waitingForAssistantName = true;
+                            const reply = 'Please tell me the name you would like me to use, sir.';
+                            showResponse('Choose my name', reply); speakVosi(reply);
+                        }
+                        userInput.value = ''; return;
+                    }
+                    if (/\b(?:change|rename|give|set|choose|pick)\b.{0,45}\b(?:your|assistant)\s+name\b|\bwhat should i call you\b|\bi want to (?:keep|give) (?:your|you a) name\b/i.test(query)) {
+                        waitingForAssistantName = true;
+                        const reply = 'What name would you like to call me, sir?';
+                        showResponse('Choose my name', reply); speakVosi(reply);
+                        userInput.value = ''; return;
+                    }
+                    const normalizedQuery = stripAssistantName(query);
                     if (letterFlowStep !== null && letterDialog?.classList.contains('is-open')) {
                         if (letterFlowStep === 0) { document.getElementById('letter-recipient').value = query; setLetterStep(1, true); }
                         else if (letterFlowStep === 1) { letterPurpose.value = query; setLetterStep(2, true); }
@@ -2539,7 +2581,7 @@
                         await dispatchDeviceCommand(deviceCommand);
                         return;
                     }
-                    if (!screenStream && (query.toLowerCase().includes("my screen") || query.toLowerCase().includes("where to click") || query.toLowerCase().includes("latest shared screen"))) {
+                    if (!screenStream && (normalizedQuery.toLowerCase().includes("my screen") || normalizedQuery.toLowerCase().includes("where to click") || normalizedQuery.toLowerCase().includes("latest shared screen"))) {
                         showResponse("Screen sharing is off", "Start observing first and choose the screen you want VOSI to analyze.");
                         speakVosi("Screen sharing is off. Start observing first and choose the screen you want Vosi to analyze.");
                         return;
@@ -2553,7 +2595,7 @@
                         if (screenStream && window.captureLatestScreen) {
                             await window.captureLatestScreen();
                         }
-                        const data = await apiPost("/ask", { message: query, include_screen: !!screenStream && !observationPaused });
+                        const data = await apiPost("/ask", { message: normalizedQuery, include_screen: !!screenStream && !observationPaused });
                         await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                         if (data.success && data.brain) {
