@@ -2500,17 +2500,35 @@
                     const command = parseDeviceCommand(normalizedQuery);
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
-                        speakVosi(answer || 'I handled that request.');
-                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI command', answer: answer || 'I handled that request.', observing: !!screenStream });
+                        const finalAnswer = answer || 'I handled that request.';
+                        speakVosi(finalAnswer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI command', answer: finalAnswer, observing: !!screenStream });
                         return;
                     }
-                    // The background observer keeps the latest screen frame fresh.
-                    // The backend uses that latest frame for the answer.
+
+                    // Only screen-awareness questions should call the AI brain from
+                    // the floating companion. Normal supported tasks are handled above
+                    // by the same local command handlers used by the main search bar.
+                    const screenGuidanceIntent = /\\b(?:this|current|open|running|visible|active)\\s+(?:screen|website|webpage|page|tab|window|site)\\b|\\b(?:where|what|which)\\s+(?:should i\\s+)?(?:click|tap|press|select)\\b|\\b(?:where to click|what to click|click next|next step|guide me through|walk me through|on this page|on this website|this button|this form|this error|screen awareness)\\b/i.test(normalizedQuery);
+                    if (!screenGuidanceIntent) {
+                        const answer = 'I can handle supported tasks here without an AI API, including Gmail, email sending, device controls, opening apps, and web or Flipkart searches. For questions about the live screen, ask me what to click or what to do next while screen observing is active.';
+                        speakVosi(answer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI', answer, observing: !!screenStream });
+                        return;
+                    }
+                    if (!screenStream || observationPaused) {
+                        const answer = 'Start or resume screen observing first, then ask me about the website or where to click.';
+                        speakVosi(answer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: false, title: 'Screen observing is off', answer, observing: !!screenStream });
+                        return;
+                    }
+
+                    // Screen guidance uses the AI API and the latest live screen frame.
                     if (window.captureLatestScreen) {
                         await window.captureLatestScreen();
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
-                    const data = await apiPost("/ask", { message: prepareVosiPrompt(query), include_screen: !!screenStream });
+                    const data = await apiPost("/ask", { message: prepareVosiPrompt(normalizedQuery), include_screen: true });
                     await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                     if (data.success && data.brain) {
