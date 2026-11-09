@@ -2127,14 +2127,24 @@
                         return;
                     }
                     const configuredPhrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim();
-                    const wakePhrases = [...new Set([vosiAssistantName, 'Hey ' + vosiAssistantName, configuredPhrase].filter(Boolean))].sort((a, b) => b.length - a.length);
-                    const heard = transcript.toLowerCase();
-                    const matchedPhrase = wakePhrases.find(item => heard.includes(item.toLowerCase()));
-                    const wakeAt = matchedPhrase ? heard.indexOf(matchedPhrase.toLowerCase()) : -1;
+                    const wakeNames = [...new Set([vosiAssistantName, configuredPhrase.replace(/^hey\s+/i, '')].filter(Boolean))];
+                    const lowerTranscript = transcript.toLowerCase();
+                    let wakeAt = -1;
+                    let wakeLength = 0;
+                    for (const name of wakeNames.sort((a, b) => b.length - a.length)) {
+                        const at = lowerTranscript.indexOf(name.toLowerCase());
+                        if (at < 0) continue;
+                        const before = at === 0 ? '' : lowerTranscript[at - 1];
+                        const after = lowerTranscript[at + name.length] || '';
+                        if ((before && /[a-z0-9]/i.test(before)) || (after && /[a-z0-9]/i.test(after))) continue;
+                        wakeAt = at;
+                        wakeLength = name.length;
+                        break;
+                    }
                     let command = '';
                     if (wakeAt >= 0) {
-                        command = transcript.slice(wakeAt + matchedPhrase.length).replace(/^[\s,.:;-]+/, '').trim();
-                        if (!command) { wakePendingUntil = Date.now() + 8000; setVoiceStatus('I’m listening. Say your request after the wake phrase.'); return; }
+                        command = transcript.slice(wakeAt + wakeLength).replace(/^[\s,.:;-]+/, '').trim();
+                        if (!command) { wakePendingUntil = Date.now() + 10000; setVoiceStatus('I’m listening. Say your request after ' + vosiAssistantName + '.'); return; }
                     } else if (Date.now() < wakePendingUntil) command = transcript;
                     else return;
                     wakePendingUntil = 0;
