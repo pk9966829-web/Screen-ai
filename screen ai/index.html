@@ -1391,6 +1391,60 @@
                 }
             }
 
+            function parseSendEmailRequest(query) {
+                const original = String(query || '').trim();
+                if (!/\b(send|write|compose)\b/i.test(original) ||
+                    !/\b(email|e-mail|mail)\b/i.test(original)) return null;
+                const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+                const subjectMatch = original.match(/\bsubject\s*(?:is|:)?\s*["']?(.+?)["']?(?=\s+(?:saying|message|body|that)\b|[?.!,;]|$)/i);
+                const bodyMatch = original.match(/\b(?:saying|message|body|that)\s*[:,-]?\s*(.+)$/i);
+                const body = bodyMatch ? bodyMatch[1].trim().replace(/[?.!]+$/, '') : '';
+                return {
+                    recipient: addressMatch ? addressMatch[0] : '',
+                    subject: subjectMatch ? subjectMatch[1].trim() : 'Message from VOSI',
+                    body
+                };
+            }
+
+            async function runGmailSend(draft) {
+                let recipient = draft.recipient;
+                let subject = draft.subject || 'Message from VOSI';
+                let body = draft.body;
+                if (!recipient) recipient = (window.prompt('What email address should VOSI send this to?') || '').trim();
+                if (!recipient) { showResponse('Email not sent', 'No recipient email address was provided.'); return; }
+                if (!body) body = (window.prompt('What should the email say?') || '').trim();
+                if (!body) { showResponse('Email not sent', 'The email message is empty.'); return; }
+                if (subject === 'Message from VOSI') {
+                    const chosenSubject = window.prompt('Email subject:', subject);
+                    if (chosenSubject === null) { showResponse('Email not sent', 'You cancelled the email draft.'); return; }
+                    subject = chosenSubject.trim() || subject;
+                }
+                const preview = 'To: ' + recipient + '\nSubject: ' + subject + '\n\n' + body;
+                showResponse('Review email before sending', preview + '\n\nWaiting for your confirmation…');
+                speakVosi('Please review the email details. I will send it only after you confirm.');
+                if (!window.confirm('Send this email?\n\n' + preview)) {
+                    showResponse('Email not sent', 'You cancelled. VOSI has not sent this email.');
+                    speakVosi('Okay. I did not send the email.');
+                    return;
+                }
+                try {
+                    const response = await fetch(API_BASE + '/gmail/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ recipient, subject, body, confirmed: true })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Email sending failed.');
+                    const result = 'Email sent successfully to ' + recipient + '. Subject: ' + subject + '.';
+                    showResponse('Email sent', result);
+                    speakVosi(result);
+                } catch (error) {
+                    const message = String(error?.message || error);
+                    showResponse('Email could not be sent', message);
+                    speakVosi(message);
+                }
+            }
+
             function parseGmailRequest(query) {
                 const original = String(query || '').trim();
                 if (!original) return null;
@@ -2318,6 +2372,8 @@
                             return;
                         }
                     }
+                    const sendDraft = parseSendEmailRequest(query);
+                    if (sendDraft) { await runGmailSend(sendDraft); return; }
                     const gmailRequest = parseGmailRequest(query);
                     if (gmailRequest) { await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
                     const command = parseDeviceCommand(query);
@@ -2390,6 +2446,8 @@
                         userInput.value = '';
                         return;
                     }
+                    const sendDraft = parseSendEmailRequest(query);
+                    if (sendDraft) { userInput.value = ''; await runGmailSend(sendDraft); return; }
                     const gmailRequest = parseGmailRequest(query);
                     if (gmailRequest) { userInput.value = ''; await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
                     const deviceCommand = parseDeviceCommand(query);
