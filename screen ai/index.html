@@ -1391,7 +1391,7 @@
                 const mailIntent = /\b(gmail|emails?|e-mail|inbox|mail|message|messages)\b/i.test(original) ||
                     /\b(did\s+.+\s+(?:send|sent|email|emailed|mail|mailed)|has\s+.+\s+(?:sent|emailed|mailed)|.+\s+email(?:ed)?\s+me|.+\s+mailed\s+me)\b/i.test(original) ||
                     /\b(from\s+\w+|sender|subject\s*:|unread|starred|important|attachments?|promotions\s+tab|social\s+tab|primary\s+tab|sent\s+mail|spam\s+mail|trash\s+mail)\b/i.test(original) ||
-                    /\b(?:from|to|subject|after|before|newer_than|older_than|is|has|filename|category|in):/i.test(original);
+                    /\b(?:from|to|subject|after|before|newer_than|older_than|is|has|filename|label|category|in):/i.test(original);
                 if (!mailIntent) return null;
                 const countMatch = original.match(/\b(?:last|latest|show|find|get)\s+(\d{1,2})(?=\s*(?:emails?|messages?)?\s*(?:$|[?.!,;]))|\b(\d{1,2})\s*(?:emails?|messages?)\b/i);
                 const countValue = countMatch ? (countMatch[1] || countMatch[2]) : null;
