@@ -1397,12 +1397,12 @@
                 // Only treat an explicit outgoing action at the start as a send request.
                 // This prevents Gmail searches such as "Did GitHub send me an email?"
                 // from accidentally opening the outgoing-email flow.
-                if (!/^(?:please\\s+)?(?:send|write|compose|draft)\\b/i.test(original) ||
-                    !/\\b(?:email|e-mail|mail)\\b/i.test(original)) return null;
+                if (!/^(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original) ||
+                    !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
 
-                const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);
-                const subjectMatch = original.match(/\\bsubject\\s*(?:is|:)?\\s*["']?(.+?)["']?(?=\\s+(?:saying|message|body|content|text|that)\\b|[?.!,;]|$)/i);
-                const bodyMatch = original.match(/\\b(?:saying|message|body|content|text|tell them)\\s*(?:is|:|,|-)?\\s*(.+)$/i);
+                const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+                const subjectMatch = original.match(/\bsubject\s*(?:is|:)?\s*["']?(.+?)["']?(?=\s+(?:saying|message|body|content|text|that)\b|[?.!,;]|$)/i);
+                const bodyMatch = original.match(/\b(?:saying|message|body|content|text|tell them)\s*(?:is|:|,|-)?\s*(.+)$/i);
                 const body = bodyMatch ? bodyMatch[1].trim().replace(/[?.!]+$/, '') : '';
                 return {
                     recipient: addressMatch ? addressMatch[0] : '',
