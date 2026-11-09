@@ -716,7 +716,7 @@
                         <div class="absolute left-12 text-indigo-400 pointer-events-none"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
                         <input id="user-input" type="text" placeholder="Ask VOSI anything..." class="w-full pl-20 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
                         <div class="absolute right-2 flex items-center space-x-1">
-                            <button type="button" id="mic-btn" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                            <button type="button" id="mic-btn" title="Speak to VOSI" aria-label="Speak to VOSI" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
                         </div>
                     </form>
@@ -2104,6 +2104,7 @@
                     } else if (Date.now() < wakePendingUntil) command = transcript;
                     else return;
                     wakePendingUntil = 0;
+                    lastInputWasVoice = true;
                     if (userInput) userInput.value = command;
                     document.getElementById('ai-prompt-form')?.requestSubmit();
                 };
