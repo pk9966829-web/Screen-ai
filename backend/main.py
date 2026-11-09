@@ -132,7 +132,7 @@ def _gmail_query_from_ai_intent(intent: dict):
     for key in ("subject", "keywords", "filename"):
         item = value(key)
         if item:
-            parts.append(f'{key}:("{item}")' if key in {"subject", "filename"} else (f'"{item}"' if " " in item else item))
+            parts.append(f'{key}:("{item}")' if key in {"subject", "filename"} else item)
             filters[key] = item
     for key in ("after", "before"):
         item = value(key)
@@ -337,7 +337,7 @@ def _gmail_natural_query(text: str):
         elif kind == "subject":
             query_parts.append(f'subject:("{safe}")')
         else:
-            query_parts.append(f'"{safe}"' if " " in safe else safe)
+            query_parts.append(safe)
     query_parts.extend(date_terms)
     return {"gmail_query": " ".join(query_parts), "count": count, "filters": filters}
 
