@@ -297,7 +297,7 @@ def interpret_gmail_search(question: str) -> Dict[str, Any] | None:
     prompt = f"""Convert this Gmail search request into one JSON object. Do not answer the user.
 Extract only explicitly requested filters. Never invent sender addresses or dates.
 Allowed keys: sender, recipient, subject, keywords, after (YYYY/MM/DD), before (YYYY/MM/DD),
-newer_than (7d, 2m), read_status (unread/read), has_attachment (boolean),
+newer_than and older_than (7d, 2m), filename (string), label (string), read_status (unread/read), has_attachment (boolean),
 starred (boolean), important (boolean), category (primary/social/promotions/updates/forums),
 folder (inbox/sent/drafts/spam/trash/anywhere).
 Use null for unknown strings and false for unspecified booleans. Return JSON only.
@@ -317,7 +317,7 @@ User request: {question}
         if not isinstance(parsed, dict):
             return None
         allowed = {"sender", "recipient", "subject", "keywords", "after", "before",
-                   "newer_than", "read_status", "has_attachment", "starred",
+                   "newer_than", "older_than", "filename", "label", "read_status", "has_attachment", "starred",
                    "important", "category", "folder"}
         return {key: parsed.get(key) for key in allowed if key in parsed}
     except Exception:
