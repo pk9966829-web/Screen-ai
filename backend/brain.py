@@ -312,7 +312,7 @@ User request: {question}
         raw = (response.output_text or "").strip()
         fence = chr(96) * 3
         if raw.startswith(fence):
-            raw = re.sub(r"^" + fence + r"(?:json)?\\s*|\\s*" + fence + r"$", "", raw, flags=re.I).strip()
+            raw = re.sub(r"^" + fence + r"(?:json)?\s*|\s*" + fence + r"$", "", raw, flags=re.I).strip()
         parsed = json.loads(raw)
         if not isinstance(parsed, dict):
             return None
