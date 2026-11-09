@@ -160,7 +160,7 @@ def _gmail_natural_query(text: str):
     lower = original.lower()
     count_match = re.search(r"\b(?:last|latest|show|find|get)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:emails?|messages?)\b", lower)
     count_value = next((group for group in count_match.groups() if group), None) if count_match else None
-    count = max(1, min(int(count_value), 10)) if count_value else (10 if re.search(r"\ball\b", lower) else 5)
+    count = max(1, min(int(count_value), 50)) if count_value else (50 if re.search(r"\ball\b", lower) else 5)
     terms = []
     filters = {}
 
@@ -299,7 +299,7 @@ def search_gmail_natural(req: GmailSearchRequest):
         if not credentials:
             return {"success": False, "connected": False, "error": "Gmail is not connected. Use the VOSI Connectors menu and choose Connect Gmail first."}
         service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
-        safe_count = max(1, min(int(req.count or parsed["count"]), 10))
+        safe_count = max(1, min(int(req.count or parsed["count"]), 50))
         response = service.users().messages().list(
             userId="me", maxResults=safe_count, q=parsed["gmail_query"] or None
         ).execute()
