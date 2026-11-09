@@ -126,11 +126,11 @@ def _gmail_query_from_ai_intent(intent: dict):
             filters[key] = item
     for key in ("after", "before"):
         item = value(key)
-        if item and re.fullmatch(r"\\d{4}/\\d{2}/\\d{2}", item):
+        if item and re.fullmatch(r"\d{4}/\d{2}/\d{2}", item):
             parts.append(f"{key}:{item}")
             filters[key] = item
     newer = value("newer_than")
-    if newer and re.fullmatch(r"\\d{1,4}[dmy]", newer.lower()):
+    if newer and re.fullmatch(r"\d{1,4}[dmy]", newer.lower()):
         parts.append(f"newer_than:{newer.lower()}")
         filters["newer_than"] = newer.lower()
     read_status = value("read_status").lower()
