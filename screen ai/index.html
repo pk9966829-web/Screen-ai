@@ -1337,23 +1337,33 @@
                 }
             }
 
-            async function runGmailLatest(count = 5) {
-                showResponse('Checking Gmail', 'VOSI is retrieving your latest messages directly from the Gmail backend. No AI API is used.');
+            async function runGmailLatest(count = 5, gmailQuery = '', searchLabel = '') {
+                const isSearch = !!gmailQuery;
+                showResponse(isSearch ? 'Searching Gmail' : 'Checking Gmail',
+                    isSearch ? 'VOSI is searching Gmail for messages ' + searchLabel + '.' : 'VOSI is retrieving your latest messages directly from Gmail.');
                 try {
-                    const response = await fetch(API_BASE + '/gmail/messages?count=' + encodeURIComponent(count));
+                    const params = new URLSearchParams({ count: String(count) });
+                    if (gmailQuery) params.set('q', gmailQuery);
+                    const response = await fetch(API_BASE + '/gmail/messages?' + params.toString());
                     const data = await response.json();
                     if (!response.ok || !data.success) throw new Error(data.error || 'Could not retrieve Gmail messages.');
                     if (!data.messages?.length) {
-                        showResponse('Gmail is connected', 'There are no messages in your inbox.');
-                        speakVosi('Gmail is connected, but I could not find any messages in your inbox.');
-                        return 'Gmail is connected, but there are no messages in your inbox.';
+                        const emptyMessage = isSearch
+                            ? 'I could not find any Gmail messages matching ' + searchLabel + '.'
+                            : 'Gmail is connected, but there are no messages in your inbox.';
+                        showResponse('No matching Gmail messages', emptyMessage);
+                        speakVosi(emptyMessage);
+                        return emptyMessage;
                     }
                     const lines = data.messages.map((mail, index) =>
                         (index + 1) + '. ' + mail.subject + '\nFrom: ' + mail.sender + '\nDate: ' + mail.date + '\n' + mail.snippet
                     );
-                    const summary = 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
-                        data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
-                    showResponse('Your latest Gmail messages', lines.join('\n\n'));
+                    const summary = isSearch
+                        ? 'I found ' + data.messages.length + ' email' + (data.messages.length === 1 ? '' : 's') + ' matching ' + searchLabel + '. ' +
+                            data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ')
+                        : 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
+                            data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
+                    showResponse(isSearch ? 'Gmail search results: ' + searchLabel : 'Your latest Gmail messages', lines.join('\n\n'));
                     speakVosi(summary);
                     return summary;
                 } catch (error) {
@@ -1363,9 +1373,25 @@
                     return message;
                 }
             }
-            function isGmailLatestRequest(query) {
-                return /\b(gmail|emails?|inbox)\b/i.test(query) &&
-                    /\b(latest|recent|newest|last|check|show|read|list)\b/i.test(query);
+            function parseGmailRequest(query) {
+                const text = String(query || '').trim();
+                if (!/\b(gmail|emails?|e-mail|inbox|mail)\b/i.test(text)) return null;
+                const senderMatch = text.match(/\b(?:from|by|sent\s+by|come|came|coming)\s+(?:from\s+)?([a-z0-9][a-z0-9._-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,3})/i);
+                if (senderMatch) {
+                    let sender = senderMatch[1].trim();
+                    sender = sender.replace(/\b(?:email|emails|gmail|message|messages|mail|inbox|have|has|did|do|i|me|today|yesterday|recently|received|arrived|come|came|coming|please|check|search|find|show|any)\b.*$/i, '').trim();
+                    if (sender) {
+                        const gmailQuery = sender.includes('@')
+                            ? 'from:' + sender
+                            : 'from:(' + sender.replace(/\s+/g, ' ') + ')';
+                        return { count: 5, gmailQuery, searchLabel: 'from ' + sender };
+                    }
+                }
+                if (/\b(latest|recent|newest|last|check|show|read|list|any|received|arrived)\b/i.test(text)) {
+                    const number = text.match(/\b(\d{1,2})\b/);
+                    return { count: number ? Math.max(1, Math.min(Number(number[1]), 10)) : 5, gmailQuery: '', searchLabel: '' };
+                }
+                return null;
             }
             async function focusMainWindow() {
                 try {
@@ -2175,7 +2201,8 @@
                             return;
                         }
                     }
-                    if (isGmailLatestRequest(query)) { await runGmailLatest(Number((query.match(/\b(\d{1,2})\b/) || [])[1]) || 5); return; }
+                    const gmailRequest = parseGmailRequest(query);
+                    if (gmailRequest) { await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
                     const command = parseDeviceCommand(query);
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
@@ -2246,7 +2273,8 @@
                         userInput.value = '';
                         return;
                     }
-                    if (isGmailLatestRequest(query)) { userInput.value = ''; await runGmailLatest(Number((query.match(/\b(\d{1,2})\b/) || [])[1]) || 5); return; }
+                    const gmailRequest = parseGmailRequest(query);
+                    if (gmailRequest) { userInput.value = ''; await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel); return; }
                     const deviceCommand = parseDeviceCommand(query);
                     if (deviceCommand) {
                         userInput.value = '';
