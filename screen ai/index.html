@@ -1399,11 +1399,15 @@
                     !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
 
                 const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+                const spokenAddressMatch = !addressMatch ? original.match(/([A-Z0-9._%+-]+(?:\s+(?:dot|underscore|dash|hyphen)\s+[A-Z0-9._%+-]+)*)\s+at\s+([A-Z0-9.-]+(?:\s+dot\s+[A-Z]{2,})+)/i) : null;
+                const recipient = addressMatch ? addressMatch[0] : spokenAddressMatch
+                    ? (spokenAddressMatch[1].replace(/\s+(dot|underscore|dash|hyphen)\s+/gi, (_, word) => word.toLowerCase() === 'dot' ? '.' : word.toLowerCase() === 'underscore' ? '_' : '-').replace(/\s+/g, '') + '@' + spokenAddressMatch[2].replace(/\s+dot\s+/gi, '.').replace(/\s+/g, ''))
+                    : '';
                 const subjectMatch = original.match(/\bsubject\s*(?:is|:)?\s*["']?(.+?)["']?(?=\s+(?:saying|message|body|content|text|that)\b|[?.!,;]|$)/i);
                 const bodyMatch = original.match(/\b(?:saying|message|body|content|text|tell them)\s*(?:is|:|,|-)?\s*(.+)$/i);
                 const body = bodyMatch ? bodyMatch[1].trim().replace(/[?.!]+$/, '') : '';
                 return {
-                    recipient: addressMatch ? addressMatch[0] : '',
+                    recipient,
                     subject: subjectMatch ? subjectMatch[1].trim() : '',
                     body
                 };
@@ -1441,6 +1445,12 @@
 
                 if (voiceMode) {
                     if (!recipient) recipient = (await askForVoiceEmailAnswer('Who should I send this email to? Please say the full email address.')) || '';
+                    recipient = recipient.trim().toLowerCase()
+                        .replace(/\s+at\s+/g, '@')
+                        .replace(/\s+dot\s+/g, '.')
+                        .replace(/\s+underscore\s+/g, '_')
+                        .replace(/\s+(?:dash|hyphen)\s+/g, '-')
+                        .replace(/\s+/g, '');
                     if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakVosi('I did not send the email.'); return; }
                     if (!subject) subject = (await askForVoiceEmailAnswer('What should the email subject be?')) || '';
                     if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakVosi('I did not send the email.'); return; }
