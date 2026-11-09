@@ -772,13 +772,13 @@
                         status = await refreshGmailStatus();
                     }
                     if (status === 'connected') {
-                        showResponse('Gmail connected', 'VOSI can now retrieve your latest emails directly from the backend without using an AI API.');
+                        if (gmailStatus) gmailStatus.textContent = 'Connected! Ask VOSI: “Check my 5 latest Gmail messages.”';
                     } else if (status === 'error') {
-                        showResponse('Gmail authorization failed', gmailStatus?.textContent || 'Check your Google OAuth setup.');
+                        if (gmailStatus) gmailStatus.textContent = gmailStatus.textContent || 'Gmail authorization failed. Check your Google OAuth setup.';
                     }
                 } catch (error) {
                     if (gmailStatus) gmailStatus.textContent = String(error?.message || error);
-                    showResponse('Gmail connection', String(error?.message || error));
+                    if (gmailStatus) gmailStatus.textContent = String(error?.message || error);
                 } finally { gmailButton.disabled = false; }
             });
             void refreshGmailStatus();
