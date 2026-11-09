@@ -992,7 +992,22 @@
                 await listen('companion-ask', async (event) => {
                     const question = (event?.payload?.question || '').trim();
                     if (!question) return;
-                    await answerFromCompanion(question);
+                    try {
+                        if (typeof window.answerFromCompanion !== 'function') {
+                            throw new Error('VOSI companion handler is not ready. Please reopen VOSI and try again.');
+                        }
+                        await window.answerFromCompanion(question);
+                    } catch (error) {
+                        console.error('Floating VOSI request failed:', error);
+                        try {
+                            await emit('companion-answer', {
+                                success: false,
+                                title: 'VOSI request error',
+                                answer: String(error?.message || error || 'The request could not be processed.'),
+                                observing: !!screenStream
+                            });
+                        } catch (_) {}
+                    }
                 });
             } catch (err) { console.warn('Companion init error:', err); }
         }
@@ -2509,7 +2524,7 @@
                     // Only screen-awareness questions should call the AI brain from
                     // the floating companion. Normal supported tasks are handled above
                     // by the same local command handlers used by the main search bar.
-                    const screenGuidanceIntent = /\\b(?:this|current|open|running|visible|active)\\s+(?:screen|website|webpage|page|tab|window|site)\\b|\\b(?:where|what|which)\\s+(?:should i\\s+)?(?:click|tap|press|select)\\b|\\b(?:where to click|what to click|click next|next step|guide me through|walk me through|on this page|on this website|this button|this form|this error|screen awareness)\\b/i.test(normalizedQuery);
+                    const screenGuidanceIntent = /\b(?:this|current|open|running|visible|active)\s+(?:screen|website|webpage|page|tab|window|site)\b|\b(?:where|what|which)\s+(?:should i\s+)?(?:click|tap|press|select)\b|\b(?:where to click|what to click|click next|next step|guide me through|walk me through|on this page|on this website|this button|this form|this error|screen awareness)\b/i.test(normalizedQuery);
                     if (!screenGuidanceIntent) {
                         const answer = 'I can handle supported tasks here without an AI API, including Gmail, email sending, device controls, opening apps, and web or Flipkart searches. For questions about the live screen, ask me what to click or what to do next while screen observing is active.';
                         speakVosi(answer);
@@ -2562,18 +2577,23 @@
                         } catch (e) {}
                     }
                 } catch (err) {
+                    console.error('VOSI companion handler error:', err);
                     try {
                         if (window.__TAURI__?.event?.emit) {
                             await window.__TAURI__.event.emit('companion-answer', {
                                 success: false,
-                                title: "VOSI",
-                                answer: "I couldn't reach the VOSI brain. Check the backend.",
+                                title: "VOSI request error",
+                                answer: String(err?.message || err || "I couldn't process that request."),
                                 observing: !!screenStream
                             });
                         }
                     } catch (e) {}
                 }
             }
+
+            // initCompanion() is outside this setup function. Expose the handler
+            // explicitly so the floating window can call the same closure safely.
+            window.answerFromCompanion = answerFromCompanion;
 
             const form = document.getElementById('ai-prompt-form');
             if (form) {
