@@ -182,6 +182,26 @@
             box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.045);
         }
 
+
+        /* ChatGPT-style conversation surface. Connector markup and handlers remain untouched. */
+        #main-content { align-items:stretch!important; justify-content:flex-start!important; flex-direction:column!important; gap:18px!important; padding:28px clamp(16px,4vw,56px) 22px!important; }
+        #main-content > .text-center.space-y-2 { flex:0 0 auto; margin:0!important; }
+        #main-content > .text-center.space-y-2 h2 { font-size:clamp(25px,3vw,34px)!important; }
+        #vosi-chat-transcript { display:flex; flex:1 1 auto; flex-direction:column; gap:18px; width:min(900px,100%); min-height:180px; max-height:none; overflow-y:auto; margin:0 auto; padding:18px 12px 24px; scroll-behavior:smooth; }
+        #vosi-chat-transcript:empty { display:none; }
+        .vosi-chat-row { display:flex; width:100%; gap:12px; align-items:flex-start; }
+        .vosi-chat-row.user { justify-content:flex-end; }
+        .vosi-chat-avatar { width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.14); border-radius:50%; color:#dbeafe; background:rgba(255,255,255,.08); font-size:11px; font-weight:800; }
+        .vosi-chat-bubble { max-width:min(78%,720px); padding:13px 16px; border:1px solid rgba(255,255,255,.10); border-radius:17px; color:#f1f5f9; font-size:14px; line-height:1.75; white-space:pre-wrap; overflow-wrap:anywhere; background:rgba(255,255,255,.055); }
+        .vosi-chat-row.user .vosi-chat-bubble { background:rgba(37,99,235,.22); border-color:rgba(96,165,250,.25); border-top-right-radius:5px; }
+        .vosi-chat-row.assistant .vosi-chat-bubble { border-top-left-radius:5px; }
+        .vosi-chat-label { display:block; margin-bottom:5px; color:#93c5fd; font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+        #main-content > .w-full.max-w-2xl { flex:0 0 auto; width:min(900px,100%)!important; margin:0 auto!important; padding-bottom:env(safe-area-inset-bottom); }
+        #ai-prompt-form { min-height:58px; border:1px solid rgba(255,255,255,.16); border-radius:20px; background:rgba(20,20,23,.94); box-shadow:0 12px 40px rgba(0,0,0,.35); }
+        #user-input { min-height:56px; background:transparent!important; border:0!important; box-shadow:none!important; }
+        #response-box { display:none!important; }
+        @media(max-width:640px) { #main-content { padding:18px 12px 14px!important; } #vosi-chat-transcript { padding:12px 2px 18px; } .vosi-chat-bubble { max-width:88%; font-size:13px; } }
+
         @media (prefers-reduced-motion: reduce) {
             .bg-space-base::before,
             .bg-space-base::after,
@@ -669,6 +689,8 @@
                         I'm here to understand your screen, follow what you're doing, and help when you need me.
                     </p>
                 </div>
+
+                <section id="vosi-chat-transcript" aria-live="polite" aria-label="VOSI conversation"></section>
 
                 <div class="w-full max-w-2xl mt-6 space-y-4">
                     <form id="ai-prompt-form" class="relative flex items-center">
@@ -2072,10 +2094,37 @@
                 closeResponse.addEventListener('click', () => responseBox.classList.add('hidden'));
             }
 
+            function appendVosiChatMessage(role, label, body) {
+                const transcript = document.getElementById('vosi-chat-transcript');
+                if (!transcript) return;
+                const row = document.createElement('div');
+                row.className = 'vosi-chat-row ' + (role === 'user' ? 'user' : 'assistant');
+                const bubble = document.createElement('div');
+                bubble.className = 'vosi-chat-bubble';
+                if (role !== 'user') {
+                    const heading = document.createElement('span');
+                    heading.className = 'vosi-chat-label';
+                    heading.textContent = label || 'VOSI';
+                    bubble.appendChild(heading);
+                }
+                const message = document.createElement('div');
+                message.textContent = String(body || '');
+                bubble.appendChild(message);
+                if (role !== 'user') {
+                    const avatar = document.createElement('div');
+                    avatar.className = 'vosi-chat-avatar';
+                    avatar.textContent = 'V';
+                    row.append(avatar, bubble);
+                } else {
+                    row.appendChild(bubble);
+                }
+                transcript.appendChild(row);
+                transcript.scrollTop = transcript.scrollHeight;
+            }
+
             function showResponse(title, body) {
-                if (!responseBox || !responseText) return;
-                responseBox.classList.remove('hidden');
-                responseText.innerHTML = `<strong>${escapeHtml(title)}</strong><br><span class="text-slate-300 text-sm">${escapeHtml(body || "")}</span>`;
+                appendVosiChatMessage('assistant', title, body || '');
+                if (responseBox) responseBox.classList.add('hidden');
             }
 
             function escapeHtml(str) {
@@ -2102,6 +2151,7 @@
             }
 
             async function answerFromCompanion(query) {
+                appendVosiChatMessage('user', 'You', query);
                 try {
                     if (window.__TAURI__?.event?.emit) {
                         await window.__TAURI__.event.emit('companion-state', { state: 'thinking', observing: !!screenStream });
@@ -2189,6 +2239,7 @@
                     e.preventDefault();
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
+                    appendVosiChatMessage('user', 'You', query);
                     if (letterFlowStep !== null && letterDialog?.classList.contains('is-open')) {
                         if (letterFlowStep === 0) { document.getElementById('letter-recipient').value = query; setLetterStep(1, true); }
                         else if (letterFlowStep === 1) { letterPurpose.value = query; setLetterStep(2, true); }
