@@ -94,14 +94,19 @@ def gmail_status():
 
 
 @app.get("/gmail/messages")
-def latest_gmail_messages(count: int = 5):
+def latest_gmail_messages(count: int = 5, q: str = ""):
+    """Read latest Gmail messages, or search using Gmail's native query syntax."""
     safe_count = max(1, min(count, 10))
+    search_query = (q or "").strip()[:200]
     try:
         credentials = _gmail_credentials()
         if not credentials:
             return {"success": False, "connected": False, "error": "Gmail is not connected. Use the VOSI Connectors menu and choose Connect Gmail first."}
         service = build("gmail", "v1", credentials=credentials, cache_discovery=False)
-        response = service.users().messages().list(userId="me", maxResults=safe_count).execute()
+        list_args = {"userId": "me", "maxResults": safe_count}
+        if search_query:
+            list_args["q"] = search_query
+        response = service.users().messages().list(**list_args).execute()
         messages = []
         for item in response.get("messages", []):
             message = service.users().messages().get(
@@ -116,7 +121,7 @@ def latest_gmail_messages(count: int = 5):
                 "date": headers.get("date", ""),
                 "snippet": message.get("snippet", "")
             })
-        return {"success": True, "connected": True, "count": len(messages), "messages": messages}
+        return {"success": True, "connected": True, "count": len(messages), "query": search_query, "messages": messages}
     except Exception as exc:
         return {"success": False, "error": str(exc)}
 
