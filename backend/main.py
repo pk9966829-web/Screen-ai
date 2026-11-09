@@ -172,7 +172,7 @@ def _gmail_query_from_ai_intent(intent: dict):
 
 def _gmail_parse_advanced_syntax(text: str):
     """Accept a limited, validated subset of Gmail's native search operators."""
-    matches = re.findall(r"\b(from|to|subject|after|before|newer_than|older_than|is|has|filename|category|in):(\"[^\"]+\"|[^\s]+)", text, re.I)
+    matches = re.findall(r"\b(from|to|subject|after|before|newer_than|older_than|is|has|filename|label|category|in):(\"[^\"]+\"|[^\s]+)", text, re.I)
     if not matches:
         return None
     parts = []
@@ -201,6 +201,11 @@ def _gmail_parse_advanced_syntax(text: str):
         elif key == "has" and value.lower() in {"attachment", "userlabels", "nouserlabels"}:
             parts.append(f"has:{value.lower()}")
             filters[key] = value.lower()
+        elif key == "label":
+            safe = _gmail_clean_value(value)
+            if safe:
+                parts.append(f'label:"{safe}"')
+                filters[key] = safe
         elif key == "category" and value.lower() in {"primary", "social", "promotions", "updates", "forums"}:
             parts.append(f"category:{value.lower()}")
             filters[key] = value.lower()
