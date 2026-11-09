@@ -1337,33 +1337,44 @@
                 }
             }
 
-            async function runGmailLatest(count = 5, gmailQuery = '', searchLabel = '') {
-                const isSearch = !!gmailQuery;
+            async function runGmailLatest(count = 5, naturalLanguage = '', searchLabel = '') {
+                const isSearch = !!naturalLanguage;
                 showResponse(isSearch ? 'Searching Gmail' : 'Checking Gmail',
-                    isSearch ? 'VOSI is searching Gmail for messages ' + searchLabel + '.' : 'VOSI is retrieving your latest messages directly from Gmail.');
+                    isSearch ? 'VOSI is understanding your request and searching Gmail for matching messages.' : 'VOSI is retrieving your latest messages directly from Gmail.');
                 try {
-                    const params = new URLSearchParams({ count: String(count) });
-                    if (gmailQuery) params.set('q', gmailQuery);
-                    const response = await fetch(API_BASE + '/gmail/messages?' + params.toString());
+                    const response = await fetch(API_BASE + '/gmail/search', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: naturalLanguage || 'show my latest emails', count })
+                    });
                     const data = await response.json();
                     if (!response.ok || !data.success) throw new Error(data.error || 'Could not retrieve Gmail messages.');
                     if (!data.messages?.length) {
                         const emptyMessage = isSearch
-                            ? 'I could not find any Gmail messages matching ' + searchLabel + '.'
+                            ? 'I could not find any Gmail messages matching your request: ' + searchLabel + '.'
                             : 'Gmail is connected, but there are no messages in your inbox.';
                         showResponse('No matching Gmail messages', emptyMessage);
                         speakVosi(emptyMessage);
                         return emptyMessage;
                     }
                     const lines = data.messages.map((mail, index) =>
-                        (index + 1) + '. ' + mail.subject + '\nFrom: ' + mail.sender + '\nDate: ' + mail.date + '\n' + mail.snippet
+                        (index + 1) + '. ' + mail.subject + '\nFrom: ' + mail.sender +
+                        (mail.recipient ? '\nTo: ' + mail.recipient : '') +
+                        '\nDate: ' + mail.date +
+                        (mail.unread ? '\nUnread' : '') +
+                        (mail.has_attachment ? '\nHas attachment' : '') +
+                        '\n' + mail.snippet
                     );
+                    const filterSummary = Object.entries(data.filters || {})
+                        .map(([key, value]) => key.replace(/_/g, ' ') + ': ' + value)
+                        .join(', ');
                     const summary = isSearch
-                        ? 'I found ' + data.messages.length + ' email' + (data.messages.length === 1 ? '' : 's') + ' matching ' + searchLabel + '. ' +
+                        ? 'I found ' + data.messages.length + ' matching email' + (data.messages.length === 1 ? '' : 's') +
+                            (filterSummary ? ' using ' + filterSummary + '. ' : '. ') +
                             data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ')
                         : 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
                             data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
-                    showResponse(isSearch ? 'Gmail search results: ' + searchLabel : 'Your latest Gmail messages', lines.join('\n\n'));
+                    showResponse(isSearch ? 'Gmail search results' : 'Your latest Gmail messages', lines.join('\n\n'));
                     speakVosi(summary);
                     return summary;
                 } catch (error) {
@@ -1373,53 +1384,18 @@
                     return message;
                 }
             }
+
             function parseGmailRequest(query) {
                 const original = String(query || '').trim();
-                const text = original.toLowerCase();
+                if (!original) return null;
                 const mailIntent = /\b(gmail|emails?|e-mail|inbox|mail|message|messages)\b/i.test(original) ||
-                    /\b(did\s+.+\s+(?:send|sent)\s+me|has\s+.+\s+sent\s+me|email(?:ed)?\s+me|mailed\s+me|check\s+my\s+mail)\b/i.test(original);
+                    /\b(did\s+.+\s+(?:send|sent|email|emailed|mail|mailed)|has\s+.+\s+(?:sent|emailed|mailed)|.+\s+email(?:ed)?\s+me|.+\s+mailed\s+me)\b/i.test(original);
                 if (!mailIntent) return null;
-
-                const countMatch = original.match(/\b(\d{1,2})\b/);
-                const count = countMatch ? Math.max(1, Math.min(Number(countMatch[1]), 10)) : 5;
-                const stopWords = /\b(?:email|emails|e-mail|gmail|message|messages|mail|inbox|have|has|had|did|do|does|i|me|my|today|yesterday|recently|received|arrived|come|came|coming|please|check|search|find|show|read|list|look|see|tell|whether|if|any|the|a|an|is|are|was|were|from|by|sent|send|got|get|have|there|something|anything|what|which|about|regarding)\b/ig;
-                let sender = '';
-                const senderPatterns = [
-                    /\b(?:from|by|sent\s+by)\s+([a-z0-9][a-z0-9._@-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,3})/i,
-                    /\b(?:did|has|have)\s+([a-z0-9][a-z0-9._-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2})\s+(?:send|sent|email|emailed|mail|mailed)/i,
-                    /\b([a-z0-9][a-z0-9._-]*)\s+(?:email|mail)\s+me\b/i
-                ];
-                for (const pattern of senderPatterns) {
-                    const match = original.match(pattern);
-                    if (match?.[1]) {
-                        sender = match[1].replace(/[?.!,;:]+$/g, '').trim();
-                        sender = sender.replace(stopWords, '').trim();
-                        break;
-                    }
-                }
-
-                if (sender) {
-                    const gmailQuery = sender.includes('@')
-                        ? 'from:' + sender
-                        : 'from:(' + sender.replace(/\s+/g, ' ') + ')';
-                    return { count, gmailQuery, searchLabel: 'from ' + sender };
-                }
-
-                // If the user asks about a subject/topic rather than a sender,
-                // search Gmail for the meaningful words instead of showing the inbox.
-                const keywords = original
-                    .replace(/\b(?:please|can|could|would|you|vosi|check|search|find|look|show|read|list|tell|me|my|in|the|a|an|is|are|was|were|did|do|does|i|have|has|had|got|get|any|email|emails|e-mail|gmail|mail|inbox|message|messages|whether|if|there|something|anything|for|about|regarding|received|arrived|come|came|coming|today|yesterday)\b/ig, ' ')
-                    .replace(/\b\d{1,2}\b/g, ' ')
-                    .replace(/[^a-z0-9@._+\-\s]/ig, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                if (keywords) {
-                    return { count, gmailQuery: keywords, searchLabel: 'matching "' + keywords + '"' };
-                }
-                if (/\b(latest|recent|newest|last|all|any|check|show|read|list)\b/i.test(original)) {
-                    return { count, gmailQuery: '', searchLabel: '' };
-                }
-                return null;
+                const countMatch = original.match(/\b(?:last|latest|show|find|get)?\s*(\d{1,2})\s*(?:emails?|messages?)?\b/i);
+                const count = countMatch ? Math.max(1, Math.min(Number(countMatch[1]), 10)) : (/\ball\b/i.test(original) ? 10 : 5);
+                // Send the user's original wording to the backend intent engine.
+                // Do not guess Gmail operators in the browser.
+                return { count, gmailQuery: original, searchLabel: original };
             }
             async function focusMainWindow() {
                 try {
