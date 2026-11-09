@@ -106,6 +106,15 @@ def _gmail_clean_value(value: str) -> str:
 
 
 
+
+def _gmail_has_attachment(payload: dict) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("filename"):
+        return True
+    return any(_gmail_has_attachment(part) for part in payload.get("parts", []) if isinstance(part, dict))
+
+
 def _gmail_query_from_ai_intent(intent: dict):
     """Validate model-produced fields and build Gmail syntax from an allow-list."""
     if not isinstance(intent, dict):
@@ -180,7 +189,7 @@ def _gmail_natural_query(text: str):
             add("sender", sender)
             terms.append(("from", sender))
 
-    recipient_match = re.search(r"\bto\s+([a-z0-9][a-z0-9._@+\-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2})", original, re.I)
+    recipient_match = re.search(r"\bto\s+(.+?)(?=\s+(?:from|about|regarding|subject|before|after|since|until|today|yesterday|unread|read|has\s+attachment)|[?.!,;]|$)", original, re.I)
     if recipient_match:
         recipient = _gmail_clean_value(recipient_match.group(1))
         add("recipient", recipient)
@@ -252,11 +261,11 @@ def _gmail_natural_query(text: str):
     for pattern in [
         r"\b(?:from|by|sent\s+by)\s+.+?(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment)|[?.!,;]|$)",
         r"\b(?:did|has|have)\s+.+?\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b",
-        r"\bto\s+[a-z0-9][a-z0-9._@+\-]*(?:\s+[a-z0-9][a-z0-9._-]*){0,2}",
+        r"\bto\s+.+?(?=\s+(?:from|about|regarding|subject|before|after|since|until|today|yesterday|unread|read|has\s+attachment)|[?.!,;]|$)",
         r"\bsubject\s*(?:is|:)?\s*[\"']?.+?[\"']?(?=\s+(?:from|to|before|after|since|until|unread|read)|[?.!,;]|$)",
     ]:
         cleaned = re.sub(pattern, " ", cleaned, flags=re.I)
-    cleaned = re.sub(r"\b(?:please|can|could|would|you|vosi|gmail|emails?|e-mail|mail|messages?|message|inbox|check|search|find|look|show|read|list|tell|me|my|i|the|a|an|is|are|was|were|did|do|does|have|has|had|got|get|any|all|latest|recent|newest|last|first|whether|if|there|something|anything|for|about|regarding|with|without|attachment|attachments|unread|read|starred|important|today|yesterday|this|week|month|sent|received|from|by|to|on|before|after|since|until|in|tab|category)\b", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\b(?:please|can|could|would|you|vosi|gmail|emails?|e-mail|mail|messages?|message|inbox|check|search|find|look|show|read|list|tell|me|my|i|the|a|an|is|are|was|were|did|do|does|have|has|had|got|get|any|all|latest|recent|newest|last|first|whether|if|there|something|anything|for|about|regarding|with|without|past|day|days|month|months|year|years|attachment|attachments|unread|read|starred|important|today|yesterday|this|week|month|sent|received|from|by|to|on|before|after|since|until|in|tab|category)\b", " ", cleaned, flags=re.I)
     cleaned = re.sub(r"\b\d{1,2}\b", " ", cleaned)
     cleaned = re.sub(r"[^a-z0-9@._+\-\"'\s]", " ", cleaned, flags=re.I)
     cleaned = re.sub(r"\s+", " ", cleaned).strip(" '\"")
@@ -321,7 +330,7 @@ def search_gmail_natural(req: GmailSearchRequest):
                 "unread": "UNREAD" in message.get("labelIds", []),
                 "starred": "STARRED" in message.get("labelIds", []),
                 "important": "IMPORTANT" in message.get("labelIds", []),
-                "has_attachment": any(part.get("filename") for part in message.get("payload", {}).get("parts", []))
+                "has_attachment": _gmail_has_attachment(message.get("payload", {}))
             })
         return {
             "success": True, "connected": True, "count": len(messages),
