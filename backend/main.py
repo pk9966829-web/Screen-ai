@@ -179,7 +179,7 @@ def _gmail_natural_query(text: str):
             filters[key] = value
 
     # Sender and recipient can be expressed in different word orders.
-    sender_match = re.search(r"\b(?:from|by|sent\s+by)\s+(.+?)(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment|having\s+attachment|to:)|[?.!,;]|$)", original, re.I)
+    sender_match = re.search(r"\b(?:from|by|sent\s+by)\s+(.+?)(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|(?:last|past)\s+\d+\s+days?|unread|read|with\s+attachment|has\s+attachment|having\s+attachment|to:)|[?.!,;]|$)", original, re.I)
     if not sender_match:
         sender_match = re.search(r"\b(?:did|has|have)\s+(.+?)\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b", original, re.I)
     if sender_match:
@@ -259,7 +259,7 @@ def _gmail_natural_query(text: str):
     # Remove intent/control words and extracted values to leave topic/body keywords.
     cleaned = original
     for pattern in [
-        r"\b(?:from|by|sent\s+by)\s+.+?(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|unread|read|with\s+attachment|has\s+attachment)|[?.!,;]|$)",
+        r"\b(?:from|by|sent\s+by)\s+.+?(?=\s+(?:and|about|regarding|subject|with|before|after|since|until|on|today|yesterday|this\s+week|last\s+week|last\s+month|(?:last|past)\s+\d+\s+days?|unread|read|with\s+attachment|has\s+attachment)|[?.!,;]|$)",
         r"\b(?:did|has|have)\s+.+?\s+(?:send|sent|email|emailed|mail|mailed)\s+me\b",
         r"\bto\s+.+?(?=\s+(?:from|about|regarding|subject|before|after|since|until|today|yesterday|unread|read|has\s+attachment)|[?.!,;]|$)",
         r"\bsubject\s*(?:is|:)?\s*[\"']?.+?[\"']?(?=\s+(?:from|to|before|after|since|until|unread|read)|[?.!,;]|$)",
