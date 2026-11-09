@@ -1417,8 +1417,8 @@
                 // Strip the saved assistant name so “Hey Mira, send email” is
                 // treated exactly like “send email”. Incoming-email searches remain separate.
                 const original = stripAssistantName(String(query || '').trim());
-                if (!/^(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original) ||
-                    !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
+                const outgoingEmailIntent = /^(?:(?:i\s+)?(?:want|need)\s+(?:you\s+to\s+)?)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:send|write|compose|draft)\b/i.test(original);
+                if (!outgoingEmailIntent || !/\b(?:email|e-mail|mail)\b/i.test(original)) return null;
 
                 const addressMatch = original.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
                 const spokenAddressMatch = !addressMatch ? original.match(/([A-Z0-9._%+-]+(?:\s+(?:dot|underscore|dash|hyphen)\s+[A-Z0-9._%+-]+)*)\s+at\s+([A-Z0-9.-]+(?:\s+dot\s+[A-Z]{2,})+)/i) : null;
