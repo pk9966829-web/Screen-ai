@@ -237,11 +237,67 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
     }
 }
 
+
+/// Store the paired desktop device credential in Windows Credential Manager.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn save_agent_device_credential(credential: String) -> Result<(), String> {
+    if credential.is_empty() || credential.len() > 2048 {
+        return Err("Invalid desktop device credential.".into());
+    }
+    let entry = keyring::Entry::new("com.pb7.vosi", "agent-device-credential")
+        .map_err(|error| format!("Windows Credential Manager is unavailable: {error}"))?;
+    entry.set_password(&credential)
+        .map_err(|error| format!("Could not save the VOSI credential securely: {error}"))
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn save_agent_device_credential(_credential: String) -> Result<(), String> {
+    Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
+}
+
+/// Read the paired credential from Windows Credential Manager; never from web storage.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn load_agent_device_credential() -> Result<Option<String>, String> {
+    let entry = keyring::Entry::new("com.pb7.vosi", "agent-device-credential")
+        .map_err(|error| format!("Windows Credential Manager is unavailable: {error}"))?;
+    match entry.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(format!("Could not read the VOSI credential securely: {error}")),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn load_agent_device_credential() -> Result<Option<String>, String> {
+    Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn clear_agent_device_credential() -> Result<(), String> {
+    let entry = keyring::Entry::new("com.pb7.vosi", "agent-device-credential")
+        .map_err(|error| format!("Windows Credential Manager is unavailable: {error}"))?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(format!("Could not clear the VOSI credential: {error}")),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn clear_agent_device_credential() -> Result<(), String> {
+    Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide, save_agent_device_credential, load_agent_device_credential, clear_agent_device_credential])
         .setup(|app| {
             #[cfg(desktop)]
             {
