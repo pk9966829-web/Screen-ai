@@ -22,6 +22,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt pytest httpx
+      - name: Validate Chrome extension JavaScript and manifest
+        run: |
+          node --check "screen ai/chrome-extension/service-worker.js"
+          node --check "screen ai/chrome-extension/content.js"
+          node --check "screen ai/chrome-extension/popup.js"
+          python -c "import json; json.load(open('screen ai/chrome-extension/manifest.json', encoding='utf-8'))"
       - name: Test VOSI agent runtime
         working-directory: backend
-        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_companion.py -q
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py -q
