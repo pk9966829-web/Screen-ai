@@ -2784,7 +2784,7 @@
             if (!response.ok) return;
             const data = await response.json();
             for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
-                if (task.capability !== "device.alarm.create") continue;
+                if (!["device.alarm.create", "device.volume.action", "device.timer.create"].includes(task.capability)) continue;
                 const claimResponse = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + credential.device_token }
@@ -2792,20 +2792,31 @@
                 if (!claimResponse.ok) continue;
                 const claimed = await claimResponse.json();
                 const step = claimed.step;
-                if (!step || step.capability !== "device.alarm.create") continue;
+                if (!step || !["device.alarm.create", "device.volume.action", "device.timer.create"].includes(step.capability)) continue;
                 try {
-                    const hour = Number(step.arguments?.hour);
-                    const minute = Number(step.arguments?.minute ?? 0);
-                    if (!Number.isInteger(hour) || !Number.isInteger(minute)) {
-                        throw new Error("The alarm task needs numeric hour and minute values.");
+                    let message;
+                    if (step.capability === "device.alarm.create") {
+                        const hour = Number(step.arguments?.hour);
+                        const minute = Number(step.arguments?.minute ?? 0);
+                        if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+                            throw new Error("The alarm task needs a valid 24-hour time.");
+                        }
+                        message = await invoke("set_alarm", { hour, minute });
+                    } else if (step.capability === "device.volume.action") {
+                        const action = String(step.arguments?.action || "");
+                        if (!["up", "down", "mute", "unmute"].includes(action)) throw new Error("Unsupported Windows volume action.");
+                        message = await invoke("control_volume", { action });
+                    } else {
+                        const seconds = Number(step.arguments?.seconds);
+                        if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86400) throw new Error("Timer must be between 1 second and 24 hours.");
+                        message = await invoke("set_timer", { seconds });
                     }
-                    const message = await invoke("set_alarm", { hour, minute });
                     await postStepResult(credential, task.task_id, step.step_id, {
                         success: true,
                         verified: true,
-                        receipt: { capability: "device.alarm.create", confirmation: message }
+                        receipt: { capability: step.capability, confirmation: message }
                     });
-                    setDeviceStatus("PC completed a VOSI alarm task: " + message);
+                    setDeviceStatus("PC completed a VOSI task: " + message);
                 } catch (error) {
                     await postStepResult(credential, task.task_id, step.step_id, {
                         success: false,
@@ -2837,7 +2848,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     pairing_code: pairingCode,
-                    capabilities: ["device.alarm.create"]
+                    capabilities: ["device.alarm.create", "device.volume.action", "device.timer.create"]
                 })
             });
             const data = await response.json();
