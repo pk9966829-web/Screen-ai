@@ -280,7 +280,7 @@ class AgentRuntime:
             db.commit()
         return self.get_task(task_id)
 
-    def claim_next_step(self, task_id: str, device_id: str, granted_capabilities: set[str]) -> dict[str, Any] | None:
+    def claim_next_step(self, task_id: str, device_id: str, device_platform: str, granted_capabilities: set[str]) -> dict[str, Any] | None:
         if not device_id or len(device_id) > 100:
             raise AgentRuntimeError("A valid device ID is required.")
         with self._connect() as db:
@@ -307,7 +307,8 @@ class AgentRuntime:
             if row["approval_required"] and row["state"] != "ready":
                 db.commit()
                 return None
-            if row["capability"] not in granted_capabilities:
+            # Platform identity must come from the paired-device registry, not the model plan.
+            if row["target_platform"] != device_platform or row["capability"] not in granted_capabilities:
                 db.commit()
                 return None
             db.execute(
