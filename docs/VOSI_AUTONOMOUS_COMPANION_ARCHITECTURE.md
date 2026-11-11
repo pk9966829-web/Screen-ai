@@ -87,6 +87,22 @@ Tasks survive backend restarts and can be resumed on another paired device. The 
 
 Separate short-term screen context, conversation history, user-approved long-term memories, and connector data. Keep connector payloads scoped and time-limited. Give the user controls to inspect, clear, and revoke data sources. Treat screen text, browser content, email, notifications, and documents as untrusted input; never follow instructions embedded in them as agent policy.
 
+## Device pairing protocol (implemented foundation)
+
+The first device-registry slice is implemented in `backend/device_registry.py` and exposed through `backend/agent_api.py`.
+
+- `POST /agent/devices/pairing` — requires the VOSI admin bearer token; creates a single-use pairing code for `android`, `desktop`, or `browser`. Codes expire after five minutes.
+- `POST /agent/devices/pair` — exchanges the pairing code for a device ID and device bearer token. The token is returned once; only its SHA-256 hash is stored.
+- `GET /agent/devices` — admin-only device inventory. It never returns device tokens.
+- `DELETE /agent/devices/{device_id}` — admin-only revocation.
+- `POST /agent/devices/{device_id}/heartbeat` — device-token authenticated heartbeat. A token cannot heartbeat a different device ID.
+- `POST /agent/tasks/{task_id}/claim` — a paired device can claim only a pending task step for its registered platform and advertised capability.
+- `POST /agent/tasks/{task_id}/steps/{step_id}/result` — the device holding the claim submits a structured receipt. A task step is completed only when success, verified, and a non-empty receipt are all supplied.
+
+Configure `VOSI_AGENT_TOKEN` in the backend environment before using admin endpoints. The example value in `backend/.env.example` is a placeholder and must be replaced with a long random secret. `VOSI_AGENT_DB_PATH` can optionally select a dedicated SQLite file; otherwise the registry shares the agent runtime database.
+
+Pairing-code exchange is intentionally a bootstrap endpoint and does not use the admin token; possession of the high-entropy, five-minute, single-use code is required. Device credentials are per-device and revocable. Pairing does not grant Android permissions or install desktop/browser adapters: it only registers the capabilities the bridge reports. Actual clients must protect their device token using platform secure storage and send it only over a trusted local connection or HTTPS. Do not expose this API directly to the public internet without TLS, rate limiting, and a stronger user/account authentication layer.
+
 ## Implementation sequence
 
 ### Phase 0 — foundation and safety
