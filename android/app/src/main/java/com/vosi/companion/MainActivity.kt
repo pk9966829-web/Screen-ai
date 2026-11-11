@@ -3,10 +3,18 @@ package com.vosi.companion
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.AlarmManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.media.AudioManager
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.InputType
@@ -17,6 +25,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import java.util.Calendar
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -219,6 +228,21 @@ class MainActivity : Activity() {
         }
         setContentView(scroll)
         refreshPairedDeviceStatus()
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 102)
+        }
+    }
+
+    private val devicePollHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val devicePollRunnable = object : Runnable {
+        override fun run() {
+            if (::deviceStatus.isInitialized && DeviceCredentialStore.load(this@MainActivity) != null) {
+                heartbeatPhoneDevice()
+                devicePollHandler.postDelayed(this, 20000L)
+            }
+        }
     }
 
     override fun onResume() {
@@ -226,8 +250,14 @@ class MainActivity : Activity() {
         refreshWhatsAppMessages()
         if (::deviceStatus.isInitialized) {
             refreshPairedDeviceStatus()
-            if (DeviceCredentialStore.load(this) != null) heartbeatPhoneDevice()
+            devicePollHandler.removeCallbacks(devicePollRunnable)
+            devicePollHandler.post(devicePollRunnable)
         }
+    }
+
+    override fun onPause() {
+        devicePollHandler.removeCallbacks(devicePollRunnable)
+        super.onPause()
     }
 
     private fun refreshPairedDeviceStatus() {
@@ -295,6 +325,8 @@ class MainActivity : Activity() {
                     .put("phone.call")
                     .put("phone.whatsapp.quick_reply")
                     .put("agent.task.request")
+                    .put("device.alarm.create")
+                    .put("device.volume.set")
                 val payload = JSONObject()
                     .put("pairing_code", code)
                     .put("capabilities", capabilities)
@@ -451,11 +483,15 @@ class MainActivity : Activity() {
                     token = token
                 )
                 val response = JSONObject(body)
+                if (code in 200..299 && response.optBoolean("success")) {
+                    pollPhoneAgentTasks(baseUrl, token)
+                    refreshOriginTaskUpdates(baseUrl, token)
+                }
                 runOnUiThread {
-                    deviceStatus.text = if (code in 200..299 && response.optBoolean("success")) {
-                        "VOSI connected • heartbeat confirmed."
+                    if (code in 200..299 && response.optBoolean("success")) {
+                        deviceStatus.text = "VOSI connected • phone task executor active."
                     } else {
-                        response.optString("detail", "VOSI connection failed (HTTP $code).")
+                        deviceStatus.text = response.optString("detail", "VOSI connection failed (HTTP $code).")
                     }
                     heartbeatDeviceButton.isEnabled = true
                 }
@@ -465,6 +501,146 @@ class MainActivity : Activity() {
                     heartbeatDeviceButton.isEnabled = true
                 }
             }
+        }
+    }
+
+    private fun pollPhoneAgentTasks(baseUrl: String, token: String) {
+        val (queueCode, queueBody) = requestDeviceApi(baseUrl, "/agent/tasks/available", "GET", token)
+        if (queueCode !in 200..299) return
+        val tasks = JSONObject(queueBody).optJSONArray("tasks") ?: JSONArray()
+        for (index in 0 until minOf(tasks.length(), 3)) {
+            val task = tasks.optJSONObject(index) ?: continue
+            val capability = task.optString("capability")
+            if (capability !in setOf("device.alarm.create", "device.volume.set")) continue
+            val taskId = task.optString("task_id")
+            val (claimCode, claimBody) = requestDeviceApi(
+                baseUrl,
+                "/agent/tasks/${Uri.encode(taskId)}/claim",
+                "POST",
+                token
+            )
+            if (claimCode !in 200..299) continue
+            val step = JSONObject(claimBody).optJSONObject("step") ?: continue
+            val stepId = step.optString("step_id")
+            try {
+                val args = step.optJSONObject("arguments") ?: JSONObject()
+                val confirmation: String
+                when (step.optString("capability")) {
+                    "device.volume.set" -> {
+                        val percent = args.optInt("volume", -1)
+                        if (percent !in 0..100) throw IllegalArgumentException("Phone volume must be between 0 and 100.")
+                        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                        val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                        val target = (maxVolume * percent / 100.0).toInt()
+                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+                        val actual = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        if (actual != target) throw IllegalStateException("Android did not apply the requested volume.")
+                        confirmation = "Phone media volume set to $percent%."
+                    }
+                    "device.alarm.create" -> {
+                        val hour = args.optInt("hour", -1)
+                        val minute = args.optInt("minute", 0)
+                        if (hour !in 0..23 || minute !in 0..59) throw IllegalArgumentException("Use a valid 24-hour alarm time.")
+                        val alarmTime = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
+                        }
+                        val alarmIntent = Intent(this, VosiAlarmReceiver::class.java)
+                            .putExtra("title", "VOSI alarm")
+                        val pending = PendingIntent.getBroadcast(
+                            this,
+                            taskId.hashCode(),
+                            alarmIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        val manager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime.timeInMillis, pending)
+                        confirmation = "Phone alarm scheduled for ${String.format("%02d:%02d", hour, minute)}."
+                    }
+                    else -> throw IllegalArgumentException("Unsupported Android task capability.")
+                }
+                val result = JSONObject()
+                    .put("success", true)
+                    .put("verified", true)
+                    .put("receipt", JSONObject()
+                        .put("capability", step.optString("capability"))
+                        .put("confirmation", confirmation))
+                val (resultCode, _) = requestDeviceApi(
+                    baseUrl,
+                    "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/result",
+                    "POST",
+                    token,
+                    result
+                )
+                if (resultCode !in 200..299) throw IllegalStateException("VOSI could not save the Android execution receipt (HTTP $resultCode).")
+            } catch (error: Exception) {
+                val failed = JSONObject()
+                    .put("success", false)
+                    .put("verified", false)
+                    .put("receipt", JSONObject())
+                    .put("error", (error.message ?: "Android task failed").take(1500))
+                requestDeviceApi(
+                    baseUrl,
+                    "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/result",
+                    "POST",
+                    token,
+                    failed
+                )
+            }
+        }
+    }
+
+    private fun refreshOriginTaskUpdates(baseUrl: String, token: String) {
+        val (code, body) = requestDeviceApi(baseUrl, "/agent/tasks/updates", "GET", token)
+        if (code !in 200..299) return
+        val updates = JSONObject(body).optJSONArray("updates") ?: JSONArray()
+        val preferences = getSharedPreferences("vosi_task_notifications", MODE_PRIVATE)
+        for (index in 0 until updates.length()) {
+            val task = updates.optJSONObject(index) ?: continue
+            val state = task.optString("state")
+            if (state !in setOf("completed", "failed", "cancelled")) continue
+            val taskId = task.optString("task_id")
+            if (preferences.getString(taskId, null) == state) continue
+            val goal = task.optString("goal", "VOSI task")
+            val stepArray = task.optJSONArray("steps") ?: JSONArray()
+            var detail = if (state == "completed") "Task completed successfully." else "Task $state."
+            for (stepIndex in 0 until stepArray.length()) {
+                val step = stepArray.optJSONObject(stepIndex) ?: continue
+                val receipt = step.optJSONObject("receipt")
+                if (receipt != null && receipt.has("confirmation")) detail = receipt.optString("confirmation")
+                if (step.optString("error").isNotBlank()) detail = step.optString("error")
+            }
+            notifyVosiTaskUpdate(taskId, goal, detail, state)
+            preferences.edit().putString(taskId, state).apply()
+        }
+    }
+
+    private fun notifyVosiTaskUpdate(taskId: String, title: String, detail: String, state: String) {
+        val channelId = "vosi_task_updates"
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(channelId, "VOSI task updates", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channelId)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }.setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(if (state == "completed") "VOSI task completed" else "VOSI task $state")
+            .setContentText("$title • $detail")
+            .setStyle(Notification.BigTextStyle().bigText("$title\n$detail"))
+            .setAutoCancel(true)
+            .build()
+        try {
+            manager.notify(taskId.hashCode(), notification)
+        } catch (_: SecurityException) {
+            runOnUiThread { deviceStatus.text = "VOSI task $state: $title — $detail" }
         }
     }
 
@@ -747,6 +923,9 @@ class MainActivity : Activity() {
             callPermission -> status.text =
                 if (granted) "Call permission granted. Tap Call this number again to confirm."
                 else "Call permission denied. Calling is disabled until you grant it."
+            102 -> deviceStatus.text =
+                if (granted) "VOSI task and alarm notifications enabled."
+                else "Notifications are disabled. VOSI can still execute tasks, but Android may hide completion alerts."
         }
     }
 }
