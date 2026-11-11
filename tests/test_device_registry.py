@@ -221,3 +221,29 @@ def test_paired_device_cannot_claim_step_for_other_platform(monkeypatch, tmp_pat
     )
     assert response.status_code == 200
     assert response.json()["step"] is None
+
+
+def test_device_can_revoke_its_own_credential(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    agent_api.devices = DeviceRegistry(tmp_path / "self-revoke.sqlite3")
+    client = make_client()
+    pairing = client.post(
+        "/agent/devices/pairing",
+        headers={"Authorization": "Bearer admin-secret"},
+        json={"platform": "browser", "label": "Chrome"},
+    ).json()["pairing"]
+    paired = client.post(
+        "/agent/devices/pair",
+        json={"pairing_code": pairing["pairing_code"], "capabilities": ["browser.search_products"]},
+    ).json()["device"]
+
+    response = client.delete(
+        "/agent/devices/me",
+        headers={"Authorization": f"Bearer {paired['device_token']}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["revoked"] is True
+    assert client.post(
+        f"/agent/devices/{paired['device_id']}/heartbeat",
+        headers={"Authorization": f"Bearer {paired['device_token']}"},
+    ).status_code == 401
