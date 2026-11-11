@@ -38,12 +38,95 @@ async function sendHeartbeat() {
   }
 }
 
+async function reportAgentBrowserResults(message, sender) {
+  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith("https://www.flipkart.com/")) {
+    throw new Error("Agent results were not sent by the VOSI Flipkart content script.");
+  }
+  const device = await getPairedDevice();
+  if (!device?.deviceToken) throw new Error("Chrome is not paired with VOSI.");
+  const products = Array.isArray(message.products) ? message.products.slice(0, 20) : [];
+  const success = products.length > 0;
+  const response = await fetch(
+    API + "/agent/tasks/" + encodeURIComponent(message.taskId) +
+      "/steps/" + encodeURIComponent(message.stepId) + "/result",
+    {
+      method: "POST",
+      headers: { ...authHeaders(device), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        success,
+        verified: success,
+        receipt: success ? {
+          capability: "browser.search_products",
+          source: "flipkart-visible-search-results",
+          result_count: products.length,
+          products
+        } : {},
+        error: success ? null : "No product cards were detected on the results page."
+      })
+    }
+  );
+  if (!response.ok) throw new Error("VOSI rejected the task result (HTTP " + response.status + ").");
+  await chrome.storage.local.set({ vosiLastTaskResult: new Date().toISOString() });
+  return response.json();
+}
+
+async function executeAvailableAgentTasks() {
+  const device = await getPairedDevice();
+  if (!device?.deviceToken || !device?.deviceId) return;
+  const response = await fetch(API + "/agent/tasks/available", {
+    cache: "no-store",
+    headers: authHeaders(device)
+  });
+  if (response.status === 401 || response.status === 403) {
+    await chrome.storage.local.set({ vosiConnectionState: "revoked" });
+    return;
+  }
+  if (!response.ok) return;
+  const data = await response.json();
+  for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
+    if (task.capability !== "browser.search_products") continue;
+    const claimResponse = await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
+      method: "POST",
+      headers: authHeaders(device),
+      cache: "no-store"
+    });
+    if (!claimResponse.ok) continue;
+    const claim = await claimResponse.json();
+    const step = claim.step;
+    if (!step || step.capability !== "browser.search_products") continue;
+    const query = String(step.arguments?.query || "").trim().slice(0, 200);
+    if (!query) {
+      await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) +
+        "/steps/" + encodeURIComponent(step.step_id) + "/result", {
+        method: "POST",
+        headers: { ...authHeaders(device), "Content-Type": "application/json" },
+        body: JSON.stringify({ success: false, verified: false, receipt: {}, error: "Search query is empty." })
+      });
+      continue;
+    }
+    const url = "https://www.flipkart.com/search?q=" + encodeURIComponent(query) +
+      "&vosi_task_id=" + encodeURIComponent(task.task_id) +
+      "&vosi_step_id=" + encodeURIComponent(step.step_id);
+    try {
+      await chrome.tabs.create({ url, active: true });
+    } catch (error) {
+      await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) +
+        "/steps/" + encodeURIComponent(step.step_id) + "/result", {
+        method: "POST",
+        headers: { ...authHeaders(device), "Content-Type": "application/json" },
+        body: JSON.stringify({ success: false, verified: false, receipt: {}, error: String(error).slice(0, 1000) })
+      });
+    }
+  }
+}
+
 async function checkForVosiCommand() {
   if (checking) return;
   checking = true;
   try {
     const device = await getPairedDevice();
     if (!device?.deviceToken) return;
+    await executeAvailableAgentTasks();
     const response = await fetch(API + "/browser/command", {
       cache: "no-store",
       headers: authHeaders(device)
@@ -54,7 +137,6 @@ async function checkForVosiCommand() {
     if (!command?.request_id || !command.query) return;
     const url = "https://www.flipkart.com/search?q=" + encodeURIComponent(command.query) +
       "&vosi_request=" + encodeURIComponent(command.request_id);
-    // Open a new Chrome tab so the user's current page is left untouched.
     await chrome.tabs.create({ url, active: true });
     await fetch(API + "/browser/ack/" + encodeURIComponent(command.request_id), {
       method: "POST",
@@ -93,6 +175,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message?.type === "VOSI_BROWSER_RESULTS") {
     forwardProductResults(message, sender)
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+  if (message?.type === "VOSI_AGENT_BROWSER_RESULTS") {
+    reportAgentBrowserResults(message, sender)
       .then(result => sendResponse({ success: true, result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
