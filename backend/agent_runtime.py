@@ -103,6 +103,22 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": True,
         "description": "Set device volume within the platform's supported limits.",
     },
+    "device.volume.action": {
+        "platforms": ["desktop"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Adjust Windows volume up, down, mute, or unmute.",
+    },
+    "device.timer.create": {
+        "platforms": ["desktop"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Start a one-time Windows timer.",
+    },
 }
 
 TASK_STATES = {"planned", "awaiting_approval", "ready", "running", "completed", "failed", "cancelled"}
