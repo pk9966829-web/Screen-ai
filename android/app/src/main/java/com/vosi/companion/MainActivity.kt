@@ -53,11 +53,11 @@ class MainActivity : Activity() {
         }
         contactName = EditText(this).apply {
             hint = "Contact name (for example, Dad)"
-            singleLine = true
+            isSingleLine = true
         }
         phoneNumber = EditText(this).apply {
             hint = "Phone number with country code (e.g. 919876543210)"
-            singleLine = true
+            isSingleLine = true
             inputType = 3
         }
         status = TextView(this).apply {
