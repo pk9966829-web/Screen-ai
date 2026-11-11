@@ -98,9 +98,9 @@ The phone can also send commands to paired devices:
 
 Task completion updates are fetched from the backend using the phone's own device credential. Completed/failed tasks create Android notifications when notification permission is granted. The task update endpoint returns only tasks originally requested by that paired phone.
 
-If the phone or PC was paired before these new capabilities were added, revoke/disconnect it and pair again to register the expanded capability list. Keep the Companion open to execute and receive updates; persistent background operation is not yet implemented.
+If the Windows PC was paired before these desktop capabilities were added, disconnect and pair the PC again. The Android phone can keep its existing pairing because its task-request capability is unchanged. Keep the Companion open to execute and receive updates; persistent background operation is not yet implemented.
 
 
 ## Windows settings and power requests from the phone
 
-The phone can request `open Bluetooth settings on PC` or `open Wi-Fi settings on PC`. VOSI opens the matching Windows Settings page; the user operates the switch there. VOSI does not silently toggle radios. Commands `shut down my PC` and `restart my PC` create approval-gated tasks. The paired Windows app shows a confirmation dialog; only accepting on the PC releases the action, while declining cancels it. The phone cannot approve its own power request. Keep the Windows VOSI app open and re-pair older devices to register updated capabilities.
+The phone can request `open Bluetooth settings on PC` or `open Wi-Fi settings on PC`. VOSI opens the matching Windows Settings page; the user operates the switch there. VOSI does not silently toggle radios. Commands `shut down my PC` and `restart my PC` create approval-gated tasks. The paired Windows app shows a confirmation dialog; only accepting on the PC releases the action, while declining cancels it. The phone cannot approve its own power request. Keep the Windows VOSI app open. Re-pair the Windows PC if it was paired before these capabilities were added; the phone does not need to be re-paired.
