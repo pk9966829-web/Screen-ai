@@ -201,6 +201,22 @@ def test_paired_phone_can_request_only_low_risk_device_tasks(monkeypatch, tmp_pa
     assert accepted.status_code == 200
     assert accepted.json()["task"]["origin_device_id"] == phone["device_id"]
 
+    unsupported = client.post(
+        "/agent/tasks/request",
+        headers=phone_headers,
+        json={
+            "goal": "Set PC volume",
+            "steps": [{
+                "step_id": "volume",
+                "capability": "device.volume.set",
+                "target_platform": "desktop",
+                "title": "Set PC volume",
+                "arguments": {"volume": 50},
+            }],
+        },
+    )
+    assert unsupported.status_code == 403
+
     blocked = client.post(
         "/agent/tasks/request",
         headers=phone_headers,
