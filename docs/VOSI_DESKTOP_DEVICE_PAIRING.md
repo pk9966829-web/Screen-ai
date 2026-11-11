@@ -68,3 +68,10 @@ The Android Companion accepts these initial commands:
 - `search body spray under 1000 on Flipkart`
 
 The phone-originated task endpoint validates an explicit capability/target allow-list. It rejects unsupported commands rather than creating tasks that no paired executor can perform.
+
+
+## Windows radio settings and power requests
+
+The paired desktop queue supports `device.bluetooth.settings.open` and `device.wifi.settings.open`; these open Windows Settings and leave the final switch action to the user. Direct toggling is intentionally not automated because it can require elevation, and disabling Wi-Fi may cut off the backend before a receipt can be delivered.
+
+Phone-originated `device.pc.shutdown` and `device.pc.restart` requests remain in `awaiting_approval`. The paired desktop app polls `GET /agent/tasks/approvals` and shows a confirmation dialog. Only a paired desktop with the relevant capability can approve or reject; the phone cannot approve its own request. Approval is recorded before Windows shutdown/restart is invoked, and rejection cancels the task.
