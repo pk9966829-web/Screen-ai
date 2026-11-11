@@ -63,3 +63,10 @@ The extension opens a new Chrome tab, leaving your existing tab untouched. It re
 - Product-page layout changes, lazy loading, regional availability, and Flipkart anti-automation behavior can affect extraction. Ranking is heuristic, not a guarantee of quality.
 - Basic search and ranking do not require an AI API key.
 
+
+
+## Agent task execution (first supported action)
+
+A paired Chrome device now polls `GET /agent/tasks/available` using its device credential. The server filters tasks using the paired device's registered platform and granted capabilities. For `browser.search_products`, the extension claims the task, opens a new Flipkart results tab without replacing the current tab, extracts visible product cards, and submits a receipt to the agent task result endpoint. A task is marked completed only when at least one product card is detected; otherwise it is marked failed with an explanation.
+
+This first adapter is intentionally limited to Flipkart product search. It does not click purchase buttons, sign in, submit forms, or perform arbitrary browsing. Keep Chrome running and the paired extension enabled for polling. The agent task queue is polled every 30 seconds while Chrome is active.
