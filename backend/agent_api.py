@@ -65,6 +65,13 @@ class DevicePairCompleteRequest(BaseModel):
     capabilities: list[str] = Field(default_factory=list, max_length=50)
 
 
+class DeviceStepResultRequest(BaseModel):
+    success: bool
+    verified: bool
+    receipt: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = Field(default=None, max_length=2000)
+
+
 @router.get("/capabilities")
 def get_agent_capabilities(authorization: str | None = Header(default=None)):
     _authorize(authorization)
@@ -157,3 +164,40 @@ def device_heartbeat(device_id: str, authorization: str | None = Header(default=
     device = _authorize_device(authorization)
     result = _runtime_call(devices.heartbeat, device_id, _bearer(authorization) or "")
     return {"success": True, "device": {**result, "platform": device["platform"], "label": device["label"]}}
+
+
+@router.post("/tasks/{task_id}/claim")
+def claim_agent_task_step(
+    task_id: str,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    step = _runtime_call(
+        runtime.claim_next_step,
+        task_id,
+        device["device_id"],
+        device["platform"],
+        set(device["capabilities"]),
+    )
+    return {"success": True, "step": step}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/result")
+def record_agent_step_result(
+    task_id: str,
+    step_id: str,
+    request: DeviceStepResultRequest,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    task = _runtime_call(
+        runtime.record_step_result,
+        task_id,
+        step_id,
+        device["device_id"],
+        request.success,
+        request.verified,
+        request.receipt,
+        request.error,
+    )
+    return {"success": True, "task": task}
