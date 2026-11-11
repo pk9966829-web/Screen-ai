@@ -152,3 +152,10 @@ The extension currently supports the existing read-only Flipkart search workflow
 ## First implementation slice
 
 This branch introduces the architecture contract and a small backend task/capability foundation. It intentionally does not claim that phone-wide control or general autonomous execution is already available. Device adapters are added only after the protocol, approval policy, and receipts are tested.
+
+
+## Windows radio settings and power approvals
+
+Android may request Windows shutdown or restart, but these steps remain in `awaiting_approval` until a paired desktop shows and accepts a confirmation. Only a desktop credential with the matching capability can approve or reject; rejection cancels the task. Other high-risk capabilities remain blocked from phone task requests.
+
+Bluetooth and Wi-Fi commands currently open their Windows Settings pages only. VOSI does not automatically flip the radios: that could require elevation, and disabling Wi-Fi could sever the backend route before a receipt is delivered.
