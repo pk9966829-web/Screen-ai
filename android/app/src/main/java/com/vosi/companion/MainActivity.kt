@@ -355,6 +355,8 @@ class MainActivity : Activity() {
                     refreshPairedDeviceStatus()
                     pairDeviceButton.isEnabled = true
                     heartbeatPhoneDevice()
+                    devicePollHandler.removeCallbacks(devicePollRunnable)
+                    devicePollHandler.postDelayed(devicePollRunnable, 20000L)
                 }
             } catch (error: Exception) {
                 runOnUiThread {
