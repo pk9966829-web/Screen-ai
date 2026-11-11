@@ -78,7 +78,7 @@ HyperOS menu wording can vary. If notification access is not shown, look under S
 - Starting a new chat opens WhatsApp with a prefilled message; the user must review and tap Send.
 - Notification previews are stored locally on the phone (up to 30). Use the in-app clear button to erase them.
 - No WhatsApp message content is uploaded to VOSI's backend in this milestone.
-- Phone-originated task requests are authenticated and restricted to explicitly supported low-risk capabilities. WhatsApp message sends and phone calls are not silently dispatched by the task queue.
+- Phone-originated task requests are authenticated and restricted to explicitly supported low-risk capabilities, plus Windows shutdown/restart requests that require confirmation on the paired PC. WhatsApp message sends and phone calls are not silently dispatched by the task queue.
 - The listener does not use Accessibility Service and does not request payment, PIN, password, or OTP access.
 
 ## Phone task execution and completion alerts
