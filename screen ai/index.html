@@ -739,7 +739,19 @@
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
                     <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>VOSI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
                     <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>VOSI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask VOSI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local VOSI backend.</p></div>
-                    <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>Vosi preferences are available in the left sidebar.</p></div>
+                    <div id="tab-page-settings" class="tab-card" style="display:none">
+                        <h2>Settings</h2>
+                        <p>VOSI device connections and preferences.</p>
+                        <section class="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
+                            <h3 class="text-sm font-bold text-white">Windows device connection</h3>
+                            <p class="mt-2">Pair this PC with your VOSI phone using a short-lived code generated by the VOSI backend. The device credential is stored in Windows Credential Manager.</p>
+                            <label for="desktop-pairing-code" class="block mt-4 mb-2 text-xs font-semibold text-slate-300">One-time pairing code</label>
+                            <input id="desktop-pairing-code" type="password" autocomplete="off" spellcheck="false" placeholder="Paste pairing code" class="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400">
+                            <button id="desktop-pair-button" type="button" class="tab-action">Pair this PC</button>
+                            <p id="desktop-device-status" class="mt-3 text-xs text-slate-400" role="status">Not paired. Create a desktop pairing code in the backend first.</p>
+                            <button id="desktop-disconnect-button" type="button" class="mt-3 rounded-lg border border-white/15 px-4 py-2 text-xs text-slate-300 hover:bg-white/5">Disconnect this PC</button>
+                        </section>
+                    </div>
                 </div>
             </main>
 
@@ -2697,3 +2709,189 @@
     </script>
 
 
+
+
+<script>
+(() => {
+    const DEVICE_API = "http://127.0.0.1:8001";
+    const invoke = (name, args) => {
+        const bridge = window.__TAURI__?.core?.invoke;
+        if (!bridge) throw new Error("Open VOSI in the Windows desktop app to use secure device pairing.");
+        return bridge(name, args);
+    };
+    const status = document.getElementById("desktop-device-status");
+    const codeInput = document.getElementById("desktop-pairing-code");
+    const pairButton = document.getElementById("desktop-pair-button");
+    const disconnectButton = document.getElementById("desktop-disconnect-button");
+    let polling = false;
+
+    function setDeviceStatus(message) {
+        if (status) status.textContent = message;
+    }
+
+    async function readCredential() {
+        const raw = await invoke("load_agent_device_credential");
+        return raw ? JSON.parse(raw) : null;
+    }
+
+    async function postStepResult(credential, taskId, stepId, payload) {
+        const response = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(taskId) +
+            "/steps/" + encodeURIComponent(stepId) + "/result", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + credential.device_token,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+        if (!response.ok) throw new Error("VOSI rejected the desktop execution receipt (HTTP " + response.status + ").");
+        return response.json();
+    }
+
+    async function heartbeat() {
+        const credential = await readCredential();
+        if (!credential) {
+            setDeviceStatus("Not paired. Create a desktop pairing code in the backend first.");
+            return null;
+        }
+        const response = await fetch(DEVICE_API + "/agent/devices/" + encodeURIComponent(credential.device_id) + "/heartbeat", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + credential.device_token },
+            cache: "no-store"
+        });
+        if (!response.ok) {
+            setDeviceStatus(response.status === 401 ? "Pairing expired or revoked. Pair this PC again." : "PC paired; backend heartbeat unavailable.");
+            return null;
+        }
+        setDeviceStatus("PC connected to VOSI. Ready for approved device tasks.");
+        return credential;
+    }
+
+    async function pollDesktopTasks() {
+        if (polling) return;
+        polling = true;
+        try {
+            const credential = await readCredential();
+            if (!credential) return;
+            const response = await fetch(DEVICE_API + "/agent/tasks/available", {
+                headers: { "Authorization": "Bearer " + credential.device_token },
+                cache: "no-store"
+            });
+            if (response.status === 401) {
+                setDeviceStatus("PC pairing expired or revoked. Pair again.");
+                return;
+            }
+            if (!response.ok) return;
+            const data = await response.json();
+            for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
+                if (task.capability !== "device.alarm.create") continue;
+                const claimResponse = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + credential.device_token }
+                });
+                if (!claimResponse.ok) continue;
+                const claimed = await claimResponse.json();
+                const step = claimed.step;
+                if (!step || step.capability !== "device.alarm.create") continue;
+                try {
+                    const hour = Number(step.arguments?.hour);
+                    const minute = Number(step.arguments?.minute ?? 0);
+                    if (!Number.isInteger(hour) || !Number.isInteger(minute)) {
+                        throw new Error("The alarm task needs numeric hour and minute values.");
+                    }
+                    const message = await invoke("set_alarm", { hour, minute });
+                    await postStepResult(credential, task.task_id, step.step_id, {
+                        success: true,
+                        verified: true,
+                        receipt: { capability: "device.alarm.create", confirmation: message }
+                    });
+                    setDeviceStatus("PC completed a VOSI alarm task: " + message);
+                } catch (error) {
+                    await postStepResult(credential, task.task_id, step.step_id, {
+                        success: false,
+                        verified: false,
+                        receipt: {},
+                        error: String(error?.message || error).slice(0, 1500)
+                    });
+                    setDeviceStatus("A desktop task failed: " + String(error?.message || error));
+                }
+            }
+        } catch (error) {
+            console.warn("VOSI desktop agent poll failed:", error);
+        } finally {
+            polling = false;
+        }
+    }
+
+    pairButton?.addEventListener("click", async () => {
+        const pairingCode = (codeInput?.value || "").trim();
+        if (!pairingCode) {
+            setDeviceStatus("Paste the one-time pairing code first.");
+            return;
+        }
+        pairButton.disabled = true;
+        setDeviceStatus("Pairing this Windows PC with VOSI...");
+        try {
+            const response = await fetch(DEVICE_API + "/agent/devices/pair", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    pairing_code: pairingCode,
+                    capabilities: ["device.alarm.create"]
+                })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success || !data.device?.device_token) {
+                throw new Error(data.detail || "Pairing failed. Generate a fresh code and try again.");
+            }
+            const credential = {
+                device_id: data.device.device_id,
+                device_token: data.device.device_token,
+                platform: data.device.platform
+            };
+            await invoke("save_agent_device_credential", { credential: JSON.stringify(credential) });
+            if (codeInput) codeInput.value = "";
+            await heartbeat();
+            await pollDesktopTasks();
+        } catch (error) {
+            setDeviceStatus("Could not pair this PC: " + String(error?.message || error));
+        } finally {
+            pairButton.disabled = false;
+        }
+    });
+
+    disconnectButton?.addEventListener("click", async () => {
+        disconnectButton.disabled = true;
+        try {
+            const credential = await readCredential();
+            if (credential?.device_token) {
+                const response = await fetch(DEVICE_API + "/agent/devices/me", {
+                    method: "DELETE",
+                    headers: { "Authorization": "Bearer " + credential.device_token }
+                });
+                if (!response.ok && response.status !== 401) {
+                    throw new Error("VOSI could not revoke this PC credential.");
+                }
+            }
+            await invoke("clear_agent_device_credential");
+            setDeviceStatus("This PC has been disconnected from VOSI.");
+        } catch (error) {
+            setDeviceStatus("Could not disconnect this PC: " + String(error?.message || error));
+        } finally {
+            disconnectButton.disabled = false;
+        }
+    });
+
+    async function startDesktopAgent() {
+        try {
+            await heartbeat();
+            await pollDesktopTasks();
+        } catch (error) {
+            setDeviceStatus("Desktop pairing is available in the Windows VOSI app only.");
+        }
+    }
+    void startDesktopAgent();
+    window.setInterval(() => { void heartbeat(); }, 60000);
+    window.setInterval(() => { void pollDesktopTasks(); }, 15000);
+})();
+</script>
