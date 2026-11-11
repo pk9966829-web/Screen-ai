@@ -152,6 +152,14 @@ def list_paired_devices(authorization: str | None = Header(default=None)):
     return {"success": True, "devices": devices.list_devices()}
 
 
+
+@router.delete("/devices/me")
+def revoke_current_device(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    result = _runtime_call(devices.revoke_device, device["device_id"])
+    return {"success": True, **result}
+
+
 @router.delete("/devices/{device_id}")
 def revoke_paired_device(device_id: str, authorization: str | None = Header(default=None)):
     _authorize(authorization)
@@ -202,9 +210,3 @@ def record_agent_step_result(
     )
     return {"success": True, "task": task}
 
-
-@router.delete("/devices/me")
-def revoke_current_device(authorization: str | None = Header(default=None)):
-    device = _authorize_device(authorization)
-    result = _runtime_call(devices.revoke_device, device["device_id"])
-    return {"success": True, **result}
