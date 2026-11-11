@@ -110,3 +110,49 @@ def test_device_task_queue_is_scoped_to_paired_platform_and_capabilities(monkeyp
     assert claim.status_code == 200
     assert claim.json()["step"]["step_id"] == "search"
     assert client.get("/agent/tasks/available", headers=browser_headers).json()["tasks"] == []
+
+
+def test_device_queue_does_not_skip_an_earlier_step_for_another_platform(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "ordered-device-queue.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post(
+        "/agent/devices/pairing",
+        headers=admin,
+        json={"platform": "browser", "label": "Chrome"},
+    ).json()["pairing"]
+    browser = client.post(
+        "/agent/devices/pair",
+        json={"pairing_code": pairing["pairing_code"], "capabilities": ["browser.search_products"]},
+    ).json()["device"]
+    task = client.post(
+        "/agent/tasks",
+        headers=admin,
+        json={
+            "goal": "First inspect phone, then search products",
+            "steps": [
+                {
+                    "step_id": "phone-first",
+                    "capability": "phone.contacts.read",
+                    "target_platform": "android",
+                    "title": "Read the selected contact",
+                    "arguments": {"name": "Alex"},
+                },
+                {
+                    "step_id": "browser-second",
+                    "capability": "browser.search_products",
+                    "target_platform": "browser",
+                    "title": "Search products",
+                    "arguments": {"query": "body spray"},
+                },
+            ],
+        },
+    ).json()["task"]
+    browser_headers = {"Authorization": f"Bearer {browser['device_token']}"}
+
+    response = client.get("/agent/tasks/available", headers=browser_headers)
+    assert response.status_code == 200
+    assert response.json()["tasks"] == []
