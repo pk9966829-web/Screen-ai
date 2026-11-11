@@ -113,13 +113,19 @@ def list_available_device_tasks(authorization: str | None = Header(default=None)
     for task in runtime.list_tasks(100):
         if task["state"] in {"completed", "failed", "cancelled", "awaiting_approval"}:
             continue
-        matching = next((
+        # Only the first unfinished step is eligible. This preserves task ordering
+        # and prevents a later browser step from jumping ahead of a phone/desktop step.
+        next_step = next((
             step for step in task["steps"]
-            if step["target_platform"] == device["platform"]
-            and step["capability"] in device["capabilities"]
-            and step["state"] in {"pending", "ready"}
-            and (not step["approval_required"] or step["state"] == "ready")
+            if step["state"] in {"pending", "ready", "awaiting_approval", "running"}
         ), None)
+        matching = next_step if (
+            next_step
+            and next_step["target_platform"] == device["platform"]
+            and next_step["capability"] in device["capabilities"]
+            and next_step["state"] in {"pending", "ready"}
+            and (not next_step["approval_required"] or next_step["state"] == "ready")
+        ) else None
         if matching:
             available.append({
                 "task_id": task["task_id"],
