@@ -201,3 +201,10 @@ def record_agent_step_result(
         request.error,
     )
     return {"success": True, "task": task}
+
+
+@router.delete("/devices/me")
+def revoke_current_device(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    result = _runtime_call(devices.revoke_device, device["device_id"])
+    return {"success": True, **result}
