@@ -23,13 +23,13 @@
       const reviewsMatch = text.match(/([\d,]+)\s*(?:Ratings|Reviews)/i);
       const link = card.matches("a") ? card.href : card.querySelector("a[href]")?.href;
       products.push({
-        name: name.slice(0, 180),
+        name: name.slice(0, 120),
         price: priceMatch[0],
         rating: ratingMatch ? ratingMatch[1] : null,
         reviews: reviewsMatch ? reviewsMatch[1] : null,
-        url: link || null
+        url: link ? link.slice(0, 500) : null
       });
-      if (products.length >= 20) break;
+      if (products.length >= 8) break;
     }
     return products;
   }
