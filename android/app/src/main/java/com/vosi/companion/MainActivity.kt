@@ -696,12 +696,14 @@ class MainActivity : Activity() {
                 NotificationChannel(channelId, "VOSI task updates", NotificationManager.IMPORTANCE_DEFAULT)
             )
         }
-        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, channelId)
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
-        }.setSmallIcon(android.R.drawable.ic_dialog_info)
+        }
+        val notification = builder
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(if (state == "completed") "VOSI task completed" else "VOSI task $state")
             .setContentText("$title • $detail")
             .setStyle(Notification.BigTextStyle().bigText("$title\n$detail"))
