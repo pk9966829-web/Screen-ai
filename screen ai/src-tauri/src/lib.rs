@@ -166,9 +166,39 @@ fn set_alarm(hour: u32, minute: u32) -> Result<String, String> {
 }
 #[tauri::command]
 fn set_timer(seconds: u64) -> Result<String,String> {
-    if seconds==0||seconds>86400{return Err("Choose a timer between 1 second and 24 hours.".into());}
-    std::thread::spawn(move||{std::thread::sleep(std::time::Duration::from_secs(seconds));#[cfg(target_os="windows")]{let _=Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command","Add-Type -AssemblyName System.Windows.Forms; 1..5 | ForEach-Object { [System.Media.SystemSounds]::Asterisk.Play(); Start-Sleep -Milliseconds 600 }; [System.Windows.Forms.MessageBox]::Show('Your VOSI timer is complete.','VOSI Timer') | Out-Null"]).spawn();}});
-    Ok(format!("Timer started for {}.",if seconds>=60{format!("{} minute(s)",seconds/60)}else{format!("{} second(s)",seconds)}))
+    if seconds == 0 || seconds > 86400 {
+        return Err("Choose a timer between 1 second and 24 hours.".into());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use chrono::{Duration, Local};
+        let due = Local::now() + Duration::seconds(seconds as i64);
+        let date = due.format("%m/%d/%Y").to_string();
+        let time = due.format("%H:%M").to_string();
+        let task_name = format!("VOSI_Timer_{}", due.format("%Y%m%d_%H%M%S"));
+        let script = "Add-Type -AssemblyName System.Windows.Forms; 1..5 | ForEach-Object { [System.Media.SystemSounds]::Asterisk.Play(); Start-Sleep -Milliseconds 600 }; [System.Windows.Forms.MessageBox]::Show('Your VOSI timer is complete.','VOSI Timer') | Out-Null";
+        use base64::Engine;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(
+            script.encode_utf16().flat_map(|c| c.to_le_bytes()).collect::<Vec<u8>>()
+        );
+        let action = format!("powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand {encoded}");
+        let output = Command::new("schtasks.exe")
+            .args(["/Create", "/F", "/SC", "ONCE", "/SD", &date, "/ST", &time, "/TN", &task_name, "/TR", &action, "/IT"])
+            .output()
+            .map_err(|error| format!("Could not schedule timer: {error}"))?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+        return Ok(format!(
+            "Timer scheduled for {}. Windows will trigger it while your account is signed in and the computer is awake.",
+            due.format("%-I:%M %p")
+        ));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = seconds;
+        Err("VOSI timers are supported in the Windows VOSI app.".into())
+    }
 }
 #[tauri::command]
 fn lock_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("rundll32.exe").args(["user32.dll,LockWorkStation"]).spawn().map_err(|e|e.to_string())?;return Ok("Locking your Windows device.".into());}#[cfg(not(target_os="windows"))]{Err("Locking is supported in the Windows VOSI app.".into())}}
