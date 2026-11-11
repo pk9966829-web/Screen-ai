@@ -29,3 +29,14 @@ Choose **Disconnect this PC** in the same settings panel. VOSI revokes the serve
 ## Network note
 
 The default backend URL is `http://127.0.0.1:8001`, suitable only when the backend runs on the same Windows machine. For a phone-to-PC setup, both devices must reach the same trusted backend host; do not expose the development backend to the public internet. Use HTTPS, authentication, and network restrictions for remote deployments.
+
+## Send a task from the Android companion
+
+After pairing the Android phone, its Companion screen exposes a small command field. The first supported phone-originated commands are:
+
+- `set an alarm for 5 PM on my PC` — routes a low-risk alarm task to the paired Windows desktop.
+- `search body spray under 1000 on Flipkart` — routes a read-only product search to the paired Chrome extension.
+
+The phone submits these through `POST /agent/tasks/request` with its own device credential. The server permits only low-risk, non-approval capabilities and only desktop/browser targets. It does not give the phone the administrator token. High-risk calls, WhatsApp replies, email sends, and arbitrary device commands are rejected by this route.
+
+This is deliberately a first command set. Natural-language task planning, result notifications back to the phone, and broader desktop/Android actions are subsequent work.
