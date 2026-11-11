@@ -41,7 +41,7 @@ For a different trusted network or a remote backend, enter its HTTPS base URL in
 
 ## HyperOS setup (after installing)
 - Allow Contacts and Phone permissions only when prompted.
-- The pairing heartbeat runs when the companion is opened or when you tap Check VOSI connection; persistent background execution is a later milestone.
+- While VOSI Companion is open, it checks the paired-device heartbeat and task queue every 20 seconds. Android background/force-stopped execution is not guaranteed.
 - Do not enable Accessibility until the feature and its exact purpose are presented in the app.
 - Keep the phone and desktop on a trusted local network for local development pairing.
 
@@ -78,5 +78,24 @@ HyperOS menu wording can vary. If notification access is not shown, look under S
 - Starting a new chat opens WhatsApp with a prefilled message; the user must review and tap Send.
 - Notification previews are stored locally on the phone (up to 30). Use the in-app clear button to erase them.
 - No WhatsApp message content is uploaded to VOSI's backend in this milestone.
-- The phone can now register as a VOSI Android device, but the desktop voice assistant does not yet dispatch live agent tasks to the phone. The task-execution adapter is a separate next step; do not expose an unauthenticated network endpoint for message access.
+- Phone-originated task requests are authenticated and restricted to explicitly supported low-risk capabilities. WhatsApp message sends and phone calls are not silently dispatched by the task queue.
 - The listener does not use Accessibility Service and does not request payment, PIN, password, or OTP access.
+
+## Phone task execution and completion alerts
+
+After pairing, the Companion can execute these phone-local tasks while the app is open:
+
+- Set media volume to a percentage, e.g. `set phone volume to 70%`.
+- Schedule an alarm, e.g. `set an alarm for 6:30 AM on my phone`.
+
+The Android alarm uses AlarmManager's inexact idle-compatible scheduling. Android may delay it under power-saving conditions. The alarm receiver posts an alarm notification; enable VOSI notifications in Android settings for the visible alert and sound.
+
+The phone can also send commands to paired devices:
+- `set an alarm for 5 PM on my PC`
+- `mute PC`, `volume up`, `volume down`, `unmute PC`
+- `start a timer for 20 minutes on my PC`
+- `search body spray under 1000 on Flipkart`
+
+Task completion updates are fetched from the backend using the phone's own device credential. Completed/failed tasks create Android notifications when notification permission is granted. The task update endpoint returns only tasks originally requested by that paired phone.
+
+If the phone or PC was paired before these new capabilities were added, revoke/disconnect it and pair again to register the expanded capability list. Keep the Companion open to execute and receive updates; persistent background operation is not yet implemented.
