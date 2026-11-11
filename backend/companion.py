@@ -80,4 +80,3 @@ def get_whatsapp_messages(
             "messages": list(_messages),
             "synced_at": _last_sync,
         }
-}
