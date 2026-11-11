@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:usesCleartextTraffic="true"
@@ -11,6 +12,11 @@
         android:label="VOSI Companion"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <receiver
+            android:name=".VosiAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <service
             android:name=".WhatsAppNotificationListener"
             android:label="VOSI WhatsApp notification access"
