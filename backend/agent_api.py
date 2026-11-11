@@ -160,6 +160,8 @@ def request_agent_task(
         details = next((item for item in metadata if item["name"] == capability), None)
         if target_platform not in {"desktop", "browser"}:
             raise HTTPException(status_code=403, detail="Phone-originated tasks can target only paired desktop or browser devices.")
+        if capability not in {"device.alarm.create", "browser.search_products"}:
+            raise HTTPException(status_code=403, detail="This phone command is not supported by an installed device executor yet.")
         if not details or details["risk"] != "low" or details["requires_approval"]:
             raise HTTPException(status_code=403, detail="Phone requests are limited to low-risk, non-approval capabilities.")
     task = _runtime_call(
