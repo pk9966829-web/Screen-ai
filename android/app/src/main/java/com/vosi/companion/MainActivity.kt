@@ -37,6 +37,8 @@ class MainActivity : Activity() {
     private lateinit var pairDeviceButton: Button
     private lateinit var heartbeatDeviceButton: Button
     private lateinit var disconnectDeviceButton: Button
+    private lateinit var deviceCommandInput: EditText
+    private lateinit var sendDeviceCommandButton: Button
     private val contactsPermission = 100
     private val callPermission = 101
 
@@ -110,6 +112,14 @@ class MainActivity : Activity() {
             textSize = 13f
             setPadding(0, 8, 0, 8)
         }
+        deviceCommandInput = EditText(this).apply {
+            hint = "Tell VOSI: set an alarm for 5 PM on my PC, or search body spray on Flipkart"
+            minLines = 2
+        }
+        sendDeviceCommandButton = Button(this).apply {
+            text = "Send command to my VOSI devices"
+            setOnClickListener { sendDeviceTaskRequest() }
+        }
         heartbeatDeviceButton = Button(this).apply {
             text = "Check VOSI connection"
             setOnClickListener { heartbeatPhoneDevice() }
@@ -124,6 +134,8 @@ class MainActivity : Activity() {
         root.addView(heartbeatDeviceButton, matchWidth())
         root.addView(disconnectDeviceButton, matchWidth())
         root.addView(deviceStatus)
+        root.addView(deviceCommandInput, matchWidth())
+        root.addView(sendDeviceCommandButton, matchWidth())
 
         root.addView(TextView(this).apply {
             text = "PHONE"
@@ -282,6 +294,7 @@ class MainActivity : Activity() {
                     .put("phone.contacts.read")
                     .put("phone.call")
                     .put("phone.whatsapp.quick_reply")
+                    .put("agent.task.request")
                 val payload = JSONObject()
                     .put("pairing_code", code)
                     .put("capabilities", capabilities)
@@ -315,6 +328,105 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     deviceStatus.text = "Could not pair phone: ${error.message ?: "backend unavailable"}"
                     pairDeviceButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private fun sendDeviceTaskRequest() {
+        val query = deviceCommandInput.text.toString().trim()
+        if (query.isBlank()) {
+            deviceStatus.text = "Type a command for your paired VOSI devices first."
+            return
+        }
+        val credential = DeviceCredentialStore.load(this)
+        if (credential == null) {
+            deviceStatus.text = "Pair this phone with VOSI first."
+            return
+        }
+
+        val steps = JSONArray()
+        val goal: String
+        val alarmMatch = Regex(
+            """(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:on|in)\s+(?:my\s+)?pc)?""",
+            RegexOption.IGNORE_CASE
+        ).find(query)
+
+        if (alarmMatch != null) {
+            var hour = alarmMatch.groupValues[1].toIntOrNull() ?: -1
+            val minute = alarmMatch.groupValues[2].ifBlank { "0" }.toIntOrNull() ?: -1
+            val meridiem = alarmMatch.groupValues[3].lowercase()
+            if (meridiem == "pm" && hour in 1..11) hour += 12
+            if (meridiem == "am" && hour == 12) hour = 0
+            if (hour !in 0..23 || minute !in 0..59) {
+                deviceStatus.text = "Use a valid alarm time, for example 5 PM."
+                return
+            }
+            goal = "Set a Windows alarm for $query"
+            steps.put(
+                JSONObject()
+                    .put("step_id", "set-desktop-alarm")
+                    .put("capability", "device.alarm.create")
+                    .put("target_platform", "desktop")
+                    .put("title", "Set an alarm on the paired Windows PC")
+                    .put("arguments", JSONObject().put("hour", hour).put("minute", minute))
+            )
+        } else {
+            val searchMatch = Regex(
+                """^(?:search|find)\s+(.+?)\s+on\s+flipkart\s*$""",
+                RegexOption.IGNORE_CASE
+            ).find(query)
+            if (searchMatch == null) {
+                deviceStatus.text = "For now, try: “set an alarm for 5 PM on my PC” or “search body spray under 1000 on Flipkart”."
+                return
+            }
+            val productQuery = searchMatch.groupValues[1].trim().take(200)
+            if (productQuery.isBlank()) {
+                deviceStatus.text = "Tell VOSI what product to search for."
+                return
+            }
+            goal = "Search Flipkart for $productQuery"
+            steps.put(
+                JSONObject()
+                    .put("step_id", "search-flipkart-products")
+                    .put("capability", "browser.search_products")
+                    .put("target_platform", "browser")
+                    .put("title", "Search Flipkart product listings")
+                    .put("arguments", JSONObject().put("query", productQuery))
+            )
+        }
+
+        sendDeviceCommandButton.isEnabled = false
+        deviceStatus.text = "Sending your command to VOSI…"
+        thread {
+            try {
+                val baseUrl = credential.getString("backend_url")
+                val token = credential.getString("device_token")
+                val payload = JSONObject()
+                    .put("goal", goal)
+                    .put("steps", steps)
+                    .put("idempotency_key", java.util.UUID.randomUUID().toString())
+                val (code, body) = requestDeviceApi(
+                    baseUrl,
+                    "/agent/tasks/request",
+                    "POST",
+                    token = token,
+                    body = payload
+                )
+                val response = JSONObject(body)
+                if (code !in 200..299 || !response.optBoolean("success")) {
+                    throw IllegalStateException(response.optString("detail", "VOSI could not accept this command."))
+                }
+                val task = response.getJSONObject("task")
+                runOnUiThread {
+                    deviceCommandInput.text.clear()
+                    deviceStatus.text = "Command queued for VOSI • Task " + task.optString("task_id").take(8) + ". The paired PC or Chrome browser will execute it and report its receipt."
+                    sendDeviceCommandButton.isEnabled = true
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    deviceStatus.text = "Could not send command: " + (error.message ?: "backend unavailable")
+                    sendDeviceCommandButton.isEnabled = true
                 }
             }
         }
