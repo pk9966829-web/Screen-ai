@@ -1,7 +1,9 @@
 (() => {
   const params = new URLSearchParams(location.search);
   const requestId = params.get("vosi_request");
-  if (!requestId || !location.pathname.includes("/search")) return;
+  const taskId = params.get("vosi_task_id");
+  const stepId = params.get("vosi_step_id");
+  if ((!requestId && !(taskId && stepId)) || !location.pathname.includes("/search")) return;
 
   const clean = value => (value || "").replace(/\s+/g, " ").trim();
   const pricePattern = /₹\s?[\d,]+/;
@@ -40,11 +42,10 @@
     clearInterval(timer);
     if (sent) return;
     sent = true;
-    chrome.runtime.sendMessage({
-      type: "VOSI_BROWSER_RESULTS",
-      requestId,
-      products
-    }, response => {
+    const message = taskId
+      ? { type: "VOSI_AGENT_BROWSER_RESULTS", taskId, stepId, products }
+      : { type: "VOSI_BROWSER_RESULTS", requestId, products };
+    chrome.runtime.sendMessage(message, response => {
       if (chrome.runtime.lastError || !response?.success) {
         console.warn("VOSI could not accept Flipkart results:", response?.error || chrome.runtime.lastError?.message);
       }
