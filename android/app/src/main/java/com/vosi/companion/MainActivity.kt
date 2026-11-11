@@ -31,6 +31,12 @@ class MainActivity : Activity() {
     private lateinit var companionToken: EditText
     private lateinit var syncButton: Button
     private lateinit var messagesContainer: LinearLayout
+    private lateinit var deviceBackendUrl: EditText
+    private lateinit var devicePairingCode: EditText
+    private lateinit var deviceStatus: TextView
+    private lateinit var pairDeviceButton: Button
+    private lateinit var heartbeatDeviceButton: Button
+    private lateinit var disconnectDeviceButton: Button
     private val contactsPermission = 100
     private val callPermission = 101
 
@@ -77,6 +83,48 @@ class MainActivity : Activity() {
 
         root.addView(heading)
         root.addView(subtitle)
+
+        root.addView(TextView(this).apply {
+            text = "CONNECT THIS PHONE TO VOSI"
+            textSize = 13f
+            setPadding(0, 8, 0, 4)
+        })
+        deviceBackendUrl = EditText(this).apply {
+            hint = "VOSI backend URL (USB ADB reverse: http://127.0.0.1:8001)"
+            isSingleLine = true
+            setText(
+                getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+                    .getString("device_backend_url", "http://127.0.0.1:8001")
+            )
+        }
+        devicePairingCode = EditText(this).apply {
+            hint = "One-time VOSI phone pairing code"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            isSingleLine = true
+        }
+        pairDeviceButton = Button(this).apply {
+            text = "Pair this phone with VOSI"
+            setOnClickListener { pairPhoneDevice() }
+        }
+        deviceStatus = TextView(this).apply {
+            textSize = 13f
+            setPadding(0, 8, 0, 8)
+        }
+        heartbeatDeviceButton = Button(this).apply {
+            text = "Check VOSI connection"
+            setOnClickListener { heartbeatPhoneDevice() }
+        }
+        disconnectDeviceButton = Button(this).apply {
+            text = "Disconnect this phone"
+            setOnClickListener { disconnectPhoneDevice() }
+        }
+        root.addView(deviceBackendUrl, matchWidth())
+        root.addView(devicePairingCode, matchWidth())
+        root.addView(pairDeviceButton, matchWidth())
+        root.addView(heartbeatDeviceButton, matchWidth())
+        root.addView(disconnectDeviceButton, matchWidth())
+        root.addView(deviceStatus)
+
         root.addView(TextView(this).apply {
             text = "PHONE"
             textSize = 13f
@@ -158,11 +206,188 @@ class MainActivity : Activity() {
             addView(root)
         }
         setContentView(scroll)
+        refreshPairedDeviceStatus()
     }
 
     override fun onResume() {
         super.onResume()
         refreshWhatsAppMessages()
+        if (::deviceStatus.isInitialized) {
+            refreshPairedDeviceStatus()
+            if (DeviceCredentialStore.load(this) != null) heartbeatPhoneDevice()
+        }
+    }
+
+    private fun refreshPairedDeviceStatus() {
+        val credential = DeviceCredentialStore.load(this)
+        deviceStatus.text = if (credential == null) {
+            "Phone is not paired with VOSI yet."
+        } else {
+            "Paired: ${credential.optString("label", "Android phone")}  •  Device ID: ${credential.optString("device_id")}"
+        }
+    }
+
+    private fun backendBaseUrl(): String {
+        val value = deviceBackendUrl.text.toString().trim().trimEnd('/')
+        if (!(value.startsWith("http://") || value.startsWith("https://")) || value.length > 300) {
+            throw IllegalArgumentException("Enter a valid backend URL beginning with http:// or https://.")
+        }
+        return value
+    }
+
+    private fun requestDeviceApi(
+        baseUrl: String,
+        path: String,
+        method: String,
+        token: String? = null,
+        body: JSONObject? = null
+    ): Pair<Int, String> {
+        val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection)
+        try {
+            connection.requestMethod = method
+            connection.connectTimeout = 10000
+            connection.readTimeout = 15000
+            if (token != null) connection.setRequestProperty("Authorization", "Bearer $token")
+            if (body != null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() } ?: "HTTP $code"
+            return Pair(code, text)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun pairPhoneDevice() {
+        val code = devicePairingCode.text.toString().trim()
+        if (code.length < 20) {
+            deviceStatus.text = "Paste the one-time pairing code generated by VOSI."
+            return
+        }
+        val baseUrl = try {
+            backendBaseUrl()
+        } catch (error: Exception) {
+            deviceStatus.text = error.message ?: "Invalid backend URL."
+            return
+        }
+        pairDeviceButton.isEnabled = false
+        deviceStatus.text = "Pairing this phone securely…"
+        thread {
+            try {
+                val capabilities = JSONArray()
+                    .put("phone.contacts.read")
+                    .put("phone.call")
+                    .put("phone.whatsapp.quick_reply")
+                val payload = JSONObject()
+                    .put("pairing_code", code)
+                    .put("capabilities", capabilities)
+                val (responseCode, responseText) = requestDeviceApi(
+                    baseUrl, "/agent/devices/pair", "POST", body = payload
+                )
+                val response = JSONObject(responseText)
+                if (responseCode !in 200..299 || !response.optBoolean("success")) {
+                    throw IllegalStateException(response.optString("detail", "Pairing failed. Generate a new code in VOSI."))
+                }
+                val device = response.getJSONObject("device")
+                val credential = JSONObject()
+                    .put("backend_url", baseUrl)
+                    .put("device_id", device.getString("device_id"))
+                    .put("device_token", device.getString("device_token"))
+                    .put("platform", device.getString("platform"))
+                    .put("label", device.optString("label", "Android phone"))
+                    .put("capabilities", device.optJSONArray("capabilities") ?: JSONArray())
+                    .put("paired_at", device.optString("paired_at"))
+                DeviceCredentialStore.save(this, credential.toString())
+                getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+                    .edit().putString("device_backend_url", baseUrl).apply()
+                runOnUiThread {
+                    devicePairingCode.text.clear()
+                    deviceStatus.text = "Phone paired successfully. Its credential is protected by Android Keystore."
+                    refreshPairedDeviceStatus()
+                    pairDeviceButton.isEnabled = true
+                    heartbeatPhoneDevice()
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    deviceStatus.text = "Could not pair phone: ${error.message ?: "backend unavailable"}"
+                    pairDeviceButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private fun heartbeatPhoneDevice() {
+        val credential = DeviceCredentialStore.load(this)
+        if (credential == null) {
+            deviceStatus.text = "Pair this phone with VOSI first."
+            return
+        }
+        heartbeatDeviceButton.isEnabled = false
+        thread {
+            try {
+                val baseUrl = credential.getString("backend_url")
+                val deviceId = credential.getString("device_id")
+                val token = credential.getString("device_token")
+                val (code, body) = requestDeviceApi(
+                    baseUrl,
+                    "/agent/devices/${Uri.encode(deviceId)}/heartbeat",
+                    "POST",
+                    token = token
+                )
+                val response = JSONObject(body)
+                runOnUiThread {
+                    deviceStatus.text = if (code in 200..299 && response.optBoolean("success")) {
+                        "VOSI connected • heartbeat confirmed."
+                    } else {
+                        response.optString("detail", "VOSI connection failed (HTTP $code).")
+                    }
+                    heartbeatDeviceButton.isEnabled = true
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    deviceStatus.text = "VOSI is unreachable: ${error.message ?: "check backend URL and USB forwarding"}"
+                    heartbeatDeviceButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private fun disconnectPhoneDevice() {
+        val credential = DeviceCredentialStore.load(this)
+        if (credential == null) {
+            deviceStatus.text = "This phone is not paired."
+            return
+        }
+        disconnectDeviceButton.isEnabled = false
+        thread {
+            try {
+                val (code, body) = requestDeviceApi(
+                    credential.getString("backend_url"),
+                    "/agent/devices/me",
+                    "DELETE",
+                    token = credential.getString("device_token")
+                )
+                val response = JSONObject(body)
+                if (code !in 200..299 || !response.optBoolean("revoked")) {
+                    throw IllegalStateException(response.optString("detail", "Server did not revoke this device."))
+                }
+                DeviceCredentialStore.clear(this)
+                runOnUiThread {
+                    deviceStatus.text = "Phone disconnected and its VOSI credential revoked."
+                    refreshPairedDeviceStatus()
+                    disconnectDeviceButton.isEnabled = true
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    deviceStatus.text = "Could not revoke phone: ${error.message ?: "backend unavailable"}"
+                    disconnectDeviceButton.isEnabled = true
+                }
+            }
+        }
     }
 
     private fun matchWidth(): LinearLayout.LayoutParams =
