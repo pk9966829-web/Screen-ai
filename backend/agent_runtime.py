@@ -119,6 +119,26 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": True,
         "description": "Start a one-time Windows timer.",
     },
+    "device.bluetooth.settings.open": {
+        "platforms": ["desktop"], "risk": "low", "requires_permission": True,
+        "requires_approval": False, "reversible": True,
+        "description": "Open Windows Bluetooth settings for the user to manage the radio.",
+    },
+    "device.wifi.settings.open": {
+        "platforms": ["desktop"], "risk": "low", "requires_permission": True,
+        "requires_approval": False, "reversible": True,
+        "description": "Open Windows Wi-Fi settings for the user to manage the connection.",
+    },
+    "device.pc.shutdown": {
+        "platforms": ["desktop"], "risk": "high", "requires_permission": True,
+        "requires_approval": True, "reversible": False,
+        "description": "Shut down Windows only after explicit confirmation on the PC.",
+    },
+    "device.pc.restart": {
+        "platforms": ["desktop"], "risk": "high", "requires_permission": True,
+        "requires_approval": True, "reversible": False,
+        "description": "Restart Windows only after explicit confirmation on the PC.",
+    },
 }
 
 TASK_STATES = {"planned", "awaiting_approval", "ready", "running", "completed", "failed", "cancelled"}
@@ -301,6 +321,32 @@ class AgentRuntime:
             ).fetchone()["count"]
             state = "awaiting_approval" if remaining else "ready"
             db.execute("UPDATE agent_tasks SET state = ?, updated_at = ? WHERE task_id = ?", (state, _now(), task_id))
+            db.commit()
+        return self.get_task(task_id)
+
+    def reject_step(self, task_id: str, step_id: str) -> dict[str, Any]:
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            task = db.execute("SELECT state FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
+            if not task:
+                raise AgentRuntimeError("Task not found.")
+            step = db.execute(
+                "SELECT state, approval_required FROM agent_steps WHERE task_id = ? AND step_id = ?",
+                (task_id, step_id),
+            ).fetchone()
+            if not step:
+                raise AgentRuntimeError("Step not found.")
+            if not step["approval_required"] or step["state"] != "awaiting_approval":
+                raise AgentRuntimeError("This step is not awaiting approval.")
+            now = _now()
+            db.execute(
+                "UPDATE agent_steps SET state = 'skipped', finished_at = ?, error = ? WHERE task_id = ? AND step_id = ?",
+                (now, "User declined the Windows confirmation.", task_id, step_id),
+            )
+            db.execute(
+                "UPDATE agent_tasks SET state = 'cancelled', error = ?, updated_at = ? WHERE task_id = ?",
+                ("User declined the Windows confirmation.", now, task_id),
+            )
             db.commit()
         return self.get_task(task_id)
 
