@@ -132,9 +132,9 @@ fn control_volume(action: String) -> Result<String,String> {
     {
         let key = match action.as_str() { "up" => 0xAFu16, "down" => 0xAEu16, "mute" => 0xADu16, "unmute" => 0xAFu16, _ => return Err("Choose volume up, down, mute, or unmute.".into()) };
         let script = if action == "mute" || action == "unmute" {
-            format("$w=New-Object -ComObject WScript.Shell; $w.SendKeys([char]{key})")
+            format!("$w=New-Object -ComObject WScript.Shell; $w.SendKeys([char]{key})")
         } else {
-            format("$w=New-Object -ComObject WScript.Shell; 1..5 | ForEach-Object {{ $w.SendKeys([char]{key}); Start-Sleep -Milliseconds 80 }}")
+            format!("$w=New-Object -ComObject WScript.Shell; 1..5 | ForEach-Object {{ $w.SendKeys([char]{key}); Start-Sleep -Milliseconds 80 }}")
         };
         Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command",&script]).spawn().map_err(|e|format!("Could not adjust volume: {e}"))?;
         return Ok(match action.as_str() { "up"=>"Increasing volume.", "down"=>"Decreasing volume.", "mute"=>"Toggling mute.", _=>"Sending the unmute command." }.into());
