@@ -108,7 +108,9 @@ class DeviceRegistry:
             raise AgentRuntimeError("Invalid or expired pairing code.")
         if not isinstance(capabilities, list) or len(capabilities) > 50:
             raise AgentRuntimeError("Capabilities must be a list containing at most 50 entries.")
-        if len(set(capabilities)) != len(capabilities) or any(not isinstance(item, str) for item in capabilities):
+        if any(not isinstance(item, str) for item in capabilities):
+            raise AgentRuntimeError("Capabilities must be strings.")
+        if len(set(capabilities)) != len(capabilities):
             raise AgentRuntimeError("Capabilities must be unique strings.")
 
         now = _now()
