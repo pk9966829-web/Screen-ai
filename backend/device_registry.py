@@ -209,6 +209,9 @@ class DeviceRegistry:
 
     @staticmethod
     def _device_dict(row: sqlite3.Row) -> dict[str, Any]:
+        last_seen = datetime.fromisoformat(row["last_seen_at"]) if row["last_seen_at"] else None
+        online = bool(last_seen and (_now() - last_seen).total_seconds() <= 120)
+        status = "revoked" if row["revoked_at"] else ("online" if online else "offline")
         return {
             "device_id": row["device_id"],
             "platform": row["platform"],
@@ -217,5 +220,5 @@ class DeviceRegistry:
             "created_at": row["created_at"],
             "last_seen_at": row["last_seen_at"],
             "revoked_at": row["revoked_at"],
-            "status": "revoked" if row["revoked_at"] else "online",
+            "status": status,
         }
