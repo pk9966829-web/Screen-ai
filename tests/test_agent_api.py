@@ -266,3 +266,106 @@ def test_phone_without_task_request_capability_cannot_create_tasks(monkeypatch, 
         },
     )
     assert response.status_code == 403
+
+
+def test_phone_can_request_supported_android_tasks_and_read_its_task_updates(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "phone-android-tasks.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post(
+        "/agent/devices/pairing",
+        headers=admin,
+        json={"platform": "android", "label": "VOSI phone"},
+    ).json()["pairing"]
+    phone = client.post(
+        "/agent/devices/pair",
+        json={
+            "pairing_code": pairing["pairing_code"],
+            "capabilities": ["agent.task.request", "device.volume.set", "device.alarm.create"],
+        },
+    ).json()["device"]
+    headers = {"Authorization": f"Bearer {phone['device_token']}"}
+
+    accepted = client.post(
+        "/agent/tasks/request",
+        headers=headers,
+        json={
+            "goal": "Set phone volume to 70 percent",
+            "steps": [{
+                "step_id": "phone-volume",
+                "capability": "device.volume.set",
+                "target_platform": "android",
+                "title": "Set phone media volume",
+                "arguments": {"volume": 70},
+            }],
+        },
+    )
+    assert accepted.status_code == 200
+    task_id = accepted.json()["task"]["task_id"]
+    updates = client.get("/agent/tasks/updates", headers=headers)
+    assert updates.status_code == 200
+    assert updates.json()["updates"][0]["task_id"] == task_id
+    assert updates.json()["updates"][0]["state"] == "planned"
+
+    claim = client.post(f"/agent/tasks/{task_id}/claim", headers=headers)
+    assert claim.status_code == 200
+    assert claim.json()["step"]["capability"] == "device.volume.set"
+    result = client.post(
+        f"/agent/tasks/{task_id}/steps/phone-volume/result",
+        headers=headers,
+        json={
+            "success": True,
+            "verified": True,
+            "receipt": {"capability": "device.volume.set", "confirmation": "Phone volume set to 70%."},
+        },
+    )
+    assert result.status_code == 200
+    updates = client.get("/agent/tasks/updates", headers=headers).json()["updates"]
+    assert updates[0]["state"] == "completed"
+    assert updates[0]["steps"][0]["receipt"]["confirmation"] == "Phone volume set to 70%."
+
+
+def test_phone_task_updates_are_scoped_to_the_requesting_device(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "phone-updates-scope.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+
+    def pair(label):
+        pairing = client.post(
+            "/agent/devices/pairing",
+            headers=admin,
+            json={"platform": "android", "label": label},
+        ).json()["pairing"]
+        return client.post(
+            "/agent/devices/pair",
+            json={"pairing_code": pairing["pairing_code"], "capabilities": ["agent.task.request"]},
+        ).json()["device"]
+
+    phone_a = pair("Phone A")
+    phone_b = pair("Phone B")
+    client.post(
+        "/agent/tasks/request",
+        headers={"Authorization": f"Bearer {phone_a['device_token']}"},
+        json={
+            "goal": "Search products",
+            "steps": [{
+                "step_id": "search",
+                "capability": "browser.search_products",
+                "target_platform": "browser",
+                "title": "Search products",
+                "arguments": {"query": "headphones"},
+            }],
+        },
+    )
+    updates_b = client.get(
+        "/agent/tasks/updates",
+        headers={"Authorization": f"Bearer {phone_b['device_token']}"},
+    )
+    assert updates_b.status_code == 200
+    assert updates_b.json()["updates"] == []
