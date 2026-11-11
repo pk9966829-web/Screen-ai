@@ -10,7 +10,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 import agent_api  # noqa: E402
 from device_registry import DeviceRegistry  # noqa: E402
-from agent_runtime import AgentRuntimeError  # noqa: E402
+from agent_runtime import AgentRuntime, AgentRuntimeError  # noqa: E402
 
 
 def registry(tmp_path):
@@ -119,3 +119,105 @@ def test_pairing_api_requires_admin_token_and_device_token_for_heartbeat(monkeyp
         headers={"Authorization": f"Bearer {device['device_token']}"},
     )
     assert denied_heartbeat.status_code == 401
+
+
+
+def test_paired_device_can_claim_only_its_registered_platform_and_report_receipt(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "shared-agent.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+
+    pairing_response = client.post(
+        "/agent/devices/pairing",
+        json={"platform": "browser", "label": "Chrome on Windows"},
+        headers=admin,
+    )
+    pairing_code = pairing_response.json()["pairing"]["pairing_code"]
+    pair_response = client.post(
+        "/agent/devices/pair",
+        json={"pairing_code": pairing_code, "capabilities": ["browser.search_products"]},
+    )
+    device = pair_response.json()["device"]
+    device_headers = {"Authorization": f"Bearer {device['device_token']}"}
+
+    created = client.post(
+        "/agent/tasks",
+        headers=admin,
+        json={
+            "goal": "Search for a body spray",
+            "steps": [{
+                "step_id": "search",
+                "capability": "browser.search_products",
+                "target_platform": "browser",
+                "title": "Search product listings",
+                "arguments": {"query": "body spray under 1000"},
+            }],
+        },
+    )
+    task_id = created.json()["task"]["task_id"]
+
+    claim = client.post(f"/agent/tasks/{task_id}/claim", headers=device_headers)
+    assert claim.status_code == 200
+    assert claim.json()["step"]["claimed_by"] == device["device_id"]
+
+    result = client.post(
+        f"/agent/tasks/{task_id}/steps/search/result",
+        headers=device_headers,
+        json={
+            "success": True,
+            "verified": True,
+            "receipt": {
+                "device_id": device["device_id"],
+                "capability": "browser.search_products",
+                "outcome": "completed",
+                "result_count": 5,
+            },
+        },
+    )
+    assert result.status_code == 200
+    assert result.json()["task"]["state"] == "completed"
+
+
+def test_paired_device_cannot_claim_step_for_other_platform(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "shared-agent.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+
+    pairing_response = client.post(
+        "/agent/devices/pairing",
+        json={"platform": "android", "label": "Android phone"},
+        headers=admin,
+    )
+    code = pairing_response.json()["pairing"]["pairing_code"]
+    paired = client.post(
+        "/agent/devices/pair",
+        json={"pairing_code": code, "capabilities": ["phone.contacts.read"]},
+    ).json()["device"]
+
+    task = client.post(
+        "/agent/tasks",
+        headers=admin,
+        json={
+            "goal": "Search web",
+            "steps": [{
+                "step_id": "search",
+                "capability": "browser.search_products",
+                "target_platform": "browser",
+                "title": "Search products",
+                "arguments": {"query": "shoes"},
+            }],
+        },
+    ).json()["task"]
+
+    response = client.post(
+        f"/agent/tasks/{task['task_id']}/claim",
+        headers={"Authorization": f"Bearer {paired['device_token']}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["step"] is None
