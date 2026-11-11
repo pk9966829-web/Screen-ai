@@ -160,13 +160,20 @@ def request_agent_task(
         details = next((item for item in metadata if item["name"] == capability), None)
         supported_targets = {
             "browser": {"browser.search_products"},
-            "desktop": {"device.alarm.create", "device.volume.action", "device.timer.create"},
+            "desktop": {
+                "device.alarm.create", "device.volume.action", "device.timer.create",
+                "device.bluetooth.settings.open", "device.wifi.settings.open",
+                "device.pc.shutdown", "device.pc.restart",
+            },
             "android": {"device.alarm.create", "device.volume.set"},
         }
         if capability not in supported_targets.get(target_platform, set()):
             raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
-        if not details or details["risk"] != "low" or details["requires_approval"]:
-            raise HTTPException(status_code=403, detail="Phone requests are limited to low-risk, non-approval capabilities.")
+        if capability in {"device.pc.shutdown", "device.pc.restart"}:
+            if not details or details["risk"] != "high" or not details["requires_approval"]:
+                raise HTTPException(status_code=403, detail="This Windows action must remain approval-gated.")
+        elif not details or details["risk"] != "low" or details["requires_approval"]:
+            raise HTTPException(status_code=403, detail="Phone requests are limited to supported low-risk actions or explicitly approval-gated Windows power actions.")
     task = _runtime_call(
         runtime.create_task,
         goal=request.goal,
@@ -201,6 +208,43 @@ def get_origin_device_task_updates(authorization: str | None = Header(default=No
             } for step in task["steps"]],
         })
     return {"success": True, "updates": updates}
+
+
+@router.get("/tasks/approvals")
+def list_desktop_task_approvals(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    if device["platform"] != "desktop":
+        raise HTTPException(status_code=403, detail="Only a paired desktop can receive Windows confirmation requests.")
+    approvals = []
+    for task in runtime.list_tasks(100):
+        for step in task["steps"]:
+            if step["target_platform"] == "desktop" and step["state"] == "awaiting_approval" and step["capability"] in {"device.pc.shutdown", "device.pc.restart"} and step["capability"] in device["capabilities"]:
+                approvals.append({"task_id": task["task_id"], "goal": task["goal"], "step_id": step["step_id"], "title": step["title"], "capability": step["capability"]})
+    return {"success": True, "approvals": approvals}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/approve-device")
+def approve_desktop_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    if device["platform"] != "desktop":
+        raise HTTPException(status_code=403, detail="Only a paired desktop can approve a Windows power action.")
+    task = _runtime_call(runtime.get_task, task_id)
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or step["target_platform"] != "desktop" or step["capability"] not in {"device.pc.shutdown", "device.pc.restart"} or step["capability"] not in device["capabilities"]:
+        raise HTTPException(status_code=403, detail="This desktop approval is not valid for the requested action.")
+    return {"success": True, "task": _runtime_call(runtime.approve_step, task_id, step_id)}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/reject-device")
+def reject_desktop_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    if device["platform"] != "desktop":
+        raise HTTPException(status_code=403, detail="Only a paired desktop can reject a Windows power action.")
+    task = _runtime_call(runtime.get_task, task_id)
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or step["target_platform"] != "desktop" or step["capability"] not in {"device.pc.shutdown", "device.pc.restart"} or step["capability"] not in device["capabilities"]:
+        raise HTTPException(status_code=403, detail="This desktop rejection is not valid for the requested action.")
+    return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
 
 
 @router.get("/tasks/{task_id}")
