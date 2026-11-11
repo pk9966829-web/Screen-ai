@@ -28,6 +28,8 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from companion import router as companion_router
 app.include_router(companion_router)
+from agent_api import router as agent_router
+app.include_router(agent_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
