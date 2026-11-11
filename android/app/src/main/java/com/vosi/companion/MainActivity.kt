@@ -424,8 +424,28 @@ class MainActivity : Activity() {
                 """^(?:search|find)\s+(.+?)\s+on\s+flipkart\s*$""",
                 RegexOption.IGNORE_CASE
             ).find(query)
+            val powerAction = Regex("""\b(shut\s*down|shutdown|restart|reboot)\b.*\b(?:pc|computer|windows|desktop)\b|\b(?:pc|computer|windows|desktop)\b.*\b(shut\s*down|shutdown|restart|reboot)\b""", RegexOption.IGNORE_CASE).find(query)
+            val settingsAction = when {
+                Regex("""\bbluetooth\b.*\b(?:settings|on|off|enable|disable|open)\b""", RegexOption.IGNORE_CASE).containsMatchIn(query) -> "device.bluetooth.settings.open"
+                Regex("""\bwi[ -]?fi\b.*\b(?:settings|on|off|enable|disable|open)\b""", RegexOption.IGNORE_CASE).containsMatchIn(query) -> "device.wifi.settings.open"
+                else -> null
+            }
 
             when {
+                powerAction != null -> {
+                    val requested = powerAction.groupValues[1].ifBlank { powerAction.groupValues[2] }.lowercase().replace(" ", "")
+                    val capability = if (requested in setOf("shutdown", "shut down")) "device.pc.shutdown" else "device.pc.restart"
+                    goal = if (capability == "device.pc.shutdown") "Request Windows PC shutdown" else "Request Windows PC restart"
+                    steps.put(JSONObject().put("step_id", "windows-power-action").put("capability", capability)
+                        .put("target_platform", "desktop")
+                        .put("title", if (capability == "device.pc.shutdown") "Shut down Windows after PC confirmation" else "Restart Windows after PC confirmation")
+                        .put("arguments", JSONObject()))
+                }
+                settingsAction != null -> {
+                    goal = if (settingsAction.contains("bluetooth")) "Open Windows Bluetooth settings" else "Open Windows Wi-Fi settings"
+                    steps.put(JSONObject().put("step_id", "open-windows-radio-settings").put("capability", settingsAction)
+                        .put("target_platform", "desktop").put("title", goal).put("arguments", JSONObject()))
+                }
                 volumePercent != null -> {
                     val percent = volumePercent.groupValues[1].toIntOrNull() ?: -1
                     if (percent !in 0..100) {
