@@ -156,3 +156,7 @@ def test_device_queue_does_not_skip_an_earlier_step_for_another_platform(monkeyp
     response = client.get("/agent/tasks/available", headers=browser_headers)
     assert response.status_code == 200
     assert response.json()["tasks"] == []
+    # Even a direct claim request cannot skip the earlier phone step.
+    claim = client.post(f"/agent/tasks/{task['task_id']}/claim", headers=browser_headers)
+    assert claim.status_code == 200
+    assert claim.json()["step"] is None
