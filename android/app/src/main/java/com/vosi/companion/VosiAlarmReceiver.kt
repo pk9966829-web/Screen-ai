@@ -26,14 +26,16 @@ class VosiAlarmReceiver : BroadcastReceiver() {
             manager.createNotificationChannel(channel)
         }
         val title = intent.getStringExtra("title") ?: "Your VOSI alarm"
-        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(context, channelId)
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(context).setSound(
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             )
-        }.setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+        }
+        val notification = builder
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(title)
             .setContentText("Your scheduled alarm is ringing.")
             .setAutoCancel(true)
