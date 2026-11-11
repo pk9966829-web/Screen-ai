@@ -104,6 +104,33 @@ def list_agent_tasks(
     return {"success": True, "tasks": runtime.list_tasks(limit)}
 
 
+# Keep this fixed route before /tasks/{task_id}; device clients see only work
+# that matches their server-registered platform and granted capabilities.
+@router.get("/tasks/available")
+def list_available_device_tasks(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    available = []
+    for task in runtime.list_tasks(100):
+        if task["state"] in {"completed", "failed", "cancelled", "awaiting_approval"}:
+            continue
+        matching = next((
+            step for step in task["steps"]
+            if step["target_platform"] == device["platform"]
+            and step["capability"] in device["capabilities"]
+            and step["state"] in {"pending", "ready"}
+            and (not step["approval_required"] or step["state"] == "ready")
+        ), None)
+        if matching:
+            available.append({
+                "task_id": task["task_id"],
+                "goal": task["goal"],
+                "step_id": matching["step_id"],
+                "title": matching["title"],
+                "capability": matching["capability"],
+            })
+    return {"success": True, "tasks": available}
+
+
 @router.get("/tasks/{task_id}")
 def get_agent_task(task_id: str, authorization: str | None = Header(default=None)):
     _authorize(authorization)
@@ -150,7 +177,6 @@ def complete_device_pairing(request: DevicePairCompleteRequest):
 def list_paired_devices(authorization: str | None = Header(default=None)):
     _authorize(authorization)
     return {"success": True, "devices": devices.list_devices()}
-
 
 
 @router.delete("/devices/me")
@@ -209,4 +235,3 @@ def record_agent_step_result(
         request.error,
     )
     return {"success": True, "task": task}
-
