@@ -407,3 +407,69 @@ def test_phone_can_request_supported_windows_volume_and_timer_actions(monkeypatc
             },
         )
         assert response.status_code == 200
+
+
+
+def test_phone_windows_shutdown_requires_desktop_confirmation(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "windows-power-approval.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+
+    def pair(platform, label, capabilities):
+        pairing = client.post("/agent/devices/pairing", headers=admin, json={"platform": platform, "label": label}).json()["pairing"]
+        return client.post("/agent/devices/pair", json={"pairing_code": pairing["pairing_code"], "capabilities": capabilities}).json()["device"]
+
+    phone = pair("android", "VOSI phone", ["agent.task.request"])
+    desktop = pair("desktop", "VOSI PC", ["device.pc.shutdown", "device.pc.restart"])
+    phone_headers = {"Authorization": f"Bearer {phone['device_token']}"}
+    desktop_headers = {"Authorization": f"Bearer {desktop['device_token']}"}
+    response = client.post("/agent/tasks/request", headers=phone_headers, json={"goal": "Shut down my PC", "steps": [{
+        "step_id": "shutdown", "capability": "device.pc.shutdown", "target_platform": "desktop",
+        "title": "Shut down Windows after confirmation", "arguments": {},
+    }]})
+    assert response.status_code == 200
+    task = response.json()["task"]
+    assert task["state"] == "awaiting_approval"
+    assert client.get("/agent/tasks/approvals", headers=desktop_headers).json()["approvals"][0]["task_id"] == task["task_id"]
+    assert client.post(f"/agent/tasks/{task['task_id']}/steps/shutdown/approve-device", headers=phone_headers).status_code == 403
+    approved = client.post(f"/agent/tasks/{task['task_id']}/steps/shutdown/approve-device", headers=desktop_headers)
+    assert approved.status_code == 200
+    assert approved.json()["task"]["state"] == "ready"
+    claim = client.post(f"/agent/tasks/{task['task_id']}/claim", headers=desktop_headers)
+    assert claim.status_code == 200 and claim.json()["step"]["capability"] == "device.pc.shutdown"
+
+
+def test_desktop_can_reject_windows_power_request(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "windows-power-reject.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post("/agent/devices/pairing", headers=admin, json={"platform": "android", "label": "Phone"}).json()["pairing"]
+    phone = client.post("/agent/devices/pair", json={"pairing_code": pairing["pairing_code"], "capabilities": ["agent.task.request"]}).json()["device"]
+    dp = client.post("/agent/devices/pairing", headers=admin, json={"platform": "desktop", "label": "PC"}).json()["pairing"]
+    desktop = client.post("/agent/devices/pair", json={"pairing_code": dp["pairing_code"], "capabilities": ["device.pc.shutdown"]}).json()["device"]
+    response = client.post("/agent/tasks/request", headers={"Authorization": f"Bearer {phone['device_token']}"}, json={"goal": "Shutdown", "steps": [{
+        "step_id": "shutdown", "capability": "device.pc.shutdown", "target_platform": "desktop", "title": "Shutdown PC", "arguments": {},
+    }]})
+    task_id = response.json()["task"]["task_id"]
+    rejected = client.post(f"/agent/tasks/{task_id}/steps/shutdown/reject-device", headers={"Authorization": f"Bearer {desktop['device_token']}"})
+    assert rejected.status_code == 200 and rejected.json()["task"]["state"] == "cancelled"
+
+
+def test_phone_cannot_request_other_high_risk_capabilities(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "high-risk-blocked.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    pairing = client.post("/agent/devices/pairing", headers={"Authorization": "Bearer admin-secret"}, json={"platform": "android", "label": "Phone"}).json()["pairing"]
+    phone = client.post("/agent/devices/pair", json={"pairing_code": pairing["pairing_code"], "capabilities": ["agent.task.request"]}).json()["device"]
+    response = client.post("/agent/tasks/request", headers={"Authorization": f"Bearer {phone['device_token']}"}, json={"goal": "Send email", "steps": [{
+        "step_id": "email", "capability": "email.send", "target_platform": "desktop", "title": "Send email", "arguments": {},
+    }]})
+    assert response.status_code == 403
