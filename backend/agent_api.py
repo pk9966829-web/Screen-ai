@@ -72,6 +72,12 @@ class DeviceStepResultRequest(BaseModel):
     error: str | None = Field(default=None, max_length=2000)
 
 
+class DeviceTaskRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=2000)
+    steps: list[dict[str, Any]] = Field(min_length=1, max_length=10)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+
 @router.get("/capabilities")
 def get_agent_capabilities(authorization: str | None = Header(default=None)):
     _authorize(authorization)
@@ -135,6 +141,32 @@ def list_available_device_tasks(authorization: str | None = Header(default=None)
                 "capability": matching["capability"],
             })
     return {"success": True, "tasks": available}
+
+
+@router.post("/tasks/request")
+def request_agent_task(
+    request: DeviceTaskRequest,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    if "agent.task.request" not in device["capabilities"]:
+        raise HTTPException(status_code=403, detail="This paired device is not allowed to request VOSI tasks.")
+    # Device-originated requests may contain only low-risk capabilities. Approval-gated
+    # external actions stay unavailable through this convenience route.
+    for step in request.steps:
+        capability = step.get("capability") if isinstance(step, dict) else None
+        metadata = runtime.list_capabilities()
+        details = next((item for item in metadata if item["name"] == capability), None)
+        if not details or details["risk"] != "low" or details["requires_approval"]:
+            raise HTTPException(status_code=403, detail="Phone requests are limited to low-risk, non-approval capabilities.")
+    task = _runtime_call(
+        runtime.create_task,
+        goal=request.goal,
+        steps=request.steps,
+        origin_device_id=device["device_id"],
+        idempotency_key=request.idempotency_key,
+    )
+    return {"success": True, "task": task}
 
 
 @router.get("/tasks/{task_id}")
