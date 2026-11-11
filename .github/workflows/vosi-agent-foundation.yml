@@ -24,4 +24,4 @@ jobs:
           pip install -r backend/requirements.txt pytest httpx
       - name: Test VOSI agent runtime
         working-directory: backend
-        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_companion.py -q
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_companion.py -q
