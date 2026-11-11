@@ -158,10 +158,13 @@ def request_agent_task(
         target_platform = step.get("target_platform") if isinstance(step, dict) else None
         metadata = runtime.list_capabilities()
         details = next((item for item in metadata if item["name"] == capability), None)
-        if target_platform not in {"desktop", "browser"}:
-            raise HTTPException(status_code=403, detail="Phone-originated tasks can target only paired desktop or browser devices.")
-        if capability not in {"device.alarm.create", "browser.search_products"}:
-            raise HTTPException(status_code=403, detail="This phone command is not supported by an installed device executor yet.")
+        supported_targets = {
+            "browser": {"browser.search_products"},
+            "desktop": {"device.alarm.create", "device.volume.action", "device.timer.create"},
+            "android": {"device.alarm.create", "device.volume.set"},
+        }
+        if capability not in supported_targets.get(target_platform, set()):
+            raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
         if not details or details["risk"] != "low" or details["requires_approval"]:
             raise HTTPException(status_code=403, detail="Phone requests are limited to low-risk, non-approval capabilities.")
     task = _runtime_call(
@@ -172,6 +175,32 @@ def request_agent_task(
         idempotency_key=request.idempotency_key,
     )
     return {"success": True, "task": task}
+
+
+@router.get("/tasks/updates")
+def get_origin_device_task_updates(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    tasks = runtime.list_tasks(100)
+    updates = []
+    for task in tasks:
+        if task["origin_device_id"] != device["device_id"]:
+            continue
+        updates.append({
+            "task_id": task["task_id"],
+            "goal": task["goal"],
+            "state": task["state"],
+            "updated_at": task["updated_at"],
+            "error": task["error"],
+            "steps": [{
+                "step_id": step["step_id"],
+                "title": step["title"],
+                "capability": step["capability"],
+                "state": step["state"],
+                "receipt": step["receipt"],
+                "error": step["error"],
+            } for step in task["steps"]],
+        })
+    return {"success": True, "updates": updates}
 
 
 @router.get("/tasks/{task_id}")
