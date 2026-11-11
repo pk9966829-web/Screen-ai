@@ -20,7 +20,7 @@ The desktop exchanges the one-time code directly with `POST /agent/devices/pair`
 
 The Windows client sends a heartbeat every minute and polls the paired-device task queue every 15 seconds while VOSI is running. The first supported desktop task is `device.alarm.create`. Its task arguments must include integer `hour` (0–23) and optional integer `minute` (0–59). VOSI schedules the alarm with Windows Task Scheduler and sends an execution receipt to the backend.
 
-This is an initial secure pairing and task-execution slice, not full Windows control. Volume percentage, Bluetooth/Wi-Fi toggles, arbitrary application control, shutdown/restart, and general-purpose desktop automation are not exposed through this task adapter yet. Existing direct VOSI desktop commands are separate from the agent queue.
+This is an initial secure pairing and task-execution slice, not full Windows control. Volume percentage, direct Bluetooth/Wi-Fi toggling, arbitrary application control, and general-purpose desktop automation are not exposed through this task adapter. Windows Settings shortcuts and confirmation-gated shutdown/restart are documented below.
 
 ## Disconnect
 
@@ -37,7 +37,7 @@ After pairing the Android phone, its Companion screen exposes a small command fi
 - `set an alarm for 5 PM on my PC` — routes a low-risk alarm task to the paired Windows desktop.
 - `search body spray under 1000 on Flipkart` — routes a read-only product search to the paired Chrome extension.
 
-The phone submits these through `POST /agent/tasks/request` with its own device credential. The server permits only low-risk, non-approval capabilities and only desktop/browser targets. It does not give the phone the administrator token. High-risk calls, WhatsApp replies, email sends, and arbitrary device commands are rejected by this route.
+The phone submits these through `POST /agent/tasks/request` with its own device credential. The server permits the explicitly supported low-risk capabilities and the two narrowly allow-listed Windows power actions, which remain approval-gated on the paired PC. It does not give the phone the administrator token. Other high-risk calls, WhatsApp replies, email sends, and arbitrary device commands are rejected by this route.
 
 This is deliberately a first command set. Natural-language task planning, result notifications back to the phone, and broader desktop/Android actions are subsequent work.
 
