@@ -378,9 +378,10 @@ class MainActivity : Activity() {
         }
 
         val steps = JSONArray()
+        val normalized = query.lowercase()
         val goal: String
         val alarmMatch = Regex(
-            """(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:on|in)\s+(?:my\s+)?pc)?""",
+            """(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?""",
             RegexOption.IGNORE_CASE
         ).find(query)
 
@@ -394,38 +395,107 @@ class MainActivity : Activity() {
                 deviceStatus.text = "Use a valid alarm time, for example 5 PM."
                 return
             }
-            goal = "Set a Windows alarm for $query"
+            val target = if (normalized.contains("phone") || normalized.contains("mobile")) "android" else "desktop"
+            goal = "Set a VOSI alarm for $query"
             steps.put(
                 JSONObject()
-                    .put("step_id", "set-desktop-alarm")
+                    .put("step_id", "set-device-alarm")
                     .put("capability", "device.alarm.create")
-                    .put("target_platform", "desktop")
-                    .put("title", "Set an alarm on the paired Windows PC")
+                    .put("target_platform", target)
+                    .put("title", "Set an alarm on the paired $target device")
                     .put("arguments", JSONObject().put("hour", hour).put("minute", minute))
             )
         } else {
+            val volumePercent = Regex(
+                """(?:set|change)\s+(?:my\s+)?(?:phone|mobile)\s+volume\s+(?:to\s+)?(\d{1,3})\s*%?""",
+                RegexOption.IGNORE_CASE
+            ).find(query)
+            val desktopVolume = Regex(
+                """(?:set\s+(?:my\s+)?pc\s+volume\s+to\s+)?(?:volume\s+)?(up|down|mute|unmute)(?:\s+on\s+(?:my\s+)?pc)?""",
+                RegexOption.IGNORE_CASE
+            ).find(query)
+            val timerMatch = Regex(
+                """(?:set|start)\s+(?:a\s+)?timer\s+(?:for\s+)?(\d{1,5})\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)(?:\s+on\s+(?:my\s+)?pc)?""",
+                RegexOption.IGNORE_CASE
+            ).find(query)
             val searchMatch = Regex(
                 """^(?:search|find)\s+(.+?)\s+on\s+flipkart\s*$""",
                 RegexOption.IGNORE_CASE
             ).find(query)
-            if (searchMatch == null) {
-                deviceStatus.text = "For now, try: “set an alarm for 5 PM on my PC” or “search body spray under 1000 on Flipkart”."
-                return
+
+            when {
+                volumePercent != null -> {
+                    val percent = volumePercent.groupValues[1].toIntOrNull() ?: -1
+                    if (percent !in 0..100) {
+                        deviceStatus.text = "Phone volume must be between 0% and 100%."
+                        return
+                    }
+                    goal = "Set phone volume to $percent percent"
+                    steps.put(
+                        JSONObject()
+                            .put("step_id", "set-phone-volume")
+                            .put("capability", "device.volume.set")
+                            .put("target_platform", "android")
+                            .put("title", "Set this phone's media volume")
+                            .put("arguments", JSONObject().put("volume", percent))
+                    )
+                }
+                desktopVolume != null -> {
+                    val action = desktopVolume.groupValues[1].lowercase()
+                    goal = "Adjust Windows PC volume: $action"
+                    steps.put(
+                        JSONObject()
+                            .put("step_id", "adjust-pc-volume")
+                            .put("capability", "device.volume.action")
+                            .put("target_platform", "desktop")
+                            .put("title", "Adjust Windows PC volume")
+                            .put("arguments", JSONObject().put("action", action))
+                    )
+                }
+                timerMatch != null -> {
+                    val amount = timerMatch.groupValues[1].toLongOrNull() ?: -1L
+                    val unit = timerMatch.groupValues[2].lowercase()
+                    val multiplier = when {
+                        unit.startsWith("hour") || unit.startsWith("hr") -> 3600L
+                        unit.startsWith("min") -> 60L
+                        else -> 1L
+                    }
+                    val seconds = amount * multiplier
+                    if (amount <= 0 || seconds !in 1..86400) {
+                        deviceStatus.text = "Choose a PC timer between 1 second and 24 hours."
+                        return
+                    }
+                    goal = "Start a Windows timer for $query"
+                    steps.put(
+                        JSONObject()
+                            .put("step_id", "start-pc-timer")
+                            .put("capability", "device.timer.create")
+                            .put("target_platform", "desktop")
+                            .put("title", "Start a timer on the Windows PC")
+                            .put("arguments", JSONObject().put("seconds", seconds))
+                    )
+                }
+                searchMatch != null -> {
+                    val productQuery = searchMatch.groupValues[1].trim().take(200)
+                    if (productQuery.isBlank()) {
+                        deviceStatus.text = "Tell VOSI what product to search for."
+                        return
+                    }
+                    goal = "Search Flipkart for $productQuery"
+                    steps.put(
+                        JSONObject()
+                            .put("step_id", "search-flipkart-products")
+                            .put("capability", "browser.search_products")
+                            .put("target_platform", "browser")
+                            .put("title", "Search Flipkart product listings")
+                            .put("arguments", JSONObject().put("query", productQuery))
+                    )
+                }
+                else -> {
+                    deviceStatus.text = "Try: alarm for 5 PM on my PC/phone, set phone volume to 70%, mute PC, volume up, timer for 20 minutes on PC, or search body spray on Flipkart."
+                    return
+                }
             }
-            val productQuery = searchMatch.groupValues[1].trim().take(200)
-            if (productQuery.isBlank()) {
-                deviceStatus.text = "Tell VOSI what product to search for."
-                return
-            }
-            goal = "Search Flipkart for $productQuery"
-            steps.put(
-                JSONObject()
-                    .put("step_id", "search-flipkart-products")
-                    .put("capability", "browser.search_products")
-                    .put("target_platform", "browser")
-                    .put("title", "Search Flipkart product listings")
-                    .put("arguments", JSONObject().put("query", productQuery))
-            )
         }
 
         sendDeviceCommandButton.isEnabled = false
@@ -452,7 +522,7 @@ class MainActivity : Activity() {
                 val task = response.getJSONObject("task")
                 runOnUiThread {
                     deviceCommandInput.text.clear()
-                    deviceStatus.text = "Command queued for VOSI • Task " + task.optString("task_id").take(8) + ". The paired PC or Chrome browser will execute it and report its receipt."
+                    deviceStatus.text = "Command queued for VOSI • Task " + task.optString("task_id").take(8) + ". Waiting for the target device to execute and confirm it."
                     sendDeviceCommandButton.isEnabled = true
                 }
             } catch (error: Exception) {
