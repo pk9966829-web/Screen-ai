@@ -369,3 +369,41 @@ def test_phone_task_updates_are_scoped_to_the_requesting_device(monkeypatch, tmp
     )
     assert updates_b.status_code == 200
     assert updates_b.json()["updates"] == []
+
+
+def test_phone_can_request_supported_windows_volume_and_timer_actions(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "phone-windows-controls.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    pairing = client.post(
+        "/agent/devices/pairing",
+        headers={"Authorization": "Bearer admin-secret"},
+        json={"platform": "android", "label": "VOSI phone"},
+    ).json()["pairing"]
+    phone = client.post(
+        "/agent/devices/pair",
+        json={"pairing_code": pairing["pairing_code"], "capabilities": ["agent.task.request"]},
+    ).json()["device"]
+    headers = {"Authorization": f"Bearer {phone['device_token']}"}
+
+    for capability, arguments in [
+        ("device.volume.action", {"action": "mute"}),
+        ("device.timer.create", {"seconds": 1200}),
+    ]:
+        response = client.post(
+            "/agent/tasks/request",
+            headers=headers,
+            json={
+                "goal": f"Run {capability}",
+                "steps": [{
+                    "step_id": capability.replace(".", "-"),
+                    "capability": capability,
+                    "target_platform": "desktop",
+                    "title": f"Run {capability}",
+                    "arguments": arguments,
+                }],
+            },
+        )
+        assert response.status_code == 200
