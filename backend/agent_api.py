@@ -155,8 +155,11 @@ def request_agent_task(
     # external actions stay unavailable through this convenience route.
     for step in request.steps:
         capability = step.get("capability") if isinstance(step, dict) else None
+        target_platform = step.get("target_platform") if isinstance(step, dict) else None
         metadata = runtime.list_capabilities()
         details = next((item for item in metadata if item["name"] == capability), None)
+        if target_platform not in {"desktop", "browser"}:
+            raise HTTPException(status_code=403, detail="Phone-originated tasks can target only paired desktop or browser devices.")
         if not details or details["risk"] != "low" or details["requires_approval"]:
             raise HTTPException(status_code=403, detail="Phone requests are limited to low-risk, non-approval capabilities.")
     task = _runtime_call(
