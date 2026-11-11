@@ -160,3 +160,93 @@ def test_device_queue_does_not_skip_an_earlier_step_for_another_platform(monkeyp
     claim = client.post(f"/agent/tasks/{task['task_id']}/claim", headers=browser_headers)
     assert claim.status_code == 200
     assert claim.json()["step"] is None
+
+
+def test_paired_phone_can_request_only_low_risk_device_tasks(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "phone-task-request.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post(
+        "/agent/devices/pairing",
+        headers=admin,
+        json={"platform": "android", "label": "VOSI phone"},
+    ).json()["pairing"]
+    phone = client.post(
+        "/agent/devices/pair",
+        json={
+            "pairing_code": pairing["pairing_code"],
+            "capabilities": ["agent.task.request"],
+        },
+    ).json()["device"]
+    phone_headers = {"Authorization": f"Bearer {phone['device_token']}"}
+
+    accepted = client.post(
+        "/agent/tasks/request",
+        headers=phone_headers,
+        json={
+            "goal": "Search Flipkart for body spray",
+            "idempotency_key": "phone-request-001",
+            "steps": [{
+                "step_id": "search",
+                "capability": "browser.search_products",
+                "target_platform": "browser",
+                "title": "Search Flipkart",
+                "arguments": {"query": "body spray under 1000"},
+            }],
+        },
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["task"]["origin_device_id"] == phone["device_id"]
+
+    blocked = client.post(
+        "/agent/tasks/request",
+        headers=phone_headers,
+        json={
+            "goal": "Call a contact",
+            "steps": [{
+                "step_id": "call",
+                "capability": "phone.call",
+                "target_platform": "android",
+                "title": "Call contact",
+                "arguments": {"number": "+10000000000"},
+            }],
+        },
+    )
+    assert blocked.status_code == 403
+
+
+def test_phone_without_task_request_capability_cannot_create_tasks(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "phone-task-request-denied.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post(
+        "/agent/devices/pairing",
+        headers=admin,
+        json={"platform": "android", "label": "Limited phone"},
+    ).json()["pairing"]
+    phone = client.post(
+        "/agent/devices/pair",
+        json={"pairing_code": pairing["pairing_code"], "capabilities": ["phone.contacts.read"]},
+    ).json()["device"]
+
+    response = client.post(
+        "/agent/tasks/request",
+        headers={"Authorization": f"Bearer {phone['device_token']}"},
+        json={
+            "goal": "Search Flipkart",
+            "steps": [{
+                "step_id": "search",
+                "capability": "browser.search_products",
+                "target_platform": "browser",
+                "title": "Search",
+                "arguments": {"query": "headphones"},
+            }],
+        },
+    )
+    assert response.status_code == 403
