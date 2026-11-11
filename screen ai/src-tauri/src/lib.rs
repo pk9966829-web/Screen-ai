@@ -136,8 +136,19 @@ fn control_volume(action: String) -> Result<String,String> {
         } else {
             format!("$w=New-Object -ComObject WScript.Shell; 1..5 | ForEach-Object {{ $w.SendKeys([char]{key}); Start-Sleep -Milliseconds 80 }}")
         };
-        Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command",&script]).spawn().map_err(|e|format!("Could not adjust volume: {e}"))?;
-        return Ok(match action.as_str() { "up"=>"Increasing volume.", "down"=>"Decreasing volume.", "mute"=>"Toggling mute.", _=>"Sending the unmute command." }.into());
+        let output = Command::new("powershell.exe")
+            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
+            .output()
+            .map_err(|error| format!("Could not adjust volume: {error}"))?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+        return Ok(match action.as_str() {
+            "up" => "Windows volume-up key action completed.",
+            "down" => "Windows volume-down key action completed.",
+            "mute" => "Windows mute key action completed.",
+            _ => "Windows unmute key action completed.",
+        }.into());
     }
     #[cfg(not(target_os = "windows"))] { let _=action; Err("Volume controls are supported in the Windows VOSI app.".into()) }
 }
@@ -171,8 +182,10 @@ fn set_timer(seconds: u64) -> Result<String,String> {
     }
     #[cfg(target_os = "windows")]
     {
-        use chrono::{Duration, Local};
-        let due = Local::now() + Duration::seconds(seconds as i64);
+        use chrono::{Duration, Local, Timelike};
+        let target = Local::now() + Duration::seconds(seconds as i64);
+        // schtasks accepts minute precision; round upward so a timer never fires early.
+        let due = target + Duration::seconds((60 - target.second() as i64) % 60);
         let date = due.format("%m/%d/%Y").to_string();
         let time = due.format("%H:%M").to_string();
         let task_name = format!("VOSI_Timer_{}", due.format("%Y%m%d_%H%M%S"));
