@@ -40,3 +40,31 @@ After pairing the Android phone, its Companion screen exposes a small command fi
 The phone submits these through `POST /agent/tasks/request` with its own device credential. The server permits only low-risk, non-approval capabilities and only desktop/browser targets. It does not give the phone the administrator token. High-risk calls, WhatsApp replies, email sends, and arbitrary device commands are rejected by this route.
 
 This is deliberately a first command set. Natural-language task planning, result notifications back to the phone, and broader desktop/Android actions are subsequent work.
+
+## Phone task execution and completion updates
+
+The paired Android Companion now polls its authenticated task queue while the app is open (every 20 seconds). Its first local task adapters are:
+
+- `device.alarm.create`: schedules a phone alarm through Android AlarmManager and posts an alarm notification when it fires
+- `device.volume.set`: adjusts Android media volume to a requested percentage and checks the applied stream volume before sending a success receipt
+
+The phone also reads `GET /agent/tasks/updates`. That endpoint returns only tasks created by the authenticated phone's own device ID, with step states and execution receipts. Completed/failed tasks generate an Android notification when notification permission is enabled. This polling is foreground-only; it is not a promise of background or force-stopped delivery.
+
+## Additional Windows task adapters
+
+A paired Windows desktop now supports these low-risk task queue actions:
+
+- `device.alarm.create`: schedule a one-time alarm with Windows Task Scheduler
+- `device.volume.action`: volume up, down, mute, and unmute using Windows media keys
+- `device.timer.create`: start a one-time timer (up to 24 hours)
+
+Newly paired Windows devices register these capabilities. If a PC was paired before this update, disconnect and pair it again so the server grants the additional capability list.
+
+The Android Companion accepts these initial commands:
+- `set an alarm for 5 PM on my PC` or `set an alarm for 5 PM on my phone`
+- `set phone volume to 70%`
+- `mute PC`, `volume up`, `volume down`, or `unmute PC`
+- `start a timer for 20 minutes on my PC`
+- `search body spray under 1000 on Flipkart`
+
+The phone-originated task endpoint validates an explicit capability/target allow-list. It rejects unsupported commands rather than creating tasks that no paired executor can perform.
