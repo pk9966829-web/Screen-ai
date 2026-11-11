@@ -44,7 +44,7 @@ async function reportAgentBrowserResults(message, sender) {
   }
   const device = await getPairedDevice();
   if (!device?.deviceToken) throw new Error("Chrome is not paired with VOSI.");
-  const products = Array.isArray(message.products) ? message.products.slice(0, 20) : [];
+  const products = Array.isArray(message.products) ? message.products.slice(0, 8) : [];
   const success = products.length > 0;
   const response = await fetch(
     API + "/agent/tasks/" + encodeURIComponent(message.taskId) +
