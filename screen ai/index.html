@@ -2794,7 +2794,7 @@
                     if (promptedApprovals.has(key)) continue;
                     promptedApprovals.add(key);
                     const action = approval.capability === "device.pc.shutdown" ? "shut down" : "restart";
-                    const accepted = window.confirm("VOSI request from your phone: " + action + " this Windows PC?\\n\\nSave your work first. Windows will begin after confirmation.");
+                    const accepted = window.confirm("VOSI request from your phone: " + action + " this Windows PC?\n\nSave your work first. Windows will begin after confirmation.");
                     const decision = accepted ? "approve-device" : "reject-device";
                     try {
                         const result = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(approval.task_id) +
