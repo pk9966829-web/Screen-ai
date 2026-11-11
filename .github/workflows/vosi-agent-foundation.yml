@@ -1,0 +1,26 @@
+name: VOSI autonomous agent foundation
+
+on:
+  push:
+    branches:
+      - feature/vosi-autonomous-companion-foundation
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backend-agent-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest httpx
+      - name: Test VOSI agent runtime
+        working-directory: backend
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_companion.py -q
