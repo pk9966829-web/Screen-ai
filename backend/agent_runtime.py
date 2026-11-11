@@ -297,11 +297,11 @@ class AgentRuntime:
                 return None
             row = db.execute(
                 """SELECT * FROM agent_steps
-                   WHERE task_id = ? AND state IN ('pending', 'ready')
+                   WHERE task_id = ? AND state NOT IN ('completed', 'failed', 'skipped')
                    ORDER BY position LIMIT 1""",
                 (task_id,),
             ).fetchone()
-            if not row:
+            if not row or row["state"] not in {"pending", "ready"}:
                 db.commit()
                 return None
             if row["approval_required"] and row["state"] != "ready":
