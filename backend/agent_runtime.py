@@ -348,15 +348,29 @@ class AgentRuntime:
                    WHERE task_id = ? AND step_id = ?""",
                 (state, _now(), json.dumps(receipt or {}, ensure_ascii=False), None if completed else (error or "Execution was not verified."), task_id, step_id),
             )
+            task_row = db.execute("SELECT state FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
+            if not task_row:
+                raise AgentRuntimeError("Task not found.")
+            if task_row["state"] == "cancelled":
+                raise AgentRuntimeError("Cancelled tasks cannot accept execution results.")
             remaining = db.execute(
                 "SELECT COUNT(*) AS count FROM agent_steps WHERE task_id = ? AND state IN ('pending', 'ready', 'awaiting_approval', 'running')",
+                (task_id,),
+            ).fetchone()["count"]
+            waiting_approval = db.execute(
+                "SELECT COUNT(*) AS count FROM agent_steps WHERE task_id = ? AND state = 'awaiting_approval'",
                 (task_id,),
             ).fetchone()["count"]
             failed = db.execute(
                 "SELECT COUNT(*) AS count FROM agent_steps WHERE task_id = ? AND state = 'failed'",
                 (task_id,),
             ).fetchone()["count"]
-            task_state = "failed" if failed else ("completed" if remaining == 0 else "ready")
+            task_state = (
+                "failed" if failed else
+                "awaiting_approval" if waiting_approval else
+                "completed" if remaining == 0 else
+                "ready"
+            )
             db.execute("UPDATE agent_tasks SET state = ?, updated_at = ? WHERE task_id = ?", (task_state, _now(), task_id))
             db.commit()
         return self.get_task(task_id)
