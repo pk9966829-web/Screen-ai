@@ -2724,6 +2724,7 @@
     const pairButton = document.getElementById("desktop-pair-button");
     const disconnectButton = document.getElementById("desktop-disconnect-button");
     let polling = false;
+    const promptedApprovals = new Set();
 
     function setDeviceStatus(message) {
         if (status) status.textContent = message;
@@ -2783,8 +2784,33 @@
             }
             if (!response.ok) return;
             const data = await response.json();
+            const approvalResponse = await fetch(DEVICE_API + "/agent/tasks/approvals", {
+                headers: { "Authorization": "Bearer " + credential.device_token }, cache: "no-store"
+            });
+            if (approvalResponse.ok) {
+                const approvalData = await approvalResponse.json();
+                for (const approval of (Array.isArray(approvalData.approvals) ? approvalData.approvals : [])) {
+                    const key = approval.task_id + ":" + approval.step_id;
+                    if (promptedApprovals.has(key)) continue;
+                    promptedApprovals.add(key);
+                    const action = approval.capability === "device.pc.shutdown" ? "shut down" : "restart";
+                    const accepted = window.confirm("VOSI request from your phone: " + action + " this Windows PC?\\n\\nSave your work first. Windows will begin after confirmation.");
+                    const decision = accepted ? "approve-device" : "reject-device";
+                    try {
+                        const result = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(approval.task_id) +
+                            "/steps/" + encodeURIComponent(approval.step_id) + "/" + decision, {
+                                method: "POST", headers: { "Authorization": "Bearer " + credential.device_token }
+                            });
+                        if (!result.ok) throw new Error("Could not record the Windows confirmation.");
+                        setDeviceStatus(accepted ? "Windows power action approved on this PC." : "Windows power action declined.");
+                    } catch (error) {
+                        promptedApprovals.delete(key);
+                        setDeviceStatus(String(error?.message || error));
+                    }
+                }
+            }
             for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
-                if (!["device.alarm.create", "device.volume.action", "device.timer.create"].includes(task.capability)) continue;
+                if (!["device.alarm.create", "device.volume.action", "device.timer.create", "device.bluetooth.settings.open", "device.wifi.settings.open", "device.pc.shutdown", "device.pc.restart"].includes(task.capability)) continue;
                 const claimResponse = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
                     method: "POST",
                     headers: { "Authorization": "Bearer " + credential.device_token }
@@ -2792,7 +2818,7 @@
                 if (!claimResponse.ok) continue;
                 const claimed = await claimResponse.json();
                 const step = claimed.step;
-                if (!step || !["device.alarm.create", "device.volume.action", "device.timer.create"].includes(step.capability)) continue;
+                if (!step || !["device.alarm.create", "device.volume.action", "device.timer.create", "device.bluetooth.settings.open", "device.wifi.settings.open", "device.pc.shutdown", "device.pc.restart"].includes(step.capability)) continue;
                 try {
                     let message;
                     if (step.capability === "device.alarm.create") {
@@ -2806,10 +2832,20 @@
                         const action = String(step.arguments?.action || "");
                         if (!["up", "down", "mute", "unmute"].includes(action)) throw new Error("Unsupported Windows volume action.");
                         message = await invoke("control_volume", { action });
-                    } else {
+                    } else if (step.capability === "device.timer.create") {
                         const seconds = Number(step.arguments?.seconds);
                         if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86400) throw new Error("Timer must be between 1 second and 24 hours.");
                         message = await invoke("set_timer", { seconds });
+                    } else if (step.capability === "device.bluetooth.settings.open") {
+                        await invoke("open_device_target", { target: "bluetooth-settings" });
+                        message = "Opened Windows Bluetooth settings. Change the switch there; VOSI has not toggled Bluetooth.";
+                    } else if (step.capability === "device.wifi.settings.open") {
+                        await invoke("open_device_target", { target: "wifi-settings" });
+                        message = "Opened Windows Wi-Fi settings. Change the switch there; VOSI has not toggled Wi-Fi.";
+                    } else if (step.capability === "device.pc.shutdown") {
+                        message = await invoke("shutdown_pc");
+                    } else if (step.capability === "device.pc.restart") {
+                        message = await invoke("restart_pc");
                     }
                     await postStepResult(credential, task.task_id, step.step_id, {
                         success: true,
@@ -2848,7 +2884,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     pairing_code: pairingCode,
-                    capabilities: ["device.alarm.create", "device.volume.action", "device.timer.create"]
+                    capabilities: ["device.alarm.create", "device.volume.action", "device.timer.create", "device.bluetooth.settings.open", "device.wifi.settings.open", "device.pc.shutdown", "device.pc.restart"]
                 })
             });
             const data = await response.json();
