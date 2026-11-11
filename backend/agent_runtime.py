@@ -55,6 +55,14 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": True,
         "description": "Look up a contact after Android contacts permission is granted.",
     },
+    "agent.task.request": {
+        "platforms": ["android"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Request a low-risk task on another paired VOSI device.",
+    },
     "phone.call": {
         "platforms": ["android"],
         "risk": "high",
