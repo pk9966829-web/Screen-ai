@@ -103,6 +103,14 @@ Configure `VOSI_AGENT_TOKEN` in the backend environment before using admin endpo
 
 Pairing-code exchange is intentionally a bootstrap endpoint and does not use the admin token; possession of the high-entropy, five-minute, single-use code is required. Device credentials are per-device and revocable. Pairing does not grant Android permissions or install desktop/browser adapters: it only registers the capabilities the bridge reports. Actual clients must protect their device token using platform secure storage and send it only over a trusted local connection or HTTPS. Do not expose this API directly to the public internet without TLS, rate limiting, and a stronger user/account authentication layer.
 
+## Chrome browser bridge pairing (implemented first client)
+
+The Chrome Manifest V3 extension in `screen ai/chrome-extension` now includes a pairing popup. An administrator creates a browser pairing code through the authenticated `POST /agent/devices/pairing` endpoint; the extension exchanges that five-minute, single-use code through `POST /agent/devices/pair`.
+
+The per-device credential is stored in `chrome.storage.local` (not Chrome Sync), used by the extension service worker for minute heartbeats, and revoked through `DELETE /agent/devices/me` when the user disconnects. The browser command, acknowledgement, and product-result endpoints now require a valid credential for a device registered as platform `browser`. Content scripts forward extracted results to the service worker; the credential is not exposed to Flipkart page scripts.
+
+The extension currently supports the existing read-only Flipkart search workflow. It does not yet poll the VOSI agent task queue or execute arbitrary browser actions. That is a separate adapter milestone; the pairing protocol and browser bridge authentication are in place first.
+
 ## Implementation sequence
 
 ### Phase 0 — foundation and safety
