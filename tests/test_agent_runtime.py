@@ -29,8 +29,8 @@ def test_low_risk_task_can_be_claimed_only_with_granted_capability(tmp_path):
     task = agent.create_task("Find a body spray", [step()])
     assert task["state"] == "planned"
 
-    assert agent.claim_next_step(task["task_id"], "chrome-1", set()) is None
-    claimed = agent.claim_next_step(task["task_id"], "chrome-1", {"browser.search_products"})
+    assert agent.claim_next_step(task["task_id"], "chrome-1", "browser", set()) is None
+    claimed = agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.search_products"})
     assert claimed["state"] == "running"
     assert claimed["claimed_by"] == "chrome-1"
 
@@ -43,11 +43,17 @@ def test_external_action_waits_for_explicit_approval(tmp_path):
     )
     assert task["state"] == "awaiting_approval"
     assert task["steps"][0]["state"] == "awaiting_approval"
-    assert agent.claim_next_step(task["task_id"], "phone-1", {"phone.call"}) is None
+    assert agent.claim_next_step(task["task_id"], "phone-1", "android", {"phone.call"}) is None
 
     approved = agent.approve_step(task["task_id"], "search")
     assert approved["state"] == "ready"
     assert approved["steps"][0]["approved_at"]
+
+
+def test_device_cannot_claim_a_capability_for_another_platform(tmp_path):
+    agent = runtime(tmp_path)
+    task = agent.create_task("Search", [step()])
+    assert agent.claim_next_step(task["task_id"], "android-1", "android", {"browser.search_products"}) is None
 
 
 def test_unknown_capability_and_wrong_platform_are_rejected(tmp_path):
@@ -61,7 +67,7 @@ def test_unknown_capability_and_wrong_platform_are_rejected(tmp_path):
 def test_step_is_not_completed_without_verified_receipt(tmp_path):
     agent = runtime(tmp_path)
     task = agent.create_task("Search", [step()])
-    agent.claim_next_step(task["task_id"], "chrome-1", {"browser.search_products"})
+    agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.search_products"})
 
     result = agent.record_step_result(
         task["task_id"], "search", "chrome-1",
@@ -74,7 +80,7 @@ def test_step_is_not_completed_without_verified_receipt(tmp_path):
 def test_only_claiming_device_can_submit_execution_receipt(tmp_path):
     agent = runtime(tmp_path)
     task = agent.create_task("Search", [step()])
-    agent.claim_next_step(task["task_id"], "chrome-1", {"browser.search_products"})
+    agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.search_products"})
 
     with pytest.raises(AgentRuntimeError, match="active execution claim"):
         agent.record_step_result(
@@ -103,7 +109,7 @@ def test_task_survives_runtime_restart(tmp_path):
 def test_verified_receipt_completes_task(tmp_path):
     agent = runtime(tmp_path)
     task = agent.create_task("Search", [step()])
-    agent.claim_next_step(task["task_id"], "chrome-1", {"browser.search_products"})
+    agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.search_products"})
     result = agent.record_step_result(
         task["task_id"], "search", "chrome-1",
         success=True, verified=True,
