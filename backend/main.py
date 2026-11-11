@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -28,7 +28,8 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from companion import router as companion_router
 app.include_router(companion_router)
-from agent_api import router as agent_router
+from agent_api import router as agent_router, devices as agent_devices
+from agent_runtime import AgentRuntimeError
 app.include_router(agent_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
@@ -506,19 +507,34 @@ def queue_browser_search(req: BrowserSearchRequest):
     browser_results.pop(req.request_id, None)
     return {"success": True, "message": "Waiting for the VOSI Chrome extension."}
 
+def _require_paired_browser(authorization: Optional[str]):
+    scheme, separator, token = (authorization or "").partition(" ")
+    if not separator or scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Pair this Chrome extension with VOSI first.")
+    try:
+        device = agent_devices.authenticate(token.strip())
+    except AgentRuntimeError as exc:
+        raise HTTPException(status_code=401, detail="Chrome device credential is invalid or revoked.") from exc
+    if device.get("platform") != "browser":
+        raise HTTPException(status_code=403, detail="This device is not registered as a browser.")
+    return device
+
 @app.get("/browser/command")
-def get_browser_command():
+def get_browser_command(authorization: Optional[str] = Header(default=None)):
+    _require_paired_browser(authorization)
     return {"success": True, "command": browser_pending_command}
 
 @app.post("/browser/ack/{request_id}")
-def acknowledge_browser_command(request_id: str):
+def acknowledge_browser_command(request_id: str, authorization: Optional[str] = Header(default=None)):
+    _require_paired_browser(authorization)
     global browser_pending_command
     if browser_pending_command and browser_pending_command.get("request_id") == request_id:
         browser_pending_command = None
     return {"success": True}
 
 @app.post("/browser/results")
-def receive_browser_results(req: BrowserResultsRequest):
+def receive_browser_results(req: BrowserResultsRequest, authorization: Optional[str] = Header(default=None)):
+    _require_paired_browser(authorization)
     if len(req.products) > 30:
         req.products = req.products[:30]
     browser_results[req.request_id] = {"products": req.products}
