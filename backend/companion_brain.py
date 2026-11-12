@@ -133,7 +133,7 @@ def _provider_candidates() -> list[dict[str, str]]:
             providers.append({"name": name, "api_key": key, "base_url": base_url, "model": model})
     # Preserve the project's existing provider configuration as the final fallback.
     key = os.getenv("OPENAI_API_KEY", "").strip()
-    if key:
+    if key and key.lower() not in {"your_openai_api_key_here", "replace_me", "changeme"}:
         providers.append({
             "name": "default",
             "api_key": key,
