@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
 
 from device_registry import DeviceRegistry
@@ -38,11 +38,6 @@ class LoginRequest(BaseModel):
 class EncryptedProfileRequest(BaseModel):
     expected_revision: int = Field(ge=0)
     encrypted_profile: dict[str, Any]
-
-    @classmethod
-    def __get_validators__(cls):
-        yield from super().__get_validators__()
-
 
 def _challenge_secret() -> str:
     secret = os.getenv("VOSI_IDENTITY_CHALLENGE_SECRET", "").strip()
@@ -95,8 +90,18 @@ def _raise_identity(exc: IdentityError):
 @router.post("/register")
 def register_account(request: RegisterRequest):
     try:
-        user, code = store.create_account(request.email, request.password, _challenge_secret())
-        _send_verification_email(user["email"], code)
+        challenge_secret = _challenge_secret()
+        if not all(os.getenv(key, "").strip() for key in (
+            "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD",
+            "VOSI_SMTP_FROM",
+        )):
+            raise HTTPException(status_code=503, detail="VOSI email delivery is not configured.")
+        user, code = store.create_account(request.email, request.password, challenge_secret)
+        try:
+            _send_verification_email(user["email"], code)
+        except HTTPException:
+            store.delete_unverified_account(user["email"])
+            raise
         return {"success": True, "account": user, "verification_required": True, "message": "Check your email for a six-digit verification code."}
     except IdentityError as exc:
         _raise_identity(exc)
@@ -140,7 +145,7 @@ def get_current_account(authorization: str | None = Header(default=None)):
 
 @router.post("/devices/link")
 def link_current_device(
-    device_id: str = __import__("fastapi").Query(min_length=16, max_length=64),
+    device_id: str = Query(min_length=16, max_length=64),
     authorization: str | None = Header(default=None),
     x_vosi_device_token: str | None = Header(default=None),
 ):
