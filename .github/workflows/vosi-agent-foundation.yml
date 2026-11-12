@@ -5,11 +5,13 @@ on:
     branches:
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
+      - feature/vosi-windows-voice-companion
   pull_request:
     branches:
       - main
       - feature/whatsapp-personal-android
       - feature/vosi-autonomous-companion-foundation
+      - feature/vosi-continuous-voice-companion
   workflow_dispatch:
 
 jobs:
