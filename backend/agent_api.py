@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -129,7 +130,7 @@ def list_available_device_tasks(authorization: str | None = Header(default=None)
     for task in runtime.list_tasks(100):
         if task["state"] in {"completed", "failed", "cancelled"}:
             continue
-        if task.get("scheduled_at") and task["scheduled_at"] > __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat():
+        if task.get("scheduled_at") and task["scheduled_at"] > datetime.now(timezone.utc).isoformat():
             continue
         # Only the first unfinished step is eligible. This preserves task ordering
         # and prevents a later browser step from jumping ahead of a phone/desktop step.
@@ -163,8 +164,9 @@ def request_agent_task(
     device = _authorize_device(authorization)
     if "agent.task.request" not in device["capabilities"]:
         raise HTTPException(status_code=403, detail="This paired device is not allowed to request VOSI tasks.")
-    # Device-originated requests may contain only low-risk capabilities. Approval-gated
-    # external actions stay unavailable through this convenience route.
+    # Device-originated requests are restricted to explicitly supported capabilities.
+    # The only external commerce action admitted here is the high-risk order submit step,
+    # which remains blocked until the origin device approves its exact checkout digest.
     for step in request.steps:
         capability = step.get("capability") if isinstance(step, dict) else None
         target_platform = step.get("target_platform") if isinstance(step, dict) else None
