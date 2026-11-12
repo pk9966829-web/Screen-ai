@@ -65,3 +65,58 @@ def test_task_plan_rejects_unsupported_capability(tmp_path):
         "target_platform": "desktop", "title": "Run arbitrary shell", "arguments": {},
     }]}
     assert brain._safe_task_plan(plan, "Do anything", runtime) is None
+
+
+def test_companion_answer_uses_system_policy_and_queues_validated_task(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from agent_runtime import AgentRuntime
+
+    monkeypatch.setattr(brain, "MEMORY_DB", tmp_path / "memory.sqlite3")
+    monkeypatch.setattr(brain, "_provider_candidates", lambda: [{
+        "name": "test", "api_key": "test-key",
+        "base_url": "https://example.invalid/v1", "model": "test-model",
+    }])
+
+    captured = {}
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            captured.update(kwargs)
+            payload = {
+                "answer": "I can search that for you.",
+                "memory_candidates": [],
+                "task_plan": {
+                    "goal": "Search body spray listings",
+                    "steps": [{
+                        "step_id": "search",
+                        "capability": "browser.search_products",
+                        "target_platform": "browser",
+                        "title": "Search public body spray listings",
+                        "arguments": {"query": "body spray"},
+                    }],
+                },
+            }
+            return SimpleNamespace(choices=[SimpleNamespace(
+                message=SimpleNamespace(content=json.dumps(payload))
+            )])
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    monkeypatch.setattr(brain, "OpenAI", FakeClient)
+    runtime = AgentRuntime(tmp_path / "agent.sqlite3")
+    result = brain.answer_companion(
+        "Search for body spray on Flipkart",
+        recent_interactions=[],
+        task_state={},
+        runtime=runtime,
+    )
+
+    assert result["success"] is True
+    assert result["task_plan"]["state"] == "planned"
+    assert "queued" in result["understanding"]
+    assert captured["messages"][0]["role"] == "system"
+    assert captured["messages"][1]["role"] == "user"
+    assert "Search for body spray on Flipkart" in captured["messages"][1]["content"]
