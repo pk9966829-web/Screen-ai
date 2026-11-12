@@ -139,9 +139,14 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "requires_approval": True, "reversible": False,
         "description": "Restart Windows only after explicit confirmation on the PC.",
     },
+    "commerce.order.place": {
+        "platforms": ["browser"], "risk": "high", "requires_permission": True,
+        "requires_approval": True, "reversible": False,
+        "description": "Submit a reviewed online order only after the originating user explicitly approves the exact checkout summary.",
+    },
 }
 
-TASK_STATES = {"planned", "awaiting_approval", "ready", "running", "completed", "failed", "cancelled"}
+TASK_STATES = {"scheduled", "planned", "awaiting_approval", "ready", "running", "completed", "failed", "cancelled"}
 STEP_STATES = {"pending", "awaiting_approval", "ready", "running", "completed", "failed", "skipped"}
 _ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,99}$")
 
@@ -172,6 +177,7 @@ class AgentRuntime:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     expires_at TEXT,
+                    scheduled_at TEXT,
                     error TEXT
                 )
                 """
@@ -200,6 +206,9 @@ class AgentRuntime:
                 )
                 """
             )
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(agent_tasks)").fetchall()}
+            if "scheduled_at" not in columns:
+                db.execute("ALTER TABLE agent_tasks ADD COLUMN scheduled_at TEXT")
             db.execute("CREATE INDEX IF NOT EXISTS idx_agent_steps_ready ON agent_steps(task_id, position, state)")
 
     def _connect(self):
@@ -220,6 +229,7 @@ class AgentRuntime:
         origin_device_id: str | None = None,
         idempotency_key: str | None = None,
         expires_at: str | None = None,
+        scheduled_at: str | None = None,
     ) -> dict[str, Any]:
         goal = str(goal or "").strip()
         if not goal or len(goal) > 2000:
@@ -265,7 +275,16 @@ class AgentRuntime:
 
         task_id = uuid.uuid4().hex
         now = _now()
-        initial_state = "awaiting_approval" if any(s["approval_required"] for s in normalized) else "planned"
+        if scheduled_at is not None:
+            try:
+                parsed_schedule = datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
+                if parsed_schedule.tzinfo is None:
+                    raise ValueError("timezone required")
+                scheduled_at = parsed_schedule.astimezone(timezone.utc).isoformat()
+            except (TypeError, ValueError) as exc:
+                raise AgentRuntimeError("scheduled_at must be an ISO-8601 timestamp with a timezone.") from exc
+        is_future = bool(scheduled_at and scheduled_at > now)
+        initial_state = "scheduled" if is_future else ("awaiting_approval" if any(s["approval_required"] for s in normalized) else "planned")
         with self._connect() as db:
             if idempotency_key:
                 existing = db.execute(
@@ -276,9 +295,9 @@ class AgentRuntime:
                     return self.get_task(existing["task_id"])
             db.execute(
                 """INSERT INTO agent_tasks
-                   (task_id, idempotency_key, goal, origin_device_id, state, created_at, updated_at, expires_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (task_id, idempotency_key, goal, origin_device_id, initial_state, now, now, expires_at),
+                   (task_id, idempotency_key, goal, origin_device_id, state, created_at, updated_at, expires_at, scheduled_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (task_id, idempotency_key, goal, origin_device_id, initial_state, now, now, expires_at, scheduled_at),
             )
             for step in normalized:
                 db.execute(
@@ -298,7 +317,7 @@ class AgentRuntime:
     def approve_step(self, task_id: str, step_id: str) -> dict[str, Any]:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            task = db.execute("SELECT state FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
+            task = db.execute("SELECT state, scheduled_at FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
             if not task:
                 raise AgentRuntimeError("Task not found.")
             step = db.execute(
@@ -309,6 +328,13 @@ class AgentRuntime:
                 raise AgentRuntimeError("Step not found.")
             if not step["approval_required"]:
                 raise AgentRuntimeError("This step does not require an approval override.")
+            earlier = db.execute(
+                "SELECT COUNT(*) AS count FROM agent_steps WHERE task_id = ? AND position < "
+                "(SELECT position FROM agent_steps WHERE task_id = ? AND step_id = ?) AND state != 'completed'",
+                (task_id, task_id, step_id),
+            ).fetchone()["count"]
+            if earlier:
+                raise AgentRuntimeError("This action cannot be approved until all earlier task steps are completed.")
             if step["state"] != "awaiting_approval":
                 raise AgentRuntimeError("This step is not awaiting approval.")
             db.execute(
@@ -319,7 +345,7 @@ class AgentRuntime:
                 "SELECT COUNT(*) AS count FROM agent_steps WHERE task_id = ? AND state = 'awaiting_approval'",
                 (task_id,),
             ).fetchone()["count"]
-            state = "awaiting_approval" if remaining else "ready"
+            state = "scheduled" if task["scheduled_at"] and task["scheduled_at"] > _now() else ("awaiting_approval" if remaining else "ready")
             db.execute("UPDATE agent_tasks SET state = ?, updated_at = ? WHERE task_id = ?", (state, _now(), task_id))
             db.commit()
         return self.get_task(task_id)
@@ -341,7 +367,7 @@ class AgentRuntime:
             now = _now()
             db.execute(
                 "UPDATE agent_steps SET state = 'skipped', finished_at = ?, error = ? WHERE task_id = ? AND step_id = ?",
-                (now, "User declined the Windows confirmation.", task_id, step_id),
+                (now, "User declined this approval request.", task_id, step_id),
             )
             db.execute(
                 "UPDATE agent_tasks SET state = 'cancelled', error = ?, updated_at = ? WHERE task_id = ?",
@@ -355,10 +381,13 @@ class AgentRuntime:
             raise AgentRuntimeError("A valid device ID is required.")
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            task = db.execute("SELECT state, expires_at FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
+            task = db.execute("SELECT state, expires_at, scheduled_at FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
             if not task:
                 raise AgentRuntimeError("Task not found.")
-            if task["state"] in {"completed", "failed", "cancelled", "awaiting_approval"}:
+            if task["state"] in {"completed", "failed", "cancelled"}:
+                db.commit()
+                return None
+            if task["scheduled_at"] and task["scheduled_at"] > _now():
                 db.commit()
                 return None
             if task["expires_at"] and task["expires_at"] <= _now():
@@ -485,6 +514,7 @@ class AgentRuntime:
             "created_at": task["created_at"],
             "updated_at": task["updated_at"],
             "expires_at": task["expires_at"],
+            "scheduled_at": task["scheduled_at"],
             "error": task["error"],
             "steps": [self._step_dict(row) for row in steps],
         }
