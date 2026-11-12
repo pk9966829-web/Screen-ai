@@ -158,7 +158,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                                     if (mode == "Sign in") "Signed in successfully." else "Request completed.")
                                 val token = result.optString("access_token")
                                 if (token.isNotBlank()) AccountSessionStore.save(token, email)
-                                runOnUiThread {
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
                                     if (token.isNotBlank()) loggedIn = true
                                     accountStatus = message
                                     if (mode == "Create account") authMode = "Verify email"
@@ -166,7 +166,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                                     accountBusy = false
                                 }
                             } catch (e: Exception) {
-                                runOnUiThread {
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
                                     accountStatus = e.message ?: "Could not connect to VOSI."
                                     accountBusy = false
                                 }
