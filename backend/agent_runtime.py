@@ -371,7 +371,7 @@ class AgentRuntime:
             )
             db.execute(
                 "UPDATE agent_tasks SET state = 'cancelled', error = ?, updated_at = ? WHERE task_id = ?",
-                ("User declined the Windows confirmation.", now, task_id),
+                ("User declined this approval request.", now, task_id),
             )
             db.commit()
         return self.get_task(task_id)
