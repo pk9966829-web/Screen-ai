@@ -593,7 +593,7 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness", "GET /companion/memories", "DELETE /companion/memories/{memory_id}"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness", "GET /companion/memories", "DELETE /companion/memories/{memory_id}", "POST /companion/voice"],
     }
 
 
