@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - feature/whatsapp-personal-android
+      - feature/vosi-autonomous-companion-foundation
   workflow_dispatch:
 
 jobs:
@@ -47,6 +48,23 @@ jobs:
       - name: Test VOSI agent runtime
         working-directory: backend
         run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py -q
+
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Build VOSI Companion APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleDebug
 
   windows-desktop-check:
     runs-on: windows-latest
