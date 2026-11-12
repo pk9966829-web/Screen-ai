@@ -3,6 +3,7 @@ import hmac
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -159,7 +160,7 @@ def request_agent_task(
         metadata = runtime.list_capabilities()
         details = next((item for item in metadata if item["name"] == capability), None)
         supported_targets = {
-            "browser": {"browser.search_products"},
+            "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page"},
             "desktop": {
                 "device.alarm.create", "device.volume.action", "device.timer.create",
                 "device.bluetooth.settings.open", "device.wifi.settings.open",
@@ -169,6 +170,14 @@ def request_agent_task(
         }
         if capability not in supported_targets.get(target_platform, set()):
             raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
+        arguments = step.get("arguments") if isinstance(step, dict) else None
+        if target_platform == "browser" and capability == "browser.open_tab":
+            raw_url = arguments.get("url") if isinstance(arguments, dict) else None
+            parsed_url = urlsplit(raw_url.strip()) if isinstance(raw_url, str) else None
+            if not parsed_url or parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or len(raw_url) > 2048:
+                raise HTTPException(status_code=422, detail="Chrome can open only a valid HTTPS URL without embedded credentials.")
+        if target_platform == "browser" and capability == "browser.read_visible_page" and arguments not in (None, {}):
+            raise HTTPException(status_code=422, detail="Reading the active page does not accept additional arguments.")
         if capability in {"device.pc.shutdown", "device.pc.restart"}:
             if not details or details["risk"] != "high" or not details["requires_approval"]:
                 raise HTTPException(status_code=403, detail="This Windows action must remain approval-gated.")
