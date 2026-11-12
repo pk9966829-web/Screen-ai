@@ -242,7 +242,7 @@ class VosiCloudBrowserWorker:
                 self.stop_event.wait(self.poll_seconds)
             except Exception:
                 LOG.exception("Worker loop error")
-                STOP.wait(self.poll_seconds)
+                self.stop_event.wait(self.poll_seconds)
 
 
 def main() -> None:
