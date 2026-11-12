@@ -28,7 +28,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from companion import router as companion_router
 app.include_router(companion_router)
-from agent_api import router as agent_router, devices as agent_devices
+from agent_api import router as agent_router, devices as agent_devices, runtime as agent_runtime
 from agent_runtime import AgentRuntimeError
 app.include_router(agent_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
@@ -667,6 +667,7 @@ def ask_screen_ai(req: AskRequest):
             message,
             recent_interactions=prior_interactions,
             task_state=state.get("task") or {},
+            runtime=agent_runtime,
         )
         result["companion_brain"] = True
 
