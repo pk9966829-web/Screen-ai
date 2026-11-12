@@ -245,10 +245,10 @@ Return one JSON object only with:
  "task_plan": null or {{"goal":"short goal","steps":[{{"step_id":"step-1","capability":"exact capability name","target_platform":"exact supported platform","title":"short action","arguments":{{}}}}]}}
 }}
 Do not put markdown fences around JSON."""
-    user_payload = {{
+    user_payload = {
         "stored_memories": memories,
         "recent_conversation": context,
-        "current_workflow_state": task_state or {{}},
+        "current_workflow_state": task_state or {},
         "user_message": message,
     }}
     failures = []
@@ -279,11 +279,11 @@ Do not put markdown fences around JSON."""
                 planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime)
                 if planned_task:
                     if planned_task.get("state") == "awaiting_approval":
-                        answer += "\\n\\nThis action is waiting for the required approval on the authorized device."
+                        answer += "\n\nThis action is waiting for the required approval on the authorized device."
                     else:
-                        answer += "\\n\\nI've queued the task for a compatible paired device. It will run when that device is connected and authorized."
+                        answer += "\n\nI've queued the task for a compatible paired device. It will run when that device is connected and authorized."
                 else:
-                    answer += "\\n\\nI couldn't safely queue that action, so I haven't executed it."
+                    answer += "\n\nI couldn't safely queue that action, so I haven't executed it."
             return {
                 "success": True,
                 "understanding": answer[:12000],
