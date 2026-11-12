@@ -1244,3 +1244,15 @@ addTimelineItem(
 console.log(
   "Screen AI frontend initialized."
 );
+
+// Open the separate voice companion without changing the existing VOSI interface.
+document.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.ctrlKey && event.shiftKey && event.code === "Space") {
+    event.preventDefault();
+    if (window.__TAURI__) {
+      void window.__TAURI__.core.invoke("show_voice_companion").catch((error: unknown) => {
+        console.warn("VOSI voice companion could not be opened:", error);
+      });
+    }
+  }
+});
