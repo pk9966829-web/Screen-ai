@@ -30,7 +30,9 @@ from companion import router as companion_router
 app.include_router(companion_router)
 from agent_api import router as agent_router, devices as agent_devices, runtime as agent_runtime
 from agent_runtime import AgentRuntimeError
+from voice_api import router as voice_router
 app.include_router(agent_router)
+app.include_router(voice_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
@@ -591,7 +593,7 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness", "GET /companion/memories", "DELETE /companion/memories/{memory_id}"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness", "GET /companion/memories", "DELETE /companion/memories/{memory_id}", "POST /companion/voice"],
     }
 
 

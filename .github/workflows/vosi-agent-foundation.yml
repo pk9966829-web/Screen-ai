@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - feature/vosi-autonomous-companion-foundation
+      - feature/vosi-continuous-voice-companion
   pull_request:
     branches:
       - main
       - feature/whatsapp-personal-android
+      - feature/vosi-autonomous-companion-foundation
   workflow_dispatch:
 
 jobs:
@@ -45,7 +47,32 @@ jobs:
           PY
       - name: Test VOSI agent runtime
         working-directory: backend
-        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py -q
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py -q
+
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Build VOSI Companion APK
+        run: gradle -p android --no-daemon :app:assembleDebug
+      - name: Upload VOSI Companion debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VOSI-Companion-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   windows-desktop-check:
     runs-on: windows-latest
