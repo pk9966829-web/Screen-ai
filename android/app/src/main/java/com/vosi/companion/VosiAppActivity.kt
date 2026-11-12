@@ -128,8 +128,9 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                     onLogout = {
                         val token = AccountSessionStore.load()
                         if (token != null) thread {
-                            identityRequest(backend, "/identity/logout", "POST", token, JSONObject())
-                            AccountSessionStore.clear()
+                            try { identityRequest(backend, "/identity/logout", "POST", token, JSONObject()) }
+                            catch (_: Exception) { /* Clear the local session even if the server is offline. */ }
+                            finally { AccountSessionStore.clear() }
                         }
                         loggedIn = false
                         accountStatus = "You are signed out."
