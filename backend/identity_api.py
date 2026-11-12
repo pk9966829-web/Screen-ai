@@ -175,8 +175,8 @@ def list_linked_devices(authorization: str | None = Header(default=None)):
 def unlink_current_device(device_id: str, authorization: str | None = Header(default=None)):
     account = _account(authorization)
     try:
-        store.unlink_device(account["user_id"], device_id)
-        return {"success": True, "device_id": device_id, "unlinked": True}
+        store.revoke_linked_device(account["user_id"], device_id)
+        return {"success": True, "device_id": device_id, "revoked": True}
     except IdentityError as exc:
         _raise_identity(exc)
 
