@@ -8,6 +8,7 @@ const codeInput = document.getElementById("pairingCode");
 const pairButton = document.getElementById("pairButton");
 const heartbeatButton = document.getElementById("heartbeatButton");
 const disconnectButton = document.getElementById("disconnectButton");
+const enableSiteButton = document.getElementById("enableSiteButton");
 const statusEl = document.getElementById("status");
 const deviceLabel = document.getElementById("deviceLabel");
 const deviceMeta = document.getElementById("deviceMeta");
@@ -90,6 +91,25 @@ async function checkConnection() {
   }
 }
 
+async function enableCurrentSite() {
+  const device = await getDevice();
+  if (!device) return;
+  enableSiteButton.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab?.url) throw new Error("Open the website you want VOSI to read, then try again.");
+    const parsed = new URL(tab.url);
+    if (parsed.protocol !== "https:" || !parsed.hostname) throw new Error("VOSI can read only HTTPS websites, not browser-internal or local pages.");
+    const granted = await chrome.permissions.request({ origins: [parsed.origin + "/*"] });
+    if (!granted) throw new Error("Chrome permission was not granted. VOSI cannot read this website.");
+    setStatus("Permission granted for " + parsed.origin + ". VOSI can now read visible page text when you ask.");
+  } catch (error) {
+    setStatus(error.message || "Could not enable this website.", true);
+  } finally {
+    enableSiteButton.disabled = false;
+  }
+}
+
 async function disconnectChrome() {
   const device = await getDevice();
   if (!device) return;
@@ -115,6 +135,7 @@ async function disconnectChrome() {
 pairButton.addEventListener("click", pairChrome);
 heartbeatButton.addEventListener("click", checkConnection);
 disconnectButton.addEventListener("click", disconnectChrome);
+enableSiteButton.addEventListener("click", enableCurrentSite);
 
 getDevice().then(device => {
   showDevice(device);
