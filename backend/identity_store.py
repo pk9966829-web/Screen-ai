@@ -6,6 +6,7 @@ import hmac
 import secrets
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -90,12 +91,17 @@ class IdentityStore:
             """)
             db.execute("CREATE INDEX IF NOT EXISTS idx_identity_sessions_user ON identity_sessions(user_id, expires_at)")
 
+    @contextmanager
     def _connect(self):
         db = sqlite3.connect(self.database_path, timeout=10)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA busy_timeout = 10000")
         db.execute("PRAGMA foreign_keys = ON")
-        return db
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
 
     @staticmethod
     def _challenge_hash(code: str, secret: str) -> str:
@@ -128,6 +134,10 @@ class IdentityStore:
                 (user_id, self._challenge_hash(code, challenge_secret), _iso(now + timedelta(minutes=10)), _iso(now)),
             )
         return {"user_id": user_id, "email": email, "email_verified": False, "created_at": _iso(now)}, code
+
+    def delete_unverified_account(self, email: str) -> None:
+        with self._connect() as db:
+            db.execute("DELETE FROM identity_users WHERE email = ? AND email_verified_at IS NULL", (email.strip().lower(),))
 
     def verify_email(self, email: str, code: str, challenge_secret: str) -> dict[str, Any]:
         email = email.strip().lower()
