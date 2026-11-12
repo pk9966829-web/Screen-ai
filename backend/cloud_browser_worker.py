@@ -10,14 +10,12 @@ import os
 import re
 import signal
 import threading
-import time
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit
 
 import requests
 
 LOG = logging.getLogger("vosi-cloud-browser-worker")
-STOP = threading.Event()
 PRICE_RE = re.compile(r"₹\s?[\d,]+")
 RATING_RE = re.compile(r"([0-5](?:\.[0-9])?)\s*★")
 REVIEWS_RE = re.compile(r"([\d,]+)\s*(?:Ratings|Reviews)", re.IGNORECASE)
@@ -57,7 +55,6 @@ def parse_product_card(text: str, name: str, url: str | None) -> dict[str, Any] 
     safe_url = None
     if url:
         # Do not return links to arbitrary hosts from merchant-controlled markup.
-        from urllib.parse import urlsplit
         parsed = urlsplit(url)
         if parsed.scheme == "https" and parsed.hostname in {SUPPORTED_HOST, "flipkart.com"}:
             safe_url = url[:500]
@@ -119,6 +116,7 @@ class VosiCloudBrowserWorker:
         self.worker_id = worker_id
         self.poll_seconds = max(1.0, min(poll_seconds, 30.0))
         self.session = requests.Session()
+        self.stop_event = threading.Event()
         self.session.headers.update({
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
@@ -130,8 +128,8 @@ class VosiCloudBrowserWorker:
         response.raise_for_status()
         return response.json()
 
-    def _heartbeat_loop(self, task_id: str, step_id: str, interval: int):
-        while not STOP.wait(max(10, interval // 3)):
+    def _heartbeat_loop(self, task_id: str, step_id: str, interval: int, stop_event: threading.Event):
+        while not stop_event.wait(max(10, interval // 3)):
             try:
                 self._post(
                     f"/cloud-worker/{task_id}/steps/{step_id}/heartbeat",
@@ -160,6 +158,9 @@ class VosiCloudBrowserWorker:
                 response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
                 if response and response.status >= 400:
                     raise WorkerError(f"Flipkart returned HTTP {response.status}.")
+                final_url = urlsplit(page.url)
+                if final_url.scheme != "https" or final_url.hostname not in {SUPPORTED_HOST, "flipkart.com"}:
+                    raise WorkerError("The search redirected outside the supported Flipkart website; VOSI stopped.")
                 try:
                     page.locator("div[data-id], a[href*='/p/'], a[href*='/product/']").first.wait_for(timeout=20000)
                 except Exception:
@@ -193,12 +194,9 @@ class VosiCloudBrowserWorker:
         if not task_id or not step_id:
             raise WorkerError("Claim response did not contain task and step IDs.")
         heartbeat_stop = threading.Event()
-        global STOP
-        previous_stop = STOP
-        STOP = heartbeat_stop
         heartbeat = threading.Thread(
             target=self._heartbeat_loop,
-            args=(task_id, step_id, int(claim.get("lease_seconds") or 180)),
+            args=(task_id, step_id, int(claim.get("lease_seconds") or 180), heartbeat_stop),
             daemon=True,
         )
         heartbeat.start()
@@ -224,7 +222,6 @@ class VosiCloudBrowserWorker:
         finally:
             heartbeat_stop.set()
             heartbeat.join(timeout=2)
-            STOP = previous_stop
 
     def run_forever(self) -> None:
         health = self.session.get(self.base_url + "/cloud-worker/health", timeout=15)
@@ -233,16 +230,16 @@ class VosiCloudBrowserWorker:
         if "browser.search_products" not in details.get("capabilities", []):
             raise WorkerError("Server has not granted browser.search_products to this worker.")
         LOG.info("VOSI cloud browser worker %s connected; capabilities=%s", self.worker_id, details["capabilities"])
-        while not STOP.is_set():
+        while not self.stop_event.is_set():
             try:
                 claim = self._post("/cloud-worker/claim", {}, timeout=20)
                 if claim.get("task") and claim.get("step"):
                     self.process_claim(claim)
                 else:
-                    STOP.wait(self.poll_seconds)
+                    self.stop_event.wait(self.poll_seconds)
             except requests.RequestException as exc:
                 LOG.warning("VOSI API temporarily unavailable: %s", type(exc).__name__)
-                STOP.wait(self.poll_seconds)
+                self.stop_event.wait(self.poll_seconds)
             except Exception:
                 LOG.exception("Worker loop error")
                 STOP.wait(self.poll_seconds)
@@ -261,8 +258,8 @@ def main() -> None:
     if not base_url.startswith("https://"):
         raise SystemExit("VOSI_CLOUD_API_URL must use HTTPS.")
     worker = VosiCloudBrowserWorker(base_url, token, worker_id)
-    signal.signal(signal.SIGTERM, lambda *_: STOP.set())
-    signal.signal(signal.SIGINT, lambda *_: STOP.set())
+    signal.signal(signal.SIGTERM, lambda *_: worker.stop_event.set())
+    signal.signal(signal.SIGINT, lambda *_: worker.stop_event.set())
     worker.run_forever()
 
 
