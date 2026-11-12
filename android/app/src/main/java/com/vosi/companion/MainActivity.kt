@@ -17,6 +17,7 @@ import android.os.Build
 import android.media.AudioManager
 import android.provider.ContactsContract
 import android.provider.Settings
+import android.speech.tts.TextToSpeech
 import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
@@ -24,12 +25,14 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
 import java.util.Calendar
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
@@ -48,6 +51,9 @@ class MainActivity : Activity() {
     private lateinit var disconnectDeviceButton: Button
     private lateinit var deviceCommandInput: EditText
     private lateinit var sendDeviceCommandButton: Button
+    @Volatile private var activityResumed = false
+    @Volatile private var textToSpeechReady = false
+    private var textToSpeech: TextToSpeech? = null
     private val contactsPermission = 100
     private val callPermission = 101
 
@@ -145,6 +151,20 @@ class MainActivity : Activity() {
         root.addView(deviceStatus)
         root.addView(deviceCommandInput, matchWidth())
         root.addView(sendDeviceCommandButton, matchWidth())
+        root.addView(Switch(this).apply {
+            text = "Speak browser recommendations"
+            isChecked = getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+                .getBoolean("spoken_browser_results", false)
+            setOnCheckedChangeListener { _, enabled ->
+                getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+                    .edit().putBoolean("spoken_browser_results", enabled).apply()
+                deviceStatus.text = if (enabled) {
+                    "Spoken browser recommendations enabled. VOSI speaks only while this app is open."
+                } else {
+                    "Spoken browser recommendations disabled."
+                }
+            }
+        }, matchWidth())
 
         root.addView(TextView(this).apply {
             text = "PHONE"
@@ -227,6 +247,13 @@ class MainActivity : Activity() {
             addView(root)
         }
         setContentView(scroll)
+        textToSpeech = TextToSpeech(this) { result ->
+            if (result == TextToSpeech.SUCCESS) {
+                val languageResult = textToSpeech?.setLanguage(Locale.getDefault())
+                textToSpeechReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                    languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+            }
+        }
         refreshPairedDeviceStatus()
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -247,6 +274,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        activityResumed = true
         refreshWhatsAppMessages()
         if (::deviceStatus.isInitialized) {
             refreshPairedDeviceStatus()
@@ -256,6 +284,8 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        activityResumed = false
+        textToSpeech?.stop()
         devicePollHandler.removeCallbacks(devicePollRunnable)
         super.onPause()
     }
@@ -712,6 +742,55 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun browserRecommendationSpeech(task: JSONObject): String? {
+        val steps = task.optJSONArray("steps") ?: return null
+        val products = mutableListOf<JSONObject>()
+        for (index in 0 until steps.length()) {
+            val step = steps.optJSONObject(index) ?: continue
+            if (step.optString("capability") != "browser.search_products") continue
+            val receipt = step.optJSONObject("receipt") ?: continue
+            val items = receipt.optJSONArray("products") ?: continue
+            for (productIndex in 0 until items.length()) {
+                items.optJSONObject(productIndex)?.let { products.add(it) }
+            }
+        }
+        if (products.isEmpty()) return null
+
+        fun rating(product: JSONObject): Double =
+            product.optString("rating").toDoubleOrNull() ?: 0.0
+        fun reviews(product: JSONObject): Long =
+            product.optString("reviews").filter { it.isDigit() }.toLongOrNull() ?: 0L
+        fun price(product: JSONObject): Long =
+            Regex("[0-9,]+").find(product.optString("price"))?.value
+                ?.replace(",", "")?.toLongOrNull() ?: Long.MAX_VALUE
+
+        val ranked = products.distinctBy { it.optString("url").ifBlank { it.optString("name") } }
+            .sortedWith(
+                compareByDescending<JSONObject> { rating(it) }
+                    .thenByDescending { reviews(it) }
+                    .thenBy { price(it) }
+            )
+            .take(3)
+        val lines = ranked.mapIndexed { index, product ->
+            val name = product.optString("name", "Product").replace(Regex("\\s+"), " ").take(90)
+            val shownPrice = product.optString("price").ifBlank { "price not shown" }
+            val shownRating = product.optString("rating").takeIf { it.isNotBlank() }
+            val ratingText = shownRating?.let { ", rated $it out of 5" } ?: ""
+            "${index + 1}. $name, $shownPrice$ratingText"
+        }
+        return "VOSI found ${products.size} visible products on Flipkart. " +
+            "These options are ranked using the ratings, review counts, and prices visible on the page. " +
+            lines.joinToString(". ", postfix = ".")
+    }
+
+    private fun speakBrowserRecommendation(message: String) {
+        if (!activityResumed || !textToSpeechReady ||
+            !getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
+                .getBoolean("spoken_browser_results", false)
+        ) return
+        textToSpeech?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "vosi-browser-${System.currentTimeMillis()}")
+    }
+
     private fun refreshOriginTaskUpdates(baseUrl: String, token: String) {
         val (code, body) = requestDeviceApi(baseUrl, "/agent/tasks/updates", "GET", token)
         if (code !in 200..299) return
@@ -733,6 +812,10 @@ class MainActivity : Activity() {
                 if (step.optString("error").isNotBlank()) detail = step.optString("error")
             }
             notifyVosiTaskUpdate(taskId, goal, detail, state)
+            val spokenRecommendation = if (state == "completed") browserRecommendationSpeech(task) else null
+            if (!spokenRecommendation.isNullOrBlank()) {
+                runOnUiThread { speakBrowserRecommendation(spokenRecommendation) }
+            }
             preferences.edit().putString(taskId, state).apply()
         }
     }
@@ -763,6 +846,14 @@ class MainActivity : Activity() {
         } catch (_: SecurityException) {
             runOnUiThread { deviceStatus.text = "VOSI task $state: $title — $detail" }
         }
+    }
+
+    override fun onDestroy() {
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
+        textToSpeech = null
+        textToSpeechReady = false
+        super.onDestroy()
     }
 
     private fun disconnectPhoneDevice() {
