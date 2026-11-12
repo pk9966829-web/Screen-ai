@@ -83,8 +83,9 @@ def test_expired_safe_claim_is_requeued_but_order_is_not_replayed(tmp_path, monk
         }},
     }])
     runtime.approve_step(order["task_id"], "step-1")
-    order_claim = client.post("/cloud-worker/claim", headers=headers).json()
-    assert order_claim["task"]["task_id"] == order["task_id"]
+    # Simulate a legacy/misconfigured executor that already held the irreversible claim.
+    # The cloud-worker API must neither opt into this capability nor replay it after expiry.
+    runtime.claim_next_step(order["task_id"], "cloud-worker:test", "browser", {"commerce.order.place"})
     with runtime._connect() as db:
         db.execute("UPDATE agent_steps SET claimed_at = ? WHERE task_id = ?", (old, order["task_id"]))
 
