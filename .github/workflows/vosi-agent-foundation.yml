@@ -8,8 +8,6 @@ on:
       - feature/vosi-windows-voice-companion
       - feature/vosi-autonomous-task-orchestrator
       - feature/vosi-cloud-execution-engine
-      - feature/vosi-autonomous-task-orchestrator
-      - feature/vosi-cloud-execution-engine
   pull_request:
     branches:
       - main
@@ -17,6 +15,8 @@ on:
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
       - feature/vosi-windows-voice-companion
+      - feature/vosi-autonomous-task-orchestrator
+      - feature/vosi-cloud-execution-engine
   workflow_dispatch:
 
 jobs:
