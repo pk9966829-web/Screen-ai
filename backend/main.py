@@ -32,9 +32,11 @@ from agent_api import router as agent_router, devices as agent_devices, runtime 
 from agent_runtime import AgentRuntimeError
 from voice_api import router as voice_router
 from cloud_worker import router as cloud_worker_router
+from identity_api import router as identity_router
 app.include_router(agent_router)
 app.include_router(voice_router)
 app.include_router(cloud_worker_router)
+app.include_router(identity_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
