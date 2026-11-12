@@ -109,7 +109,7 @@ The Chrome Manifest V3 extension in `screen ai/chrome-extension` now includes a 
 
 The per-device credential is stored in `chrome.storage.local` (not Chrome Sync), used by the extension service worker for minute heartbeats, and revoked through `DELETE /agent/devices/me` when the user disconnects. The browser command, acknowledgement, and product-result endpoints now require a valid credential for a device registered as platform `browser`. Content scripts forward extracted results to the service worker; the credential is not exposed to Flipkart page scripts.
 
-The extension currently supports the existing read-only Flipkart search workflow. It does not yet poll the VOSI agent task queue or execute arbitrary browser actions. That is a separate adapter milestone; the pairing protocol and browser bridge authentication are in place first.
+The extension supports read-only Flipkart product search and polls the authenticated VOSI agent task queue for its explicitly registered browser capabilities. It does not execute arbitrary page actions; general page reading is separately permission-gated per HTTPS origin.
 
 ## Implementation sequence
 
@@ -159,3 +159,8 @@ This branch introduces the architecture contract and a small backend task/capabi
 Android may request Windows shutdown or restart, but these steps remain in `awaiting_approval` until a paired desktop shows and accepts a confirmation. Only a desktop credential with the matching capability can approve or reject; rejection cancels the task. Other high-risk capabilities remain blocked from phone task requests.
 
 Bluetooth and Wi-Fi commands currently open their Windows Settings pages only. VOSI does not automatically flip the radios: that could require elevation, and disabling Wi-Fi could sever the backend route before a receipt is delivered.
+
+
+## Chrome general browsing adapter
+
+The paired Chrome executor supports `browser.open_tab` (new HTTPS tab) and `browser.read_visible_page` (title, URL, and a bounded excerpt of rendered text from the active HTTPS tab). Reading any origin other than the built-in Flipkart integration requires a separate explicit per-origin grant from the Chrome popup (**Enable current website**). The extension declares HTTPS access only as an optional permission and does not request blanket access at installation. Page text is untrusted input. The adapter does not click controls, sign in, submit forms, or purchase.
