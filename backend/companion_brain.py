@@ -82,9 +82,15 @@ def _save_memory_candidates(candidates: Any) -> int:
                 continue
             key = re.sub(r"[^a-z0-9_.-]", "_", key.strip().lower())[:80].strip("_")
             content = re.sub(r"\s+", " ", content).strip()[:300]
-            category = category if category in ALLOWED_MEMORY_CATEGORIES else "other"
             if not key or len(content) < 3:
                 continue
+            # Reject sensitive model labels before normalizing unknown categories.
+            if isinstance(category, str) and category.strip().lower() in {
+                "health", "medical", "identity", "religion", "politics", "finance",
+                "sexuality", "biometric", "credential",
+            }:
+                continue
+            category = category if category in ALLOWED_MEMORY_CATEGORIES else "other"
             # Never store credentials, financial identifiers, health, or other sensitive data.
             sensitive = re.search(
                 r"\b(password|passcode|otp|one[- ]time code|api[_ -]?key|secret|"
