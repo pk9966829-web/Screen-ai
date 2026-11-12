@@ -22,8 +22,6 @@ on:
       - feature/vosi-cloud-execution-engine
       - feature/vosi-cloud-browser-executor
       - feature/vosi-personal-identity-onboarding
-      - feature/vosi-cloud-browser-executor
-      - feature/vosi-personal-identity-onboarding
       - feature/vosi-shared-user-identity-backend
   workflow_dispatch:
 
