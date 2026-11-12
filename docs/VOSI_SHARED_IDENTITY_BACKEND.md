@@ -7,7 +7,7 @@
 - Verification codes expire after 10 minutes and are limited to five attempts.
 - Opaque bearer sessions are random, stored only as SHA-256 hashes, expire after 30 days, and can be revoked by logout.
 - A paired Android, desktop, or browser device can be explicitly linked to one account using both the account session and its existing device credential.
-- Account owners can list and unlink their own devices. Unlinking removes the account association; device credential revocation remains a separate device-management operation.
+- Account owners can list linked devices and revoke a lost device. Revocation invalidates its paired-device bearer credential and removes the account link.
 - The profile sync endpoint accepts only a versioned AES-256-GCM envelope and stores it without decrypting it. Writes use optimistic revisions to prevent silent cross-device overwrites.
 
 ## Required backend environment
@@ -26,7 +26,7 @@ Without these settings, registration is disabled rather than silently creating u
 - `POST /identity/login` — return a bearer session after verification.
 - `GET /identity/me` and `POST /identity/logout`.
 - `POST /identity/devices/link?device_id=...` — account bearer plus `X-VOSI-Device-Token`.
-- `GET /identity/devices`, `DELETE /identity/devices/{device_id}`.
+- `GET /identity/devices`, `DELETE /identity/devices/{device_id}` (revokes the paired device credential).
 - `GET /identity/profile`, `PUT /identity/profile`.
 
 ## Encryption boundary and important next step
