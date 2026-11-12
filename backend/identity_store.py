@@ -248,6 +248,28 @@ class IdentityStore:
             if cursor.rowcount == 0:
                 raise IdentityError("This device is not linked to your account.", 404)
 
+    def revoke_linked_device(self, user_id: str, device_id: str) -> None:
+        now = _iso(_now())
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            link = db.execute(
+                "SELECT 1 FROM identity_device_links WHERE user_id = ? AND device_id = ?",
+                (user_id, device_id),
+            ).fetchone()
+            if not link:
+                db.rollback()
+                raise IdentityError("This device is not linked to your account.", 404)
+            device = db.execute("SELECT device_id FROM paired_devices WHERE device_id = ?", (device_id,)).fetchone()
+            if not device:
+                db.rollback()
+                raise IdentityError("Paired device record was not found.", 404)
+            db.execute(
+                "UPDATE paired_devices SET revoked_at = COALESCE(revoked_at, ?) WHERE device_id = ?",
+                (now, device_id),
+            )
+            db.execute("DELETE FROM identity_device_links WHERE user_id = ? AND device_id = ?", (user_id, device_id))
+            db.commit()
+
     def get_profile(self, user_id: str) -> dict[str, Any]:
         with self._connect() as db:
             row = db.execute("SELECT revision, encrypted_profile_json, updated_at FROM identity_profiles WHERE user_id = ?", (user_id,)).fetchone()
