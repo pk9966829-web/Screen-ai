@@ -70,7 +70,7 @@ private enum class VosiTab(val label: String) { HOME("Home"), CHAT("Chat"), TASK
 private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit) {
     var tab by remember { mutableStateOf(VosiTab.HOME) }
     var backend by remember { mutableStateOf("http://127.0.0.1:8001") }
-    var accountEmail by remember { mutableStateOf("") }
+    var accountEmail by remember { mutableStateOf(AccountSessionStore.email().orEmpty()) }
     var accountStatus by remember { mutableStateOf("Sign in to connect your VOSI identity across devices.") }
     var accountBusy by remember { mutableStateOf(false) }
     var authMode by remember { mutableStateOf("Sign in") }
@@ -156,7 +156,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                                 val message = result.optString("message",
                                     if (mode == "Sign in") "Signed in successfully." else "Request completed.")
                                 val token = result.optString("access_token")
-                                if (token.isNotBlank()) AccountSessionStore.save(token)
+                                if (token.isNotBlank()) AccountSessionStore.save(token, email)
                                 runOnUiThread {
                                     if (token.isNotBlank()) loggedIn = true
                                     accountStatus = message
@@ -428,13 +428,13 @@ private fun identityRequest(base: String, path: String, method: String, token: S
 private object AccountSessionStore {
     private const val Alias = "vosi_account_session_v1"
     private const val Prefs = "vosi_account_session_secure"
-    fun save(token: String) {
+    fun save(token: String, email: String) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val encrypted = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
         VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()
             ?.putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-            ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))?.apply()
+            ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))\n            ?.putString("email", email)?.apply()
     }
     fun load(): String? {
         return try {
@@ -448,7 +448,7 @@ private object AccountSessionStore {
             String(cipher.doFinal(data), Charsets.UTF_8)
         } catch (_: Exception) { null }
     }
-    fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
+    fun email(): String? = VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)\n    fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (store.getKey(Alias, null) as? SecretKey)?.let { return it }
