@@ -1,7 +1,7 @@
 """Authenticated tap-to-talk voice turns for the VOSI Android companion.
 
-Android performs speech recognition locally through the platform recognizer and
-speaks replies locally with TextToSpeech. Only the recognized transcript is sent
+Android invokes its system speech recognizer and speaks replies with TextToSpeech.
+Audio processing is handled by the configured Android recognition service; only the recognized transcript is sent
 to this API; microphone audio is not uploaded by this module.
 """
 from typing import Any
