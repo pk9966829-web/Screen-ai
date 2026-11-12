@@ -188,7 +188,7 @@ def _safe_task_plan(plan: Any, user_message: str, runtime: Any) -> dict[str, Any
         return runtime.create_task(
             goal=goal,
             steps=normalized,
-            idempotency_key="brain-" + hashlib.sha256(user_message.strip().lower().encode("utf-8")).hexdigest()[:48],
+            idempotency_key="brain-" + hashlib.sha256((user_message.strip().lower() + datetime.now(timezone.utc).strftime("%Y%m%d%H%M")).encode("utf-8")).hexdigest()[:48],
         )
     except Exception:
         # An invalid or unsupported plan must never be represented as scheduled work.
