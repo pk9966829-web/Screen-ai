@@ -16,7 +16,7 @@ declare global {
 // DOM ELEMENTS
 // =========================================================
 
-const app = document.getElementById("app");
+const app = document.getElementById("app") as HTMLElement;
 
 if (!app) {
   throw new Error("Screen AI app container was not found.");
@@ -30,9 +30,6 @@ const statusText =
 const mascot =
   document.getElementById("mascot");
 
-
-const mascotInner =
-  document.getElementById("mascotInner");
 
 
 const askInput =
