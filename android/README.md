@@ -110,6 +110,6 @@ The phone can request `open Bluetooth settings on PC` or `open Wi-Fi settings on
 
 The paired phone can now send these browser tasks to Chrome:
 - `open https://google.com in Chrome` — opens a new HTTPS tab.
-- `read this page` or `summarize the current page` — reads rendered text from the active Chrome tab.
+- `read this page` — reads rendered text from the active Chrome tab and returns a completion notification with the page title.
 
 For page reading on a website other than the built-in Flipkart integration, open that website in Chrome, click the VOSI Browser Companion icon, and choose **Enable current website**. Chrome asks permission for that one HTTPS origin. The extension does not request blanket website access at install time. If Chrome was paired before this feature was added, disconnect and pair Chrome again to register `browser.read_visible_page`. Page content is treated as untrusted text; VOSI does not follow instructions embedded in web pages. This milestone does not click arbitrary controls, sign in, submit forms, or purchase items.
