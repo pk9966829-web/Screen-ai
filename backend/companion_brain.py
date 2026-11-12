@@ -88,8 +88,8 @@ def _save_memory_candidates(candidates: Any) -> int:
             # Never store credentials, financial identifiers, health, or other sensitive data.
             sensitive = re.search(
                 r"\b(password|passcode|otp|one[- ]time code|api[_ -]?key|secret|"
-                r"credit card|debit card|bank account|aadhaar|ssn|medical diagnosis|"
-                r"sexual orientation|religion|caste|political party)\b",
+                r"credit card|debit card|bank account|aadhaar|ssn|medical diagnosis|health condition|"
+                r"medication|disability|sexual orientation|religion|caste|political party|vote for)\b",
                 content,
                 flags=re.I,
             )
