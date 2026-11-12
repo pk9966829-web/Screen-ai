@@ -668,6 +668,7 @@ def ask_screen_ai(req: AskRequest):
             recent_interactions=prior_interactions,
             task_state=state.get("task") or {},
             runtime=agent_runtime,
+            paired_devices=agent_devices.list_devices(),
         )
         result["companion_brain"] = True
 
