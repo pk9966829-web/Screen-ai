@@ -61,6 +61,23 @@
         "maximizable": false,
         "minimizable": false,
         "closable": false
+      },
+      {
+        "label": "voice",
+        "title": "VOSI Voice Companion",
+        "url": "voice-companion.html",
+        "width": 440,
+        "height": 620,
+        "resizable": true,
+        "decorations": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": false,
+        "visible": false,
+        "focus": false,
+        "center": true,
+        "maximizable": false,
+        "minimizable": true,
+        "closable": true
       }
     ],
     "security": {

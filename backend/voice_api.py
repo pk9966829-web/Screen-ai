@@ -1,8 +1,7 @@
-"""Authenticated tap-to-talk voice turns for the VOSI Android companion.
+"""Authenticated tap-to-talk voice turns for paired VOSI Android and desktop companions.
 
-Android invokes its system speech recognizer and speaks replies with TextToSpeech.
-Audio processing is handled by the configured Android recognition service; only the recognized transcript is sent
-to this API; microphone audio is not uploaded by this module.
+Each platform performs speech recognition and speech playback locally; only the recognized
+transcript is sent to this API. Raw microphone audio is not uploaded by this module.
 """
 from typing import Any
 
@@ -21,16 +20,16 @@ class VoiceTurnRequest(BaseModel):
     transcript: str = Field(min_length=1, max_length=4000)
 
 
-def _authenticate_android(authorization: str | None) -> dict[str, Any]:
+def _authenticate_voice_device(authorization: str | None) -> dict[str, Any]:
     scheme, separator, token = (authorization or "").partition(" ")
     if not separator or scheme.lower() != "bearer" or not token.strip():
-        raise HTTPException(status_code=401, detail="Pair this Android phone with VOSI first.")
+        raise HTTPException(status_code=401, detail="Pair this device with VOSI first.")
     try:
         device = agent_api.devices.authenticate(token.strip())
     except AgentRuntimeError as exc:
         raise HTTPException(status_code=401, detail="The paired-device credential is invalid or revoked.") from exc
-    if device.get("platform") != "android":
-        raise HTTPException(status_code=403, detail="Voice companion turns are available to paired Android devices.")
+    if device.get("platform") not in {"android", "desktop"}:
+        raise HTTPException(status_code=403, detail="Voice companion turns are available only to paired Android and desktop devices.")
     return device
 
 
@@ -40,7 +39,7 @@ def create_voice_turn(
     authorization: str | None = Header(default=None),
 ):
     """Process one recognized utterance through the same brain and history as desktop chat."""
-    device = _authenticate_android(authorization)
+    device = _authenticate_voice_device(authorization)
     transcript = request.transcript.strip()
     if not transcript:
         raise HTTPException(status_code=422, detail="Speak a message before sending it to VOSI.")

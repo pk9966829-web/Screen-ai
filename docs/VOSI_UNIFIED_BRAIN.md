@@ -62,3 +62,14 @@ foreground tap-to-talk, not an always-listening wake word. Android's configured 
 service may process audio according to that provider's own privacy terms; VOSI sends the recognized
 transcript, not a microphone recording, to its backend. Background wake-word listening, continuous
 full-duplex audio, broad browser navigation, and multi-step self-recovery remain future milestones.
+
+
+## Windows voice companion
+
+The Windows desktop app includes a separate voice panel opened with Ctrl + Shift + Space
+while the main VOSI window is focused. It uses the paired desktop credential from Windows
+Credential Manager, sends recognized text to the authenticated /companion/voice endpoint,
+and speaks replies using the Windows WebView speech-synthesis service. The main VOSI page
+layout is unchanged. Push-to-talk requires microphone permission and an available WebView2
+speech-recognition service; typed input is available as a fallback. The endpoint accepts
+paired Android and desktop devices, but not browser devices.

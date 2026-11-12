@@ -5,11 +5,13 @@ on:
     branches:
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
+      - feature/vosi-windows-voice-companion
   pull_request:
     branches:
       - main
       - feature/whatsapp-personal-android
       - feature/vosi-autonomous-companion-foundation
+      - feature/vosi-continuous-voice-companion
   workflow_dispatch:
 
 jobs:
@@ -79,5 +81,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build VOSI desktop frontend
+        working-directory: screen ai
+        run: |
+          npm ci
+          npm run build
       - name: Check Windows Tauri desktop build
         run: cargo check --manifest-path "screen ai/src-tauri/Cargo.toml"

@@ -336,11 +336,30 @@ fn clear_agent_device_credential() -> Result<(), String> {
     Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
 }
 
+
+/// Open the dedicated Windows voice companion panel.
+#[tauri::command]
+async fn show_voice_companion(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app.get_webview_window("voice").ok_or("Voice companion window not found")?;
+    window.show().map_err(|e| e.to_string())?;
+    window.set_always_on_top(true).map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Hide the dedicated Windows voice companion panel.
+#[tauri::command]
+async fn hide_voice_companion(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app.get_webview_window("voice").ok_or("Voice companion window not found")?;
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide, save_agent_device_credential, load_agent_device_credential, clear_agent_device_credential])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide, show_voice_companion, hide_voice_companion, save_agent_device_credential, load_agent_device_credential, clear_agent_device_credential])
         .setup(|app| {
             #[cfg(desktop)]
             {
@@ -348,6 +367,10 @@ pub fn run() {
                     tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                     None,
                 ));
+            }
+            if let Some(window) = app.get_webview_window("voice") {
+                let _ = window.hide();
+                let _ = window.set_always_on_top(true);
             }
             // Companion starts hidden (see tauri.conf.json).
             // It will be shown when the user clicks "Start observing".
