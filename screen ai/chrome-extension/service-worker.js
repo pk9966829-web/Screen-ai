@@ -92,7 +92,7 @@ async function executeGeneralBrowserStep(device, task, step) {
     const tab = await chrome.tabs.create({ url: parsed.href, active: true });
     await postAgentTaskResult(device, task.task_id, step.step_id, {
       success: true, verified: true,
-      receipt: { capability: "browser.open_tab", url: parsed.href, tab_id: tab.id, active: true }
+      receipt: { capability: "browser.open_tab", url: parsed.href, tab_id: tab.id, active: true, confirmation: "Opened " + parsed.hostname + " in a new Chrome tab." }
     });
     return;
   }
@@ -115,7 +115,7 @@ async function executeGeneralBrowserStep(device, task, step) {
     if (!page?.text) throw new Error("No readable page text was found on the active tab.");
     await postAgentTaskResult(device, task.task_id, step.step_id, {
       success: true, verified: true,
-      receipt: { capability: "browser.read_visible_page", title: page.title, url: page.url, text: page.text, character_count: page.text.length }
+      receipt: { capability: "browser.read_visible_page", title: page.title, url: page.url, text: page.text, character_count: page.text.length, confirmation: "Read page: " + (page.title || page.url) }
     });
     return;
   }
