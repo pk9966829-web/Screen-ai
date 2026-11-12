@@ -473,3 +473,55 @@ def test_phone_cannot_request_other_high_risk_capabilities(monkeypatch, tmp_path
         "step_id": "email", "capability": "email.send", "target_platform": "desktop", "title": "Send email", "arguments": {},
     }]})
     assert response.status_code == 403
+
+
+
+def test_phone_can_request_safe_chrome_open_and_read_tasks(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "browser-actions.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    pairing = client.post("/agent/devices/pairing", headers={"Authorization": "Bearer admin-secret"}, json={
+        "platform": "android", "label": "Phone",
+    }).json()["pairing"]
+    phone = client.post("/agent/devices/pair", json={
+        "pairing_code": pairing["pairing_code"], "capabilities": ["agent.task.request"],
+    }).json()["device"]
+    headers = {"Authorization": f"Bearer {phone['device_token']}"}
+    for capability, arguments in [
+        ("browser.open_tab", {"url": "https://www.google.com"}),
+        ("browser.read_visible_page", {}),
+    ]:
+        response = client.post("/agent/tasks/request", headers=headers, json={
+            "goal": f"Run {capability}",
+            "steps": [{
+                "step_id": capability.replace(".", "-"), "capability": capability,
+                "target_platform": "browser", "title": f"Run {capability}", "arguments": arguments,
+            }],
+        })
+        assert response.status_code == 200
+
+
+def test_phone_browser_open_tab_rejects_non_https_and_embedded_credentials(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "browser-url-validation.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    pairing = client.post("/agent/devices/pairing", headers={"Authorization": "Bearer admin-secret"}, json={
+        "platform": "android", "label": "Phone",
+    }).json()["pairing"]
+    phone = client.post("/agent/devices/pair", json={
+        "pairing_code": pairing["pairing_code"], "capabilities": ["agent.task.request"],
+    }).json()["device"]
+    headers = {"Authorization": f"Bearer {phone['device_token']}"}
+    for url in ["http://example.com", "javascript:alert(1)", "https://user:pass@example.com"]:
+        response = client.post("/agent/tasks/request", headers=headers, json={
+            "goal": "Open a website",
+            "steps": [{
+                "step_id": "open-site", "capability": "browser.open_tab", "target_platform": "browser",
+                "title": "Open site", "arguments": {"url": url},
+            }],
+        })
+        assert response.status_code == 422
