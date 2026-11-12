@@ -17,6 +17,7 @@ import android.os.Build
 import android.media.AudioManager
 import android.provider.ContactsContract
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.text.InputType
 import android.view.Gravity
@@ -51,11 +52,14 @@ class MainActivity : Activity() {
     private lateinit var disconnectDeviceButton: Button
     private lateinit var deviceCommandInput: EditText
     private lateinit var sendDeviceCommandButton: Button
+    private lateinit var voiceConversationButton: Button
     @Volatile private var activityResumed = false
     @Volatile private var textToSpeechReady = false
     private var textToSpeech: TextToSpeech? = null
     private val contactsPermission = 100
     private val callPermission = 101
+    private val voicePermission = 103
+    private val voiceRequest = 104
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -135,6 +139,10 @@ class MainActivity : Activity() {
             text = "Send command to my VOSI devices"
             setOnClickListener { sendDeviceTaskRequest() }
         }
+        voiceConversationButton = Button(this).apply {
+            text = "Talk to VOSI"
+            setOnClickListener { startVoiceConversation() }
+        }
         heartbeatDeviceButton = Button(this).apply {
             text = "Check VOSI connection"
             setOnClickListener { heartbeatPhoneDevice() }
@@ -151,6 +159,7 @@ class MainActivity : Activity() {
         root.addView(deviceStatus)
         root.addView(deviceCommandInput, matchWidth())
         root.addView(sendDeviceCommandButton, matchWidth())
+        root.addView(voiceConversationButton, matchWidth())
         root.addView(Switch(this).apply {
             text = "Speak browser recommendations"
             isChecked = getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
@@ -312,13 +321,14 @@ class MainActivity : Activity() {
         path: String,
         method: String,
         token: String? = null,
-        body: JSONObject? = null
+        body: JSONObject? = null,
+        readTimeoutMs: Int = 15000
     ): Pair<Int, String> {
         val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection)
         try {
             connection.requestMethod = method
             connection.connectTimeout = 10000
-            connection.readTimeout = 15000
+            connection.readTimeout = readTimeoutMs
             if (token != null) connection.setRequestProperty("Authorization", "Bearer $token")
             if (body != null) {
                 connection.doOutput = true
@@ -392,6 +402,88 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     deviceStatus.text = "Could not pair phone: ${error.message ?: "backend unavailable"}"
                     pairDeviceButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private fun startVoiceConversation() {
+        if (DeviceCredentialStore.load(this) == null) {
+            deviceStatus.text = "Pair this phone with VOSI before starting a voice conversation."
+            return
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), voicePermission)
+            return
+        }
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to VOSI")
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            }
+            startActivityForResult(intent, voiceRequest)
+        } catch (error: Exception) {
+            deviceStatus.text = "No Android speech recognition service is available: ${error.message ?: "unknown error"}"
+        }
+    }
+
+    @Deprecated("Uses Android's system speech-recognition activity for broad device compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != voiceRequest) return
+        if (resultCode != RESULT_OK) {
+            deviceStatus.text = "Voice input was cancelled. Tap Talk to VOSI when you're ready."
+            return
+        }
+        val transcript = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()?.trim().orEmpty()
+        if (transcript.isBlank()) {
+            deviceStatus.text = "I didn't catch that. Please try speaking again."
+            return
+        }
+        deviceCommandInput.setText(transcript)
+        sendVoiceTurn(transcript)
+    }
+
+    private fun sendVoiceTurn(transcript: String) {
+        val credential = DeviceCredentialStore.load(this)
+        if (credential == null) {
+            deviceStatus.text = "Your phone is no longer paired with VOSI."
+            return
+        }
+        voiceConversationButton.isEnabled = false
+        deviceStatus.text = "VOSI is thinking…"
+        thread {
+            try {
+                val payload = JSONObject().put("transcript", transcript)
+                val (code, body) = requestDeviceApi(
+                    credential.getString("backend_url"),
+                    "/companion/voice",
+                    "POST",
+                    token = credential.getString("device_token"),
+                    body = payload,
+                    readTimeoutMs = 45000
+                )
+                val response = JSONObject(body)
+                if (code !in 200..299 || !response.optBoolean("success")) {
+                    throw IllegalStateException(response.optString("detail",
+                        response.optString("response", "VOSI could not answer this voice turn.")))
+                }
+                val answer = response.optString("response", "I'm here.")
+                runOnUiThread {
+                    deviceStatus.text = "You: $transcript\nVOSI: $answer"
+                    voiceConversationButton.isEnabled = true
+                    if (activityResumed && textToSpeechReady) {
+                        textToSpeech?.speak(answer, TextToSpeech.QUEUE_FLUSH, null,
+                            "vosi-voice-${System.currentTimeMillis()}")
+                    }
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    deviceStatus.text = "Voice conversation failed: ${error.message ?: "backend unavailable"}"
+                    voiceConversationButton.isEnabled = true
                 }
             }
         }
@@ -1135,6 +1227,8 @@ class MainActivity : Activity() {
             callPermission -> status.text =
                 if (granted) "Call permission granted. Tap Call this number again to confirm."
                 else "Call permission denied. Calling is disabled until you grant it."
+            voicePermission -> if (granted) startVoiceConversation() else deviceStatus.text =
+                "Microphone permission denied. Tap Talk to VOSI after allowing microphone access."
             102 -> deviceStatus.text =
                 if (granted) "VOSI task and alarm notifications enabled."
                 else "Notifications are disabled. VOSI can still execute tasks, but Android may hide completion alerts."
