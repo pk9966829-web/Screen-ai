@@ -169,6 +169,7 @@ def _decode_model_json(raw: str) -> dict[str, Any]:
 def _safe_task_plan(
     plan: Any, user_message: str, runtime: Any,
     paired_devices: list[dict[str, Any]] | None = None,
+    origin_device_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Validate model-generated plans against the runtime capability allow-list."""
     if not isinstance(plan, dict) or not isinstance(plan.get("steps"), list):
@@ -208,6 +209,8 @@ def _safe_task_plan(
             goal=goal,
             steps=normalized,
             idempotency_key="brain-" + hashlib.sha256((user_message.strip().lower() + datetime.now(timezone.utc).strftime("%Y%m%d%H%M")).encode("utf-8")).hexdigest()[:48],
+            origin_device_id=origin_device_id,
+            scheduled_at=plan.get("scheduled_at"),
         )
     except Exception:
         # An invalid or unsupported plan must never be represented as scheduled work.
@@ -220,6 +223,7 @@ def answer_companion(
     task_state: dict[str, Any] | None = None,
     runtime: Any = None,
     paired_devices: list[dict[str, Any]] | None = None,
+    origin_device_id: str | None = None,
 ) -> dict[str, Any]:
     """Generate a conversational answer, update safe memories, and optionally queue a validated plan."""
     initialize_companion_memory()
@@ -242,6 +246,11 @@ Be natural, direct, thoughtful and concise. Understand intent before proposing a
 Never claim an action happened unless a connected executor returned a verified execution receipt.
 For an action request, create a task plan only when the user clearly asked VOSI to perform it.
 Advice, questions, hypotheticals, and brainstorming are not execution requests.
+If the user explicitly asks for a future start time, include scheduled_at as an ISO-8601 timestamp with timezone.
+Do not invent a schedule when no future time was requested. Background means keep the task durable and continue when an authorized executor is available.
+For online purchases, do research and preparation first. Never invent checkout details, delivery address, item quantities, price, or payment method.
+The final order submission step, if supported, must use commerce.order.place with a complete checkout_summary containing merchant, items, delivery_address, total, currency, and payment_method. It is always high-risk and requires a separate explicit approval from the originating user after the summary is shown. Never treat general task consent as payment approval.
+A scheduled task must pause for approval at checkout; do not automatically pay or submit an order while the user is away.
 Only use capabilities in this exact allow-list: {json.dumps(runtime.list_capabilities() if runtime else [])}.
 Registered device executors and their capabilities: {json.dumps([
     {"platform": d.get("platform"), "capabilities": d.get("capabilities", []), "status": d.get("status")}
@@ -259,7 +268,7 @@ Return one JSON object only with:
 {{
  "answer": "message to user",
  "memory_candidates": [{{"key":"stable_snake_case_key","category":"preference|goal|project|workflow|other","content":"short explicit non-sensitive fact"}}],
- "task_plan": null or {{"goal":"short goal","steps":[{{"step_id":"step-1","capability":"exact capability name","target_platform":"exact supported platform","title":"short action","arguments":{{}}}}]}}
+ "task_plan": null or {{"goal":"short goal","scheduled_at":"optional ISO-8601 timestamp with timezone","steps":[{{"step_id":"step-1","capability":"exact capability name","target_platform":"exact supported platform","title":"short action","arguments":{{}}}}]}}
 }}
 Do not put markdown fences around JSON."""
     user_payload = {
@@ -293,10 +302,12 @@ Do not put markdown fences around JSON."""
             memory_saved = _save_memory_candidates(payload.get("memory_candidates"))
             planned_task = None
             if runtime is not None and payload.get("task_plan") is not None:
-                planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime, paired_devices)
+                planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime, paired_devices, origin_device_id)
                 if planned_task:
                     if planned_task.get("state") == "awaiting_approval":
                         answer += "\n\nThis action is waiting for the required approval on the authorized device."
+                    elif planned_task.get("state") == "scheduled":
+                        answer += "\n\nI've saved this task for its scheduled time. It will wait for an authorized executor to become available."
                     else:
                         answer += "\n\nI've queued the task for a paired device that supports it. It will run when that device is connected and authorized."
                 else:

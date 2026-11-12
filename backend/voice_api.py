@@ -51,6 +51,7 @@ def create_voice_turn(
         task_state={},
         runtime=agent_api.runtime,
         paired_devices=agent_api.devices.list_devices(),
+        origin_device_id=device.get("device_id"),
     )
     response_text = str(result.get("understanding") or "I couldn't prepare a response. Please try again.")
     if result.get("success"):

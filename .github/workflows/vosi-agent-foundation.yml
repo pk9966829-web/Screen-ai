@@ -6,12 +6,14 @@ on:
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
       - feature/vosi-windows-voice-companion
+      - feature/vosi-autonomous-task-orchestrator
   pull_request:
     branches:
       - main
       - feature/whatsapp-personal-android
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
+      - feature/vosi-windows-voice-companion
   workflow_dispatch:
 
 jobs:
@@ -49,7 +51,7 @@ jobs:
           PY
       - name: Test VOSI agent runtime
         working-directory: backend
-        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py -q
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py ../tests/test_task_orchestrator.py -q
 
   android-build:
     runs-on: ubuntu-latest
