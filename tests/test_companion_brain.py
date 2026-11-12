@@ -26,6 +26,14 @@ def test_memory_store_rejects_sensitive_candidates(tmp_path, monkeypatch):
     assert brain.get_companion_memories() == []
 
 
+def test_memory_store_rejects_sensitive_categories(tmp_path, monkeypatch):
+    monkeypatch.setattr(brain, "MEMORY_DB", tmp_path / "memory.sqlite3")
+    assert brain._save_memory_candidates([
+        {"key": "health_fact", "category": "health", "content": "Has a chronic condition."}
+    ]) == 0
+    assert brain.get_companion_memories() == []
+
+
 def test_model_json_decoder_accepts_fenced_and_plain_json():
     assert brain._decode_model_json('{"answer":"hello"}')["answer"] == "hello"
     assert brain._decode_model_json('```json\n{"answer":"hello"}\n```')["answer"] == "hello"
