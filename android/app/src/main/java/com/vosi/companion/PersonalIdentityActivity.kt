@@ -21,12 +21,10 @@ class PersonalIdentityActivity : Activity() {
     private lateinit var brands: EditText
     private lateinit var budget: EditText
     private lateinit var status: TextView
-    private var editing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val saved = PersonalProfileStore.load(this)
-        editing = intent.getBooleanExtra("edit_profile", false) || saved == null
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -34,7 +32,7 @@ class PersonalIdentityActivity : Activity() {
             setPadding(28, 32, 28, 28)
         }
         root.addView(TextView(this).apply {
-            text = if (editing) "Meet your VOSI" else "Your VOSI identity"
+            text = if (saved == null) "Meet your VOSI" else "Your VOSI identity"
             textSize = 28f
         })
         root.addView(TextView(this).apply {
@@ -57,7 +55,7 @@ class PersonalIdentityActivity : Activity() {
         }
         root.addView(status)
         root.addView(Button(this).apply {
-            text = if (editing) "Save my preferences and continue" else "Open VOSI"
+            text = "Save preferences and open VOSI"
             setOnClickListener { saveAndContinue() }
         }, matchWidth())
         if (saved != null) {
