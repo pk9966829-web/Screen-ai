@@ -10,13 +10,10 @@
     <application
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
-        android:label="VOSI Companion"
+        android:label="VOSI"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <receiver
-            android:name=".VosiAlarmReceiver"
-            android:enabled="true"
-            android:exported="false" />
+        <receiver android:name=".VosiAlarmReceiver" android:enabled="true" android:exported="false" />
         <service
             android:name=".WhatsAppNotificationListener"
             android:label="VOSI WhatsApp notification access"
@@ -27,7 +24,8 @@
             </intent-filter>
         </service>
         <activity android:name=".MainActivity" android:exported="false" />
-        <activity android:name=".PersonalIdentityActivity" android:exported="true">
+        <activity android:name=".PersonalIdentityActivity" android:exported="false" />
+        <activity android:name=".VosiAppActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
