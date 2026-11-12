@@ -1,14 +1,15 @@
+export {};
 type VoiceCredential={device_id:string;device_token:string;platform:string};
 type RecognitionInstance={lang:string;continuous:boolean;interimResults:boolean;maxAlternatives:number;onresult:((event:any)=>void)|null;onerror:((event:any)=>void)|null;onend:(()=>void)|null;start:()=>void;stop:()=>void};
 type RecognitionConstructor=new()=>RecognitionInstance;
 declare global{interface Window{__TAURI__?:any;SpeechRecognition?:RecognitionConstructor;webkitSpeechRecognition?:RecognitionConstructor}}
 const API="http://127.0.0.1:8001";
 const invoke=window.__TAURI__?.core?.invoke as ((command:string,args?:Record<string,unknown>)=>Promise<any>)|undefined;
-const status=document.getElementById("status"),transcriptBox=document.getElementById("transcript"),replyBox=document.getElementById("reply");
+const statusElement=document.getElementById("status"),transcriptBox=document.getElementById("transcript"),replyBox=document.getElementById("reply");
 const talkButton=document.getElementById("talk") as HTMLButtonElement|null,stopButton=document.getElementById("stop-speaking") as HTMLButtonElement|null,closeButton=document.getElementById("close") as HTMLButtonElement|null;
 const textForm=document.getElementById("text-form") as HTMLFormElement|null,textInput=document.getElementById("text-input") as HTMLInputElement|null,voiceOrb=document.getElementById("voice-orb");
 let recognition:RecognitionInstance|null=null,busy=false;
-function setStatus(message:string){if(status)status.textContent=message}
+function setStatus(message:string){if(statusElement)statusElement.textContent=message}
 function setListening(active:boolean){voiceOrb?.classList.toggle("listening",active);if(talkButton){talkButton.disabled=active||busy;talkButton.textContent=active?"Listening...":"Start speaking"}}
 async function readDesktopCredential():Promise<VoiceCredential>{
  if(!invoke)throw new Error("Open VOSI in its Windows desktop app to use voice.");
@@ -25,10 +26,10 @@ async function sendToVosi(message:string){
 }
 function startListening(){
  const SpeechRecognitionApi=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SpeechRecognitionApi){setStatus("Speech recognition is unavailable here. Type your message below instead.");return}if(busy||recognition)return;
- try{recognition=new SpeechRecognitionApi();recognition.lang="en-IN";recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
- recognition.onresult=(event:any)=>{const result=event.results?.[event.results.length-1]?.[0];const spoken=String(result?.transcript||"").trim();if(spoken)void sendToVosi(spoken)};
- recognition.onerror=(event:any)=>{const reason=String(event.error||"unknown");setStatus(reason==="not-allowed"?"Microphone permission was denied. Allow it in Windows privacy settings.":"Speech recognition stopped: "+reason)};
- recognition.onend=()=>{recognition=null;setListening(false);if(!busy&&status?.textContent==="Listening...")setStatus("Ready when you are")};setListening(true);setStatus("Listening...");recognition.start()}
+ try{const activeRecognition=new SpeechRecognitionApi();recognition=activeRecognition;activeRecognition.lang="en-IN";activeRecognition.continuous=false;activeRecognition.interimResults=false;activeRecognition.maxAlternatives=1;
+ activeRecognition.onresult=(event:any)=>{const result=event.results?.[event.results.length-1]?.[0];const spoken=String(result?.transcript||"").trim();if(spoken)void sendToVosi(spoken)};
+ activeRecognition.onerror=(event:any)=>{const reason=String(event.error||"unknown");setStatus(reason==="not-allowed"?"Microphone permission was denied. Allow it in Windows privacy settings.":"Speech recognition stopped: "+reason)};
+ activeRecognition.onend=()=>{recognition=null;setListening(false);if(!busy&&statusElement?.textContent==="Listening...")setStatus("Ready when you are")};setListening(true);setStatus("Listening...");activeRecognition.start()}
  catch(error){recognition=null;setListening(false);setStatus("Could not start speech recognition: "+String(error))}
 }
 talkButton?.addEventListener("click",startListening);
