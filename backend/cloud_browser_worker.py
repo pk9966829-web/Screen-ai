@@ -39,6 +39,15 @@ def validate_search_query(arguments: Any) -> str:
     return query
 
 
+def is_allowed_browser_url(url: str) -> bool:
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and (
+        host == "flipkart.com" or host.endswith(".flipkart.com")
+        or host == "flixcart.com" or host.endswith(".flixcart.com")
+    )
+
+
 def build_search_url(query: str) -> str:
     # The host and route are fixed; task data can supply only the encoded query.
     return f"https://{SUPPORTED_HOST}/search?q={quote_plus(query)}"
@@ -56,7 +65,7 @@ def parse_product_card(text: str, name: str, url: str | None) -> dict[str, Any] 
     if url:
         # Do not return links to arbitrary hosts from merchant-controlled markup.
         parsed = urlsplit(url)
-        if parsed.scheme == "https" and parsed.hostname in {SUPPORTED_HOST, "flipkart.com"}:
+        if is_allowed_browser_url(url):
             safe_url = url[:500]
     return {
         "name": clean_name[:120],
@@ -152,14 +161,21 @@ class VosiCloudBrowserWorker:
                     viewport={"width": 1365, "height": 900},
                     java_script_enabled=True,
                     accept_downloads=False,
+                    service_workers="block",
                 )
                 page = context.new_page()
+                def restrict_network(route):
+                    if is_allowed_browser_url(route.request.url):
+                        route.continue_()
+                    else:
+                        route.abort()
+                page.route("**/*", restrict_network)
                 page.set_default_timeout(8000)
                 response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
                 if response and response.status >= 400:
                     raise WorkerError(f"Flipkart returned HTTP {response.status}.")
                 final_url = urlsplit(page.url)
-                if final_url.scheme != "https" or final_url.hostname not in {SUPPORTED_HOST, "flipkart.com"}:
+                if not is_allowed_browser_url(page.url):
                     raise WorkerError("The search redirected outside the supported Flipkart website; VOSI stopped.")
                 try:
                     page.locator("div[data-id], a[href*='/p/'], a[href*='/product/']").first.wait_for(timeout=20000)
@@ -229,6 +245,8 @@ class VosiCloudBrowserWorker:
         details = health.json()
         if "browser.search_products" not in details.get("capabilities", []):
             raise WorkerError("Server has not granted browser.search_products to this worker.")
+        if details.get("worker_id") != f"cloud-worker:{self.worker_id}":
+            raise WorkerError("Worker identity does not match the server-configured worker ID.")
         LOG.info("VOSI cloud browser worker %s connected; capabilities=%s", self.worker_id, details["capabilities"])
         while not self.stop_event.is_set():
             try:
