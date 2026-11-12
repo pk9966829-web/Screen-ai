@@ -132,9 +132,7 @@ def test_profile_rejects_plaintext_or_malformed_envelope(client):
 def test_account_can_link_only_a_valid_paired_device(client):
     register_and_verify(client)
     headers = login(client)
-    pairing = client.post("/agent/devices/pairing", headers={"Authorization": "Bearer admin-secret"},
-                          json={"platform": "android", "label": "My phone"})
-    # Device pairing API is not mounted in this isolated identity test app; create it through registry.
+    # Pair through the same persisted device registry used by the identity service.
     pairing_record = identity_api.devices.create_pairing("android", "My phone")
     paired = identity_api.devices.complete_pairing(pairing_record["pairing_code"], ["agent.task.request"])
     linked = client.post("/identity/devices/link", headers={**headers, "X-VOSI-Device-Token": paired["device_token"]},
@@ -143,5 +141,9 @@ def test_account_can_link_only_a_valid_paired_device(client):
     listing = client.get("/identity/devices", headers=headers)
     assert listing.status_code == 200
     assert listing.json()["devices"][0]["device_id"] == paired["device_id"]
-    assert client.delete(f"/identity/devices/{paired['device_id']}", headers=headers).status_code == 200
+    revoked = client.delete(f"/identity/devices/{paired['device_id']}", headers=headers)
+    assert revoked.status_code == 200
+    assert revoked.json()["revoked"] is True
     assert client.get("/identity/devices", headers=headers).json()["devices"] == []
+    with pytest.raises(Exception, match="Invalid or revoked"):
+        identity_api.devices.authenticate(paired["device_token"])
