@@ -11,6 +11,7 @@ sys.path.insert(0, str(BACKEND))
 
 import identity_api  # noqa: E402
 from device_registry import DeviceRegistry  # noqa: E402
+from agent_runtime import AgentRuntimeError  # noqa: E402
 from identity_store import IdentityStore  # noqa: E402
 
 
@@ -87,10 +88,12 @@ def test_registration_rejects_duplicate_email_and_weak_password(client):
 
 def test_verification_code_attempt_limit(client):
     client.post("/identity/register", json={"email": "person@example.test", "password": "correct horse battery"})
+    actual_code = next(part for part in FakeSMTP.sent[-1].get_content().split() if len(part) == 6 and part.isdigit())
+    wrong_code = "000000" if actual_code != "000000" else "000001"
     for _ in range(5):
-        response = client.post("/identity/verify-email", json={"email": "person@example.test", "code": "000000"})
+        response = client.post("/identity/verify-email", json={"email": "person@example.test", "code": wrong_code})
     assert response.status_code == 400
-    assert client.post("/identity/verify-email", json={"email": "person@example.test", "code": "000000"}).status_code == 410
+    assert client.post("/identity/verify-email", json={"email": "person@example.test", "code": wrong_code}).status_code == 410
 
 
 def test_account_session_logout_revokes_token(client):
@@ -145,5 +148,5 @@ def test_account_can_link_only_a_valid_paired_device(client):
     assert revoked.status_code == 200
     assert revoked.json()["revoked"] is True
     assert client.get("/identity/devices", headers=headers).json()["devices"] == []
-    with pytest.raises(Exception, match="Invalid or revoked"):
+    with pytest.raises(AgentRuntimeError, match="Invalid or revoked"):
         identity_api.devices.authenticate(paired["device_token"])
