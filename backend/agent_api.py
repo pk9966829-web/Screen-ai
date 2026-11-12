@@ -1,5 +1,7 @@
 """Authenticated HTTP surface for VOSI agent planning and paired-device management."""
+import hashlib
 import hmac
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -54,6 +56,7 @@ class AgentTaskCreateRequest(BaseModel):
     origin_device_id: str | None = Field(default=None, max_length=100)
     idempotency_key: str | None = Field(default=None, max_length=128)
     expires_at: str | None = None
+    scheduled_at: str | None = Field(default=None, max_length=64)
 
 
 class DevicePairingRequest(BaseModel):
@@ -77,6 +80,11 @@ class DeviceTaskRequest(BaseModel):
     goal: str = Field(min_length=1, max_length=2000)
     steps: list[dict[str, Any]] = Field(min_length=1, max_length=10)
     idempotency_key: str | None = Field(default=None, max_length=128)
+    scheduled_at: str | None = Field(default=None, max_length=64)
+
+
+class StepApprovalRequest(BaseModel):
+    confirmation_digest: str = Field(min_length=64, max_length=64)
 
 
 @router.get("/capabilities")
@@ -98,6 +106,7 @@ def create_agent_task(
         origin_device_id=request.origin_device_id,
         idempotency_key=request.idempotency_key,
         expires_at=request.expires_at,
+        scheduled_at=request.scheduled_at,
     )
     return {"success": True, "task": task}
 
@@ -118,7 +127,9 @@ def list_available_device_tasks(authorization: str | None = Header(default=None)
     device = _authorize_device(authorization)
     available = []
     for task in runtime.list_tasks(100):
-        if task["state"] in {"completed", "failed", "cancelled", "awaiting_approval"}:
+        if task["state"] in {"completed", "failed", "cancelled"}:
+            continue
+        if task.get("scheduled_at") and task["scheduled_at"] > __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat():
             continue
         # Only the first unfinished step is eligible. This preserves task ordering
         # and prevents a later browser step from jumping ahead of a phone/desktop step.
@@ -160,7 +171,7 @@ def request_agent_task(
         metadata = runtime.list_capabilities()
         details = next((item for item in metadata if item["name"] == capability), None)
         supported_targets = {
-            "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page"},
+            "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page", "commerce.order.place"},
             "desktop": {
                 "device.alarm.create", "device.volume.action", "device.timer.create",
                 "device.bluetooth.settings.open", "device.wifi.settings.open",
@@ -181,14 +192,22 @@ def request_agent_task(
         if capability in {"device.pc.shutdown", "device.pc.restart"}:
             if not details or details["risk"] != "high" or not details["requires_approval"]:
                 raise HTTPException(status_code=403, detail="This Windows action must remain approval-gated.")
+        elif capability == "commerce.order.place":
+            checkout = arguments.get("checkout_summary") if isinstance(arguments, dict) else None
+            required = {"merchant", "items", "delivery_address", "total", "currency", "payment_method"}
+            if not details or details["risk"] != "high" or not details["requires_approval"] or not isinstance(checkout, dict) or not required.issubset(checkout):
+                raise HTTPException(status_code=422, detail="Order submission requires a complete checkout summary and explicit approval.")
+            if not isinstance(checkout.get("items"), list) or not checkout["items"] or not isinstance(checkout.get("total"), (int, float)) or checkout["total"] < 0:
+                raise HTTPException(status_code=422, detail="Checkout items and a non-negative total are required.")
         elif not details or details["risk"] != "low" or details["requires_approval"]:
-            raise HTTPException(status_code=403, detail="Phone requests are limited to supported low-risk actions or explicitly approval-gated Windows power actions.")
+            raise HTTPException(status_code=403, detail="Phone requests are limited to supported low-risk actions or explicitly approval-gated actions.")
     task = _runtime_call(
         runtime.create_task,
         goal=request.goal,
         steps=request.steps,
         origin_device_id=device["device_id"],
         idempotency_key=request.idempotency_key,
+        scheduled_at=request.scheduled_at,
     )
     return {"success": True, "task": task}
 
@@ -217,6 +236,68 @@ def get_origin_device_task_updates(authorization: str | None = Header(default=No
             } for step in task["steps"]],
         })
     return {"success": True, "updates": updates}
+
+
+def _approval_digest(arguments: dict[str, Any]) -> str:
+    canonical = json.dumps(arguments, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+@router.get("/tasks/pending-approvals")
+def list_origin_task_approvals(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    approvals = []
+    now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+    for task in runtime.list_tasks(100):
+        if task.get("origin_device_id") != device["device_id"]:
+            continue
+        if task.get("scheduled_at") and task["scheduled_at"] > now:
+            continue
+        for index, step in enumerate(task["steps"]):
+            if step["state"] != "awaiting_approval":
+                continue
+            if any(previous["state"] != "completed" for previous in task["steps"][:index]):
+                continue
+            approvals.append({
+                "task_id": task["task_id"], "goal": task["goal"],
+                "step_id": step["step_id"], "title": step["title"],
+                "capability": step["capability"], "arguments": step["arguments"],
+                "confirmation_digest": _approval_digest(step["arguments"]),
+            })
+    return {"success": True, "approvals": approvals}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/approve-origin")
+def approve_origin_task_step(
+    task_id: str, step_id: str, request: StepApprovalRequest,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("origin_device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Only the device that requested this task can approve it.")
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or not step["approval_required"] or step["state"] != "awaiting_approval":
+        raise HTTPException(status_code=409, detail="This step is not awaiting approval.")
+    if step["capability"] != "commerce.order.place":
+        raise HTTPException(status_code=403, detail="This approval route is reserved for reviewed online orders.")
+    if any(previous["state"] != "completed" for previous in task["steps"][:step["position"]]):
+        raise HTTPException(status_code=409, detail="Finish the order preparation steps before approving checkout.")
+    if not hmac.compare_digest(_approval_digest(step["arguments"]), request.confirmation_digest):
+        raise HTTPException(status_code=409, detail="Checkout details changed. Review the updated total and approve again.")
+    return {"success": True, "task": _runtime_call(runtime.approve_step, task_id, step_id)}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/reject-origin")
+def reject_origin_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("origin_device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Only the device that requested this task can reject it.")
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or step["capability"] != "commerce.order.place" or step["state"] != "awaiting_approval":
+        raise HTTPException(status_code=409, detail="This order is not awaiting your approval.")
+    return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
 
 
 @router.get("/tasks/approvals")
