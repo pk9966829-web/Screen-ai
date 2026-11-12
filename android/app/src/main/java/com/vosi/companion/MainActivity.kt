@@ -429,7 +429,7 @@ class MainActivity : Activity() {
                 RegexOption.IGNORE_CASE
             ).find(query)
             val readPageMatch = Regex(
-                """^(?:read|summarize|explain)\s+(?:this|the current|current)\s+page(?:\s+in\s+chrome)?\s*$""",
+                """^read\s+(?:this|the current|current)\s+page(?:\s+in\s+chrome)?\s*$""",
                 RegexOption.IGNORE_CASE
             ).find(query)
             val powerAction = Regex("""\b(shut\s*down|shutdown|restart|reboot)\b.*\b(?:pc|computer|windows|desktop)\b|\b(?:pc|computer|windows|desktop)\b.*\b(shut\s*down|shutdown|restart|reboot)\b""", RegexOption.IGNORE_CASE).find(query)
