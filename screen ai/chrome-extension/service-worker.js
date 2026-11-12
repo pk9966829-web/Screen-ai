@@ -70,6 +70,58 @@ async function reportAgentBrowserResults(message, sender) {
   return response.json();
 }
 
+async function postAgentTaskResult(device, taskId, stepId, payload) {
+  const response = await fetch(API + "/agent/tasks/" + encodeURIComponent(taskId) +
+    "/steps/" + encodeURIComponent(stepId) + "/result", {
+    method: "POST",
+    headers: { ...authHeaders(device), "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error("VOSI rejected the browser task receipt (HTTP " + response.status + ").");
+  return response.json();
+}
+
+async function executeGeneralBrowserStep(device, task, step) {
+  if (step.capability === "browser.open_tab") {
+    const raw = String(step.arguments?.url || "").trim();
+    let parsed;
+    try { parsed = new URL(raw); } catch { throw new Error("The requested website address is invalid."); }
+    if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password || raw.length > 2048) {
+      throw new Error("VOSI can open only valid HTTPS website addresses without embedded credentials.");
+    }
+    const tab = await chrome.tabs.create({ url: parsed.href, active: true });
+    await postAgentTaskResult(device, task.task_id, step.step_id, {
+      success: true, verified: true,
+      receipt: { capability: "browser.open_tab", url: parsed.href, tab_id: tab.id, active: true }
+    });
+    return;
+  }
+  if (step.capability === "browser.read_visible_page") {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab?.id || !tab.url) throw new Error("There is no active Chrome website to read.");
+    const pageUrl = new URL(tab.url);
+    if (pageUrl.protocol !== "https:") throw new Error("VOSI can read only HTTPS websites.");
+    const hasPermission = await chrome.permissions.contains({ origins: [pageUrl.origin + "/*"] });
+    if (!hasPermission) throw new Error("Website access is not enabled. Open the VOSI extension popup and choose Enable current website.");
+    const injected = await chrome.scripting.executeScript({
+      target: { tabId: tab.id }, world: "ISOLATED",
+      func: () => ({
+        title: document.title.slice(0, 300),
+        url: location.href.slice(0, 2048),
+        text: (document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 12000)
+      })
+    });
+    const page = injected?.[0]?.result;
+    if (!page?.text) throw new Error("No readable page text was found on the active tab.");
+    await postAgentTaskResult(device, task.task_id, step.step_id, {
+      success: true, verified: true,
+      receipt: { capability: "browser.read_visible_page", title: page.title, url: page.url, text: page.text, character_count: page.text.length }
+    });
+    return;
+  }
+  throw new Error("Unsupported browser capability.");
+}
+
 async function executeAvailableAgentTasks() {
   const device = await getPairedDevice();
   if (!device?.deviceToken || !device?.deviceId) return;
@@ -84,7 +136,7 @@ async function executeAvailableAgentTasks() {
   if (!response.ok) return;
   const data = await response.json();
   for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
-    if (task.capability !== "browser.search_products") continue;
+    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page"].includes(task.capability)) continue;
     const claimResponse = await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
       method: "POST",
       headers: authHeaders(device),
@@ -93,7 +145,17 @@ async function executeAvailableAgentTasks() {
     if (!claimResponse.ok) continue;
     const claim = await claimResponse.json();
     const step = claim.step;
-    if (!step || step.capability !== "browser.search_products") continue;
+    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page"].includes(step.capability)) continue;
+    if (step.capability !== "browser.search_products") {
+      try {
+        await executeGeneralBrowserStep(device, task, step);
+      } catch (error) {
+        await postAgentTaskResult(device, task.task_id, step.step_id, {
+          success: false, verified: false, receipt: {}, error: String(error?.message || error).slice(0, 1000)
+        }).catch(() => {});
+      }
+      continue;
+    }
     const query = String(step.arguments?.query || "").trim().slice(0, 200);
     if (!query) {
       await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) +
