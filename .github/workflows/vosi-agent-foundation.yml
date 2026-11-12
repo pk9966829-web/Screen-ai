@@ -11,6 +11,7 @@ on:
       - feature/vosi-cloud-browser-executor
       - feature/vosi-personal-identity-onboarding
       - feature/vosi-shared-user-identity-backend
+      - feature/vosi-native-android-app
   pull_request:
     branches:
       - main
