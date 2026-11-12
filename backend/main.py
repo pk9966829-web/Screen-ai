@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -28,6 +28,9 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from companion import router as companion_router
 app.include_router(companion_router)
+from agent_api import router as agent_router, devices as agent_devices, runtime as agent_runtime
+from agent_runtime import AgentRuntimeError
+app.include_router(agent_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
@@ -478,6 +481,9 @@ def latest_gmail_messages(count: int = 5, q: str = ""):
 
 
 from pipeline import ScreenPipeline
+from companion_brain import (
+    answer_companion, get_companion_memories, delete_companion_memory,
+)
 from brain import analyze_screen_question, draft_letter, interpret_gmail_search
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
@@ -504,19 +510,34 @@ def queue_browser_search(req: BrowserSearchRequest):
     browser_results.pop(req.request_id, None)
     return {"success": True, "message": "Waiting for the VOSI Chrome extension."}
 
+def _require_paired_browser(authorization: Optional[str]):
+    scheme, separator, token = (authorization or "").partition(" ")
+    if not separator or scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Pair this Chrome extension with VOSI first.")
+    try:
+        device = agent_devices.authenticate(token.strip())
+    except AgentRuntimeError as exc:
+        raise HTTPException(status_code=401, detail="Chrome device credential is invalid or revoked.") from exc
+    if device.get("platform") != "browser":
+        raise HTTPException(status_code=403, detail="This device is not registered as a browser.")
+    return device
+
 @app.get("/browser/command")
-def get_browser_command():
+def get_browser_command(authorization: Optional[str] = Header(default=None)):
+    _require_paired_browser(authorization)
     return {"success": True, "command": browser_pending_command}
 
 @app.post("/browser/ack/{request_id}")
-def acknowledge_browser_command(request_id: str):
+def acknowledge_browser_command(request_id: str, authorization: Optional[str] = Header(default=None)):
+    _require_paired_browser(authorization)
     global browser_pending_command
     if browser_pending_command and browser_pending_command.get("request_id") == request_id:
         browser_pending_command = None
     return {"success": True}
 
 @app.post("/browser/results")
-def receive_browser_results(req: BrowserResultsRequest):
+def receive_browser_results(req: BrowserResultsRequest, authorization: Optional[str] = Header(default=None)):
+    _require_paired_browser(authorization)
     if len(req.products) > 30:
         req.products = req.products[:30]
     browser_results[req.request_id] = {"products": req.products}
@@ -570,7 +591,7 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness", "GET /companion/memories", "DELETE /companion/memories/{memory_id}"],
     }
 
 
@@ -628,15 +649,29 @@ def ask_screen_ai(req: AskRequest):
     )
     prior_interactions = get_recent_interactions(limit=8)
 
-    result = analyze_screen_question(
-        message,
-        latest_path,
-        state.get("recent_context") or [],
-        state.get("task") or {},
-        image_paths=recent_paths if req.include_screen else [],
-        interactions=prior_interactions,
-        screen_changes=pipeline.get_recent_screen_changes(limit=10),
-    )
+    # Keep the existing visual-screen analysis path intact. Text-only chat now
+    # uses the unified companion brain, so the existing frontend needs no changes.
+    if req.include_screen:
+        result = analyze_screen_question(
+            message,
+            latest_path,
+            state.get("recent_context") or [],
+            state.get("task") or {},
+            image_paths=recent_paths if req.include_screen else [],
+            interactions=prior_interactions,
+            screen_changes=pipeline.get_recent_screen_changes(limit=10),
+        )
+        result["companion_brain"] = False
+    else:
+        result = answer_companion(
+            message,
+            recent_interactions=prior_interactions,
+            task_state=state.get("task") or {},
+            runtime=agent_runtime,
+            paired_devices=agent_devices.list_devices(),
+        )
+        result["companion_brain"] = True
+
     progress_data = result.get("workflow_update") or {}
     if result.get("success") and progress_data:
         state["task"] = pipeline.task.apply_workflow_update(progress_data)
@@ -644,7 +679,6 @@ def ask_screen_ai(req: AskRequest):
             save_task_state(state["task"], status="active")
 
     answer = result.get("understanding", "")
-    # Save both successful answers and failures so follow-up questions retain context.
     interaction = pipeline.context.add_interaction(
         message,
         answer,
@@ -670,6 +704,21 @@ def ask_screen_ai(req: AskRequest):
         "interaction_recorded": bool(interaction) and bool(persisted_interaction),
         "screen_used": bool(latest_path and req.include_screen),
     }
+
+
+@app.get("/companion/memories")
+def list_companion_memories(limit: int = 50):
+    """List non-sensitive facts VOSI has retained for continuity."""
+    return {"success": True, "memories": get_companion_memories(limit=limit)}
+
+
+@app.delete("/companion/memories/{memory_id}")
+def remove_companion_memory(memory_id: int):
+    """Let the user remove an individual stored companion memory."""
+    removed = delete_companion_memory(memory_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Memory not found.")
+    return {"success": True, "deleted": True, "memory_id": memory_id}
 
 
 @app.post("/letter/draft")

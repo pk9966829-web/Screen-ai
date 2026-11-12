@@ -132,12 +132,23 @@ fn control_volume(action: String) -> Result<String,String> {
     {
         let key = match action.as_str() { "up" => 0xAFu16, "down" => 0xAEu16, "mute" => 0xADu16, "unmute" => 0xAFu16, _ => return Err("Choose volume up, down, mute, or unmute.".into()) };
         let script = if action == "mute" || action == "unmute" {
-            format("$w=New-Object -ComObject WScript.Shell; $w.SendKeys([char]{key})")
+            format!("$w=New-Object -ComObject WScript.Shell; $w.SendKeys([char]{key})")
         } else {
-            format("$w=New-Object -ComObject WScript.Shell; 1..5 | ForEach-Object {{ $w.SendKeys([char]{key}); Start-Sleep -Milliseconds 80 }}")
+            format!("$w=New-Object -ComObject WScript.Shell; 1..5 | ForEach-Object {{ $w.SendKeys([char]{key}); Start-Sleep -Milliseconds 80 }}")
         };
-        Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command",&script]).spawn().map_err(|e|format!("Could not adjust volume: {e}"))?;
-        return Ok(match action.as_str() { "up"=>"Increasing volume.", "down"=>"Decreasing volume.", "mute"=>"Toggling mute.", _=>"Sending the unmute command." }.into());
+        let output = Command::new("powershell.exe")
+            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
+            .output()
+            .map_err(|error| format!("Could not adjust volume: {error}"))?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+        return Ok(match action.as_str() {
+            "up" => "Windows volume-up key action completed.",
+            "down" => "Windows volume-down key action completed.",
+            "mute" => "Windows mute key action completed.",
+            _ => "Windows unmute key action completed.",
+        }.into());
     }
     #[cfg(not(target_os = "windows"))] { let _=action; Err("Volume controls are supported in the Windows VOSI app.".into()) }
 }
@@ -166,9 +177,41 @@ fn set_alarm(hour: u32, minute: u32) -> Result<String, String> {
 }
 #[tauri::command]
 fn set_timer(seconds: u64) -> Result<String,String> {
-    if seconds==0||seconds>86400{return Err("Choose a timer between 1 second and 24 hours.".into());}
-    std::thread::spawn(move||{std::thread::sleep(std::time::Duration::from_secs(seconds));#[cfg(target_os="windows")]{let _=Command::new("powershell.exe").args(["-NoProfile","-WindowStyle","Hidden","-Command","Add-Type -AssemblyName System.Windows.Forms; 1..5 | ForEach-Object { [System.Media.SystemSounds]::Asterisk.Play(); Start-Sleep -Milliseconds 600 }; [System.Windows.Forms.MessageBox]::Show('Your VOSI timer is complete.','VOSI Timer') | Out-Null"]).spawn();}});
-    Ok(format!("Timer started for {}.",if seconds>=60{format!("{} minute(s)",seconds/60)}else{format!("{} second(s)",seconds)}))
+    if seconds == 0 || seconds > 86400 {
+        return Err("Choose a timer between 1 second and 24 hours.".into());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use chrono::{Duration, Local, Timelike};
+        let target = Local::now() + Duration::seconds(seconds as i64);
+        // schtasks accepts minute precision; round upward so a timer never fires early.
+        let due = target + Duration::seconds((60 - target.second() as i64) % 60);
+        let date = due.format("%m/%d/%Y").to_string();
+        let time = due.format("%H:%M").to_string();
+        let task_name = format!("VOSI_Timer_{}", due.format("%Y%m%d_%H%M%S"));
+        let script = "Add-Type -AssemblyName System.Windows.Forms; 1..5 | ForEach-Object { [System.Media.SystemSounds]::Asterisk.Play(); Start-Sleep -Milliseconds 600 }; [System.Windows.Forms.MessageBox]::Show('Your VOSI timer is complete.','VOSI Timer') | Out-Null";
+        use base64::Engine;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(
+            script.encode_utf16().flat_map(|c| c.to_le_bytes()).collect::<Vec<u8>>()
+        );
+        let action = format!("powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand {encoded}");
+        let output = Command::new("schtasks.exe")
+            .args(["/Create", "/F", "/SC", "ONCE", "/SD", &date, "/ST", &time, "/TN", &task_name, "/TR", &action, "/IT"])
+            .output()
+            .map_err(|error| format!("Could not schedule timer: {error}"))?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+        return Ok(format!(
+            "Timer scheduled for {}. Windows will trigger it while your account is signed in and the computer is awake.",
+            due.format("%-I:%M %p")
+        ));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = seconds;
+        Err("VOSI timers are supported in the Windows VOSI app.".into())
+    }
 }
 #[tauri::command]
 fn lock_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("rundll32.exe").args(["user32.dll,LockWorkStation"]).spawn().map_err(|e|e.to_string())?;return Ok("Locking your Windows device.".into());}#[cfg(not(target_os="windows"))]{Err("Locking is supported in the Windows VOSI app.".into())}}
@@ -237,11 +280,67 @@ async fn hide_guide(app: tauri::AppHandle) -> Result<(), String> {
     }
 }
 
+
+/// Store the paired desktop device credential in Windows Credential Manager.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn save_agent_device_credential(credential: String) -> Result<(), String> {
+    if credential.is_empty() || credential.len() > 2048 {
+        return Err("Invalid desktop device credential.".into());
+    }
+    let entry = keyring::Entry::new("com.pb7.vosi", "agent-device-credential")
+        .map_err(|error| format!("Windows Credential Manager is unavailable: {error}"))?;
+    entry.set_password(&credential)
+        .map_err(|error| format!("Could not save the VOSI credential securely: {error}"))
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn save_agent_device_credential(_credential: String) -> Result<(), String> {
+    Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
+}
+
+/// Read the paired credential from Windows Credential Manager; never from web storage.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn load_agent_device_credential() -> Result<Option<String>, String> {
+    let entry = keyring::Entry::new("com.pb7.vosi", "agent-device-credential")
+        .map_err(|error| format!("Windows Credential Manager is unavailable: {error}"))?;
+    match entry.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(format!("Could not read the VOSI credential securely: {error}")),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn load_agent_device_credential() -> Result<Option<String>, String> {
+    Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn clear_agent_device_credential() -> Result<(), String> {
+    let entry = keyring::Entry::new("com.pb7.vosi", "agent-device-credential")
+        .map_err(|error| format!("Windows Credential Manager is unavailable: {error}"))?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(format!("Could not clear the VOSI credential: {error}")),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn clear_agent_device_credential() -> Result<(), String> {
+    Err("Secure desktop pairing is currently supported in the Windows VOSI app.".into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide, save_agent_device_credential, load_agent_device_credential, clear_agent_device_credential])
         .setup(|app| {
             #[cfg(desktop)]
             {

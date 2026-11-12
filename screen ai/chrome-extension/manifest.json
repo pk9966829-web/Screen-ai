@@ -1,18 +1,36 @@
 {
   "manifest_version": 3,
-  "name": "VOSI Flipkart Bridge",
-  "version": "1.0.0",
-  "description": "Connects VOSI to the active Flipkart search tab to read visible product listings.",
-  "permissions": ["tabs", "alarms"],
+  "name": "VOSI Browser Companion",
+  "version": "1.2.0",
+  "description": "Pair Chrome securely with VOSI, search Flipkart listings, open HTTPS tabs, and read pages you explicitly authorize.",
+  "permissions": [
+    "tabs",
+    "alarms",
+    "storage",
+    "scripting"
+  ],
   "host_permissions": [
     "http://127.0.0.1:8001/*",
     "https://www.flipkart.com/*"
   ],
-  "background": { "service_worker": "service-worker.js" },
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "action": {
+    "default_title": "VOSI Browser Companion",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "service-worker.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://www.flipkart.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://www.flipkart.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]
