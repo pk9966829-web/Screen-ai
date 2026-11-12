@@ -36,7 +36,7 @@ def test_voice_turn_requires_a_paired_device(monkeypatch):
     assert response.status_code == 401
 
 
-def test_voice_turn_rejects_non_android_devices(monkeypatch):
+def test_voice_turn_rejects_browser_devices(monkeypatch):
     monkeypatch.setattr(voice_api.agent_api, "devices", FakeDevices(platform="browser"))
     response = make_client().post(
         "/companion/voice",
@@ -44,6 +44,24 @@ def test_voice_turn_rejects_non_android_devices(monkeypatch):
         json={"transcript": "Hello VOSI"},
     )
     assert response.status_code == 403
+
+
+def test_voice_turn_accepts_a_paired_desktop(monkeypatch):
+    monkeypatch.setattr(voice_api.agent_api, "devices", FakeDevices(platform="desktop"))
+    monkeypatch.setattr(voice_api, "answer_companion", lambda *args, **kwargs: {
+        "success": True, "understanding": "Hello from desktop.", "task_plan": None,
+        "provider": "test-provider", "memory_count": 1,
+    })
+    monkeypatch.setattr(voice_api, "get_recent_interactions", lambda limit: [])
+    monkeypatch.setattr(voice_api, "save_interaction", lambda *args, **kwargs: None)
+    response = make_client().post(
+        "/companion/voice",
+        headers={"Authorization": "Bearer phone-token"},
+        json={"transcript": "Hello from my PC"},
+    )
+    assert response.status_code == 200
+    assert response.json()["response"] == "Hello from desktop."
+    assert response.json()["device_id"] == "phone-1"
 
 
 def test_voice_turn_uses_shared_brain_and_persists_the_transcript(monkeypatch):
