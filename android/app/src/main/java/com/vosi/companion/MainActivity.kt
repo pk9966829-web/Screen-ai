@@ -424,6 +424,14 @@ class MainActivity : Activity() {
                 """^(?:search|find)\s+(.+?)\s+on\s+flipkart\s*$""",
                 RegexOption.IGNORE_CASE
             ).find(query)
+            val openPageMatch = Regex(
+                """^(?:open|go to|navigate to)\s+(https://\S+|[A-Za-z0-9.-]+\.[A-Za-z]{2,})(?:\s+(?:in|on)\s+chrome)?\s*$""",
+                RegexOption.IGNORE_CASE
+            ).find(query)
+            val readPageMatch = Regex(
+                """^(?:read|summarize|explain)\s+(?:this|the current|current)\s+page(?:\s+in\s+chrome)?\s*$""",
+                RegexOption.IGNORE_CASE
+            ).find(query)
             val powerAction = Regex("""\b(shut\s*down|shutdown|restart|reboot)\b.*\b(?:pc|computer|windows|desktop)\b|\b(?:pc|computer|windows|desktop)\b.*\b(shut\s*down|shutdown|restart|reboot)\b""", RegexOption.IGNORE_CASE).find(query)
             val settingsAction = when {
                 Regex("""\bbluetooth\b.*\b(?:settings|on|off|enable|disable|open)\b""", RegexOption.IGNORE_CASE).containsMatchIn(query) -> "device.bluetooth.settings.open"
@@ -497,6 +505,25 @@ class MainActivity : Activity() {
                             .put("arguments", JSONObject().put("seconds", seconds))
                     )
                 }
+                openPageMatch != null -> {
+                    val rawAddress = openPageMatch.groupValues[1].trim().trimEnd('.', ',', ')')
+                    val address = if (rawAddress.startsWith("https://", true)) rawAddress else "https://$rawAddress"
+                    val parsed = try { java.net.URI(address) } catch (_: Exception) { null }
+                    if (address.length > 2048 || parsed?.scheme != "https" || parsed.host.isNullOrBlank() || parsed.userInfo != null) {
+                        deviceStatus.text = "Use a valid HTTPS website address, such as https://google.com."
+                        return
+                    }
+                    goal = "Open $address in Chrome"
+                    steps.put(JSONObject().put("step_id", "open-browser-tab").put("capability", "browser.open_tab")
+                        .put("target_platform", "browser").put("title", "Open the requested website in Chrome")
+                        .put("arguments", JSONObject().put("url", address)))
+                }
+                readPageMatch != null -> {
+                    goal = "Read the currently active Chrome page"
+                    steps.put(JSONObject().put("step_id", "read-active-browser-page").put("capability", "browser.read_visible_page")
+                        .put("target_platform", "browser").put("title", "Read visible text from the active, user-authorized Chrome page")
+                        .put("arguments", JSONObject()))
+                }
                 searchMatch != null -> {
                     val productQuery = searchMatch.groupValues[1].trim().take(200)
                     if (productQuery.isBlank()) {
@@ -514,7 +541,7 @@ class MainActivity : Activity() {
                     )
                 }
                 else -> {
-                    deviceStatus.text = "Try: alarm for 5 PM on my PC/phone, set phone volume to 70%, mute PC, volume up, timer for 20 minutes on PC, or search body spray on Flipkart."
+                    deviceStatus.text = "Try: alarm for 5 PM on my PC/phone, set phone volume to 70%, mute PC, timer for 20 minutes, open https://google.com in Chrome, read this page, or search body spray on Flipkart."
                     return
                 }
             }
