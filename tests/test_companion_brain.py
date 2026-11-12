@@ -52,7 +52,9 @@ def test_task_plan_is_checked_by_runtime_allow_list(tmp_path):
             "arguments": {"query": "body spray"},
         }],
     }
-    task = brain._safe_task_plan(plan, "Search body spray on Flipkart", runtime)
+    task = brain._safe_task_plan(plan, "Search body spray on Flipkart", runtime, [
+        {"platform": "browser", "capabilities": ["browser.search_products"], "status": "online"}
+    ])
     assert task["state"] == "planned"
     assert task["steps"][0]["capability"] == "browser.search_products"
 
@@ -112,6 +114,7 @@ def test_companion_answer_uses_system_policy_and_queues_validated_task(tmp_path,
         recent_interactions=[],
         task_state={},
         runtime=runtime,
+        paired_devices=[{"platform": "browser", "capabilities": ["browser.search_products"], "status": "online"}],
     )
 
     assert result["success"] is True
@@ -120,3 +123,22 @@ def test_companion_answer_uses_system_policy_and_queues_validated_task(tmp_path,
     assert captured["messages"][0]["role"] == "system"
     assert captured["messages"][1]["role"] == "user"
     assert "Search for body spray on Flipkart" in captured["messages"][1]["content"]
+
+
+def test_task_plan_requires_a_registered_executor(tmp_path):
+    from agent_runtime import AgentRuntime
+    runtime = AgentRuntime(tmp_path / "agent.sqlite3")
+    plan = {
+        "goal": "Search for body spray",
+        "steps": [{
+            "step_id": "search",
+            "capability": "browser.search_products",
+            "target_platform": "browser",
+            "title": "Search public body spray listings",
+            "arguments": {"query": "body spray"},
+        }],
+    }
+    assert brain._safe_task_plan(plan, "Search body spray", runtime, []) is None
+    assert brain._safe_task_plan(plan, "Search body spray", runtime, [
+        {"platform": "browser", "capabilities": ["browser.search_products"], "status": "revoked"}
+    ]) is None
