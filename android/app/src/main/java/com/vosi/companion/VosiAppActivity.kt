@@ -434,7 +434,8 @@ private object AccountSessionStore {
         val encrypted = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
         VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()
             ?.putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-            ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))\n            ?.putString("email", email)?.apply()
+            ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))
+            ?.putString("email", email)?.apply()
     }
     fun load(): String? {
         return try {
@@ -448,7 +449,8 @@ private object AccountSessionStore {
             String(cipher.doFinal(data), Charsets.UTF_8)
         } catch (_: Exception) { null }
     }
-    fun email(): String? = VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)\n    fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
+    fun email(): String? = VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)
+    fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (store.getKey(Alias, null) as? SecretKey)?.let { return it }
