@@ -3,6 +3,7 @@ import pytest
 from cloud_browser_worker import (
     WorkerError,
     build_search_url,
+    is_allowed_browser_url,
     parse_product_card,
     validate_search_query,
 )
@@ -48,3 +49,11 @@ def test_does_not_return_links_to_untrusted_hosts():
 def test_requires_name_and_price_to_accept_a_product():
     assert parse_product_card("₹799", "", None) is None
     assert parse_product_card("No listed price", "Example Body Spray", None) is None
+
+
+def test_browser_network_allowlist_blocks_untrusted_origins():
+    assert is_allowed_browser_url("https://www.flipkart.com/search?q=soap")
+    assert is_allowed_browser_url("https://static-assets-web.flixcart.com/example.js")
+    assert not is_allowed_browser_url("https://attacker.example/")
+    assert not is_allowed_browser_url("http://www.flipkart.com/")
+    assert not is_allowed_browser_url("https://flipkart.com.attacker.example/")
