@@ -166,7 +166,10 @@ def _decode_model_json(raw: str) -> dict[str, Any]:
     return parsed
 
 
-def _safe_task_plan(plan: Any, user_message: str, runtime: Any) -> dict[str, Any] | None:
+def _safe_task_plan(
+    plan: Any, user_message: str, runtime: Any,
+    paired_devices: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
     """Validate model-generated plans against the runtime capability allow-list."""
     if not isinstance(plan, dict) or not isinstance(plan.get("steps"), list):
         return None
@@ -184,6 +187,14 @@ def _safe_task_plan(plan: Any, user_message: str, runtime: Any) -> dict[str, Any
         title = str(step.get("title") or "").strip()[:200]
         arguments = step.get("arguments", {})
         if capability not in allowed or not isinstance(arguments, dict) or not title:
+            return None
+        registered_executor = any(
+            device.get("status") != "revoked"
+            and device.get("platform") == platform
+            and capability in (device.get("capabilities") or [])
+            for device in (paired_devices or [])
+        )
+        if not registered_executor:
             return None
         normalized.append({
             "step_id": str(step.get("step_id") or f"brain-{index + 1}")[:100],
@@ -208,6 +219,7 @@ def answer_companion(
     recent_interactions: list[dict[str, Any]] | None = None,
     task_state: dict[str, Any] | None = None,
     runtime: Any = None,
+    paired_devices: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Generate a conversational answer, update safe memories, and optionally queue a validated plan."""
     initialize_companion_memory()
@@ -231,6 +243,11 @@ Never claim an action happened unless a connected executor returned a verified e
 For an action request, create a task plan only when the user clearly asked VOSI to perform it.
 Advice, questions, hypotheticals, and brainstorming are not execution requests.
 Only use capabilities in this exact allow-list: {json.dumps(runtime.list_capabilities() if runtime else [])}.
+Registered device executors and their capabilities: {json.dumps([
+    {"platform": d.get("platform"), "capabilities": d.get("capabilities", []), "status": d.get("status")}
+    for d in (paired_devices or []) if d.get("status") != "revoked"
+], ensure_ascii=False)}.
+Only plan a step if at least one registered device supports that platform and capability.
 Every plan step must use a capability's supported target platform and valid arguments. Never invent a capability.
 High-risk actions must remain approval-gated by the task runtime. Never bypass approval or permissions.
 If no available capability can safely perform a request, explain the limitation and offer a useful alternative.
@@ -276,12 +293,12 @@ Do not put markdown fences around JSON."""
             memory_saved = _save_memory_candidates(payload.get("memory_candidates"))
             planned_task = None
             if runtime is not None and payload.get("task_plan") is not None:
-                planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime)
+                planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime, paired_devices)
                 if planned_task:
                     if planned_task.get("state") == "awaiting_approval":
                         answer += "\n\nThis action is waiting for the required approval on the authorized device."
                     else:
-                        answer += "\n\nI've queued the task for a compatible paired device. It will run when that device is connected and authorized."
+                        answer += "\n\nI've queued the task for a paired device that supports it. It will run when that device is connected and authorized."
                 else:
                     answer += "\n\nI couldn't safely queue that action, so I haven't executed it."
             return {
