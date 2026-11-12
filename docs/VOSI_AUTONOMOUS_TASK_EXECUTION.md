@@ -24,7 +24,7 @@ This milestone strengthens the durable task queue so VOSI can accept work from a
 
 ## Important current boundary
 
-This is the durable scheduler and approval foundation, not a deployed cloud execution service or a working Zomato/Swiggy checkout adapter.
+This is the durable scheduler and approval foundation, not a deployed cloud execution service or a working Zomato/Swiggy checkout adapter. The approval API and capability contract are ready for an executor, but no merchant order submission is enabled in the current Chrome extension.
 
 The existing Chrome extension currently supports read-only Flipkart search, opening HTTPS tabs, and reading a site only after its origin permission is granted. It does not yet automate food-delivery menus, cart editing, addresses, checkout, or payment. The new commerce capability is intentionally not added to the Chrome extension's registered capabilities until a site adapter is implemented and tested.
 
