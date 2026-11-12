@@ -30,7 +30,7 @@ The Chrome extension is a paired VOSI browser device. It supports read-only Flip
 5. Click the VOSI Browser Companion toolbar icon.
 6. Paste the one-time pairing code and select **Pair this Chrome**.
 
-The extension exchanges the code for a per-device credential. The credential is stored in `chrome.storage.local`, which is isolated to this extension and is not synced through Chrome Sync. Chrome extension local storage is not hardware-encrypted; protect your Windows account and remove/revoke the device if the browser profile is compromised. The token is never placed in a page script or sent to Flipkart.
+The extension exchanges the code for a per-device credential. The credential is stored in `chrome.storage.local`, which is isolated to this extension and is not synced through Chrome Sync. If Chrome was paired before the general page-reading capability was added, disconnect and pair it again so the browser device registers `browser.read_visible_page`. Chrome extension local storage is not hardware-encrypted; protect your Windows account and remove/revoke the device if the browser profile is compromised. The token is never placed in a page script or sent to Flipkart.
 
 ## 3. Run VOSI
 
