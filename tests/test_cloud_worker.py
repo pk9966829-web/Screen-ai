@@ -71,6 +71,7 @@ def test_expired_safe_claim_is_requeued_but_order_is_not_replayed(tmp_path, monk
     reclaimed = client.post("/cloud-worker/claim", headers=headers).json()
     assert reclaimed["step"]["step_id"] == claim["step"]["step_id"]
     assert reclaimed["step"]["state"] == "running"
+    runtime.record_step_result(safe["task_id"], claim["step"]["step_id"], "cloud-worker:test", True, True, {"ok": True})
 
     order = runtime.create_task("Place approved order", [{
         "capability": "commerce.order.place", "target_platform": "browser",
