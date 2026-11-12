@@ -9,6 +9,7 @@ on:
       - feature/vosi-autonomous-task-orchestrator
       - feature/vosi-cloud-execution-engine
       - feature/vosi-cloud-browser-executor
+      - feature/vosi-personal-identity-onboarding
   pull_request:
     branches:
       - main
@@ -18,6 +19,8 @@ on:
       - feature/vosi-windows-voice-companion
       - feature/vosi-autonomous-task-orchestrator
       - feature/vosi-cloud-execution-engine
+      - feature/vosi-cloud-browser-executor
+      - feature/vosi-personal-identity-onboarding
   workflow_dispatch:
 
 jobs:
