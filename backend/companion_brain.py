@@ -250,7 +250,7 @@ Do not put markdown fences around JSON."""
         "recent_conversation": context,
         "current_workflow_state": task_state or {},
         "user_message": message,
-    }}
+    }
     failures = []
     for provider in providers:
         try:
