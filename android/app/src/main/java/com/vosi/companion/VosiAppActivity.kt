@@ -45,6 +45,7 @@ private val Muted = Color(0xFF9A9EAA)
 class VosiAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        VosiSessionContext.app = applicationContext
         window.statusBarColor = android.graphics.Color.rgb(9, 10, 13)
         window.navigationBarColor = android.graphics.Color.rgb(9, 10, 13)
         setContent {
@@ -435,14 +436,18 @@ private object AccountSessionStore {
             ?.putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))?.apply()
     }
-    fun load(): String? = try {
-        val prefs = VosiSessionContext.app?.getSharedPreferences(Prefs, 0) ?: return null
-        val iv = Base64.decode(prefs.getString("iv", null), Base64.NO_WRAP)
-        val data = Base64.decode(prefs.getString("data", null), Base64.NO_WRAP)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
-        String(cipher.doFinal(data), Charsets.UTF_8)
-    } catch (_: Exception) { null }
+    fun load(): String? {
+        return try {
+            val prefs = VosiSessionContext.app?.getSharedPreferences(Prefs, 0) ?: return null
+            val ivText = prefs.getString("iv", null) ?: return null
+            val dataText = prefs.getString("data", null) ?: return null
+            val iv = Base64.decode(ivText, Base64.NO_WRAP)
+            val data = Base64.decode(dataText, Base64.NO_WRAP)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
+            String(cipher.doFinal(data), Charsets.UTF_8)
+        } catch (_: Exception) { null }
+    }
     fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
