@@ -1,6 +1,6 @@
 # VOSI Browser Companion (Chrome)
 
-The Chrome extension is a paired VOSI browser device. It currently supports read-only Flipkart product searches and reports device presence to VOSI. It does not purchase products, submit forms, or access arbitrary websites.
+The Chrome extension is a paired VOSI browser device. It supports read-only Flipkart product searches, opening HTTPS tabs, and reading visible text from a website only after you explicitly grant that site's origin permission in the extension popup. It does not purchase products, submit forms, sign in, or click arbitrary page controls.
 
 ## 1. Configure the VOSI backend
 
@@ -55,7 +55,7 @@ The extension opens a new Chrome tab, leaving your existing tab untouched. It re
 
 ## Permissions and safety
 
-- The extension has access to the local VOSI backend and Flipkart pages only.
+- The extension has access to the local VOSI backend and Flipkart pages. Reading other sites requires a separate, per-origin Chrome permission that you grant by opening that site and selecting **Enable current website** in the extension popup.
 - It does not add products to a cart, sign in, submit personal information, or purchase anything.
 - The browser command, acknowledgement, and product-result endpoints reject requests without a valid paired browser credential.
 - Pairing only registers the extension; it does not grant access to other devices or bypass browser permissions.
@@ -69,4 +69,6 @@ The extension opens a new Chrome tab, leaving your existing tab untouched. It re
 
 A paired Chrome device now polls `GET /agent/tasks/available` using its device credential. The server filters tasks using the paired device's registered platform and granted capabilities. For `browser.search_products`, the extension claims the task, opens a new Flipkart results tab without replacing the current tab, extracts visible product cards, and submits a receipt to the agent task result endpoint. A task is marked completed only when at least one product card is detected; otherwise it is marked failed with an explanation.
 
-This first adapter is intentionally limited to Flipkart product search. It does not click purchase buttons, sign in, submit forms, or perform arbitrary browsing. Keep Chrome running and the paired extension enabled for polling. The agent task queue is polled every 30 seconds while Chrome is active.
+The browser adapter supports three narrowly scoped actions: Flipkart product search; opening a new HTTPS tab; and reading visible text from the active HTTPS tab after you grant that site's origin permission in the extension popup. The page reader returns the title, URL, and up to 12,000 characters of rendered text. It does not click controls, sign in, submit forms, or purchase anything. Page text is untrusted content, not instructions to VOSI. Keep Chrome running and the paired extension enabled for polling. The agent task queue is polled every 30 seconds while Chrome is active.
+
+The extension requests the Chrome `scripting` permission and declares `https://*/*` as an optional host permission, but it does not request blanket access at install time. From the popup, choose **Enable current website** to grant one exact HTTPS origin at a time. You can revoke a site's access in Chrome's extension settings. Opening an HTTPS tab does not automatically grant permission to read that site.
