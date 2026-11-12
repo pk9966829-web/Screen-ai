@@ -25,6 +25,8 @@
     .device small { color:#a6a7b1; overflow-wrap:anywhere; }
     .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#54c58a; margin-right:6px; }
     .foot { margin-top:14px; color:#81838f; font-size:10px; line-height:1.45; }
+    .permission { border:1px solid #30323d; border-radius:10px; padding:11px; margin-top:12px; }
+    .permission strong { display:block; font-size:12px; margin-bottom:5px; }
   </style>
 </head>
 <body>
@@ -39,6 +41,11 @@
     <strong><span class="dot"></span><span id="deviceLabel">Chrome paired</span></strong>
     <small id="deviceMeta"></small>
     <button id="heartbeatButton" class="secondary">Check connection</button>
+    <div class="permission">
+      <strong>Allow VOSI to read this website</strong>
+      <div class="muted">Grant access only to the website currently open in this tab. You can revoke it in Chrome extension settings.</div>
+      <button id="enableSiteButton" class="secondary">Enable current website</button>
+    </div>
     <button id="disconnectButton" class="secondary">Disconnect this Chrome</button>
   </section>
   <div id="status" role="status" aria-live="polite">Waiting for pairing.</div>
