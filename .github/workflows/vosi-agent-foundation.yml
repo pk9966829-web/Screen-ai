@@ -8,6 +8,7 @@ on:
       - feature/vosi-windows-voice-companion
       - feature/vosi-autonomous-task-orchestrator
       - feature/vosi-cloud-execution-engine
+      - feature/vosi-cloud-browser-executor
   pull_request:
     branches:
       - main
@@ -30,7 +31,7 @@ jobs:
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt pytest httpx
+          pip install -r backend/requirements.txt -r backend/cloud-browser-worker-requirements.txt pytest httpx
       - name: Validate Chrome extension JavaScript and manifest
         run: |
           node --check "screen ai/chrome-extension/service-worker.js"
@@ -54,7 +55,7 @@ jobs:
           PY
       - name: Test VOSI agent runtime
         working-directory: backend
-        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py ../tests/test_task_orchestrator.py ../tests/test_cloud_worker.py -q
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py ../tests/test_task_orchestrator.py ../tests/test_cloud_worker.py ../tests/test_cloud_browser_worker.py -q
 
   android-build:
     runs-on: ubuntu-latest
