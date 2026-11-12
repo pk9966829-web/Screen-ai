@@ -104,3 +104,12 @@ If the Windows PC was paired before these desktop capabilities were added, disco
 ## Windows settings and power requests from the phone
 
 The phone can request `open Bluetooth settings on PC` or `open Wi-Fi settings on PC`. VOSI opens the matching Windows Settings page; the user operates the switch there. VOSI does not silently toggle radios. Commands `shut down my PC` and `restart my PC` create approval-gated tasks. The paired Windows app shows a confirmation dialog; only accepting on the PC releases the action, while declining cancels it. The phone cannot approve its own power request. Keep the Windows VOSI app open. Re-pair the Windows PC if it was paired before these capabilities were added; the phone does not need to be re-paired.
+
+
+## Chrome browser commands from the phone
+
+The paired phone can now send these browser tasks to Chrome:
+- `open https://google.com in Chrome` — opens a new HTTPS tab.
+- `read this page` or `summarize the current page` — reads rendered text from the active Chrome tab.
+
+For page reading on a website other than the built-in Flipkart integration, open that website in Chrome, click the VOSI Browser Companion icon, and choose **Enable current website**. Chrome asks permission for that one HTTPS origin. The extension does not request blanket website access at install time. If Chrome was paired before this feature was added, disconnect and pair Chrome again to register `browser.read_visible_page`. Page content is treated as untrusted text; VOSI does not follow instructions embedded in web pages. This milestone does not click arbitrary controls, sign in, submit forms, or purchase items.
