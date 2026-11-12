@@ -12,6 +12,10 @@ changes are required.
   so the user can inspect and remove individual memories.
 - Routes text-only chat through the companion brain. Requests with `include_screen: true`
   continue to use the existing visual screen-analysis pipeline.
+- Accepts authenticated Android voice turns at `POST /companion/voice`. Android uses its
+  system speech recognizer for tap-to-talk input and local TextToSpeech for spoken replies.
+  Recognized transcripts enter the same persisted conversation history and companion brain
+  used by desktop chat, so context can continue across paired devices.
 - Can produce a task plan for a clear execution request. Every proposed step is validated
   by the existing `AgentRuntime` capability and platform allow-lists before it is queued.
 - Keeps high-risk steps approval-gated by the existing runtime. Planning a task is not proof
@@ -53,6 +57,8 @@ chat history is still stored by the pre-existing interaction-history system.
 This is the first brain integration, not a fully autonomous general-purpose agent. It does not
 grant new device permissions, invent unsupported capabilities, bypass approvals, or guarantee
 provider availability. Browser and device work still depends on a paired, online executor.
-Screen-aware questions still use the existing screen-analysis pipeline. Voice conversation,
-background wake-word listening, broad browser navigation, and multi-step self-recovery remain
-future milestones.
+Screen-aware questions still use the existing screen-analysis pipeline. Voice is currently
+foreground tap-to-talk, not an always-listening wake word. Android's configured speech-recognition
+service may process audio according to that provider's own privacy terms; VOSI sends the recognized
+transcript, not a microphone recording, to its backend. Background wake-word listening, continuous
+full-duplex audio, broad browser navigation, and multi-step self-recovery remain future milestones.
