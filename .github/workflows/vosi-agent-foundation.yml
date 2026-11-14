@@ -16,6 +16,7 @@ on:
       - feature/vosi-android-background-worker
       - feature/vosi-task-planner-executor
       - feature/vosi-account-scoped-companion
+      - feature/vosi-account-scoped-task-runtime
   pull_request:
     branches:
       - main
