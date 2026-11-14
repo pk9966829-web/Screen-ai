@@ -1,4 +1,4 @@
-from companion_brain import _safe_task_plan, _validate_plan_arguments
+from companion_brain import IMPLEMENTED_EXECUTORS, _safe_task_plan, _validate_plan_arguments
 from agent_runtime import AgentRuntime
 
 
@@ -93,3 +93,10 @@ def test_runtime_exposes_progress_and_next_step(tmp_path):
     assert task["next_step"]["step_id"] == "volume"
     assert task["current_step"] is None
     assert task["waiting_for_approval"] is False
+
+
+def test_planner_never_queues_capabilities_without_an_installed_executor():
+    assert "phone.call" not in IMPLEMENTED_EXECUTORS["android"]
+    assert "phone.whatsapp.quick_reply" not in IMPLEMENTED_EXECUTORS["android"]
+    assert "email.send" not in IMPLEMENTED_EXECUTORS["desktop"]
+    assert "commerce.order.place" not in IMPLEMENTED_EXECUTORS["browser"]
