@@ -724,8 +724,8 @@
 <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
                             Explain my screen
                         </button>
-<button class="quick-action" type="button" data-prompt="Summarize my shared screen in three short bullet points.">
-                            Summarize screen
+<button class="quick-action" id="phone-pair-generate" type="button" data-action="phone-pair">
+                            Connect your phone
                         </button>
 <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
                             Guide next step
@@ -734,6 +734,7 @@
                             Start screen sharing
                         </button>
                     </div>
+                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4"><div class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">One-time Android pairing code</div><div class="mt-2 flex items-center gap-2"><code id="phone-pair-code" class="min-w-0 flex-1 break-all rounded-lg bg-black/40 p-3 text-sm text-cyan-200"></code><button id="phone-pair-copy" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200">Copy</button></div><p id="phone-pair-expiry" class="mt-2 text-[11px] text-slate-400"></p></div><p id="phone-pair-status" class="mt-2 w-full max-w-xl text-center text-xs text-slate-400" role="status">Connect your Android phone to VOSI.</p>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
@@ -1811,6 +1812,7 @@
             const userInput = document.getElementById('user-input');
             quickBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
+                    if (btn.dataset.action === 'phone-pair') return;
                     if (btn.dataset.action === 'awareness') { document.getElementById('btn-start-observing')?.click(); return; }
                     if (btn.dataset.action === 'task') { openTaskReview(); return; }
                     if (btn.dataset.action === 'letter') { openLetterDialog(userInput?.value.trim() || '', true); return; }
@@ -2725,6 +2727,50 @@
     const disconnectButton = document.getElementById("desktop-disconnect-button");
     let polling = false;
     const promptedApprovals = new Set();
+
+    const phoneGenerateButton = document.getElementById("phone-pair-generate");
+    const phoneCodeWrap = document.getElementById("phone-pair-code-wrap");
+    const phoneCode = document.getElementById("phone-pair-code");
+    const phoneExpiry = document.getElementById("phone-pair-expiry");
+    const phoneStatus = document.getElementById("phone-pair-status");
+    const phoneCopyButton = document.getElementById("phone-pair-copy");
+    phoneGenerateButton?.addEventListener("click", async () => {
+        phoneGenerateButton.disabled = true;
+        phoneGenerateButton.textContent = "Generating secure code…";
+        if (phoneStatus) phoneStatus.textContent = "Contacting the local VOSI backend…";
+        if (phoneCodeWrap) phoneCodeWrap.classList.add("hidden");
+        try {
+            const response = await fetch(DEVICE_API + "/agent/devices/pairing/local", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success || !data.pairing?.pairing_code) {
+                throw new Error(data.detail || "Could not generate a phone pairing code. Check that the local backend is running.");
+            }
+            phoneCode.textContent = data.pairing.pairing_code;
+            const expiry = new Date(data.pairing.expires_at);
+            phoneExpiry.textContent = "Expires at " + expiry.toLocaleTimeString() + ". Generate a new code if this one expires.";
+            phoneCodeWrap?.classList.remove("hidden");
+            if (phoneStatus) phoneStatus.textContent = "Code ready. Enter it in the Android VOSI app under Pair This Phone With VOSI.";
+        } catch (error) {
+            if (phoneStatus) phoneStatus.textContent = String(error?.message || error);
+        } finally {
+            phoneGenerateButton.disabled = false;
+            phoneGenerateButton.textContent = "Connect your phone";
+        }
+    });
+    phoneCopyButton?.addEventListener("click", async () => {
+        const value = phoneCode?.textContent || "";
+        if (!value) return;
+        try {
+            await navigator.clipboard.writeText(value);
+            if (phoneStatus) phoneStatus.textContent = "Pairing code copied. Paste it into the Android VOSI app.";
+        } catch (_) {
+            if (phoneStatus) phoneStatus.textContent = "Copy is unavailable here. Select and copy the code manually.";
+        }
+    });
 
     function setDeviceStatus(message) {
         if (status) status.textContent = message;

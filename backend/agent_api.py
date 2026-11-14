@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from agent_runtime import AgentRuntime, AgentRuntimeError
@@ -362,6 +362,17 @@ def cancel_agent_task(task_id: str, authorization: str | None = Header(default=N
     _authorize(authorization)
     task = _runtime_call(runtime.cancel_task, task_id)
     return {"success": True, "task": task}
+
+
+@router.post("/devices/pairing/local")
+def create_local_phone_pairing(request: Request):
+    # The desktop app talks to its own loopback backend. Do not expose this
+    # bootstrap route to LAN clients; the generated code is a temporary credential.
+    client_host = request.client.host if request.client else ""
+    if client_host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Phone pairing-code generation is available only on this computer.")
+    pairing = _runtime_call(devices.create_pairing, "android", "VOSI Android phone")
+    return {"success": True, "pairing": pairing}
 
 
 @router.post("/devices/pairing")

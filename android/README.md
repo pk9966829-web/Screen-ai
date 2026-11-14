@@ -115,3 +115,24 @@ The paired phone can now send these browser tasks to Chrome:
 - `read this page` — reads rendered text from the active Chrome tab and returns a completion notification with the page title.
 
 For page reading on a website other than the built-in Flipkart integration, open that website in Chrome, click the VOSI Browser Companion icon, and choose **Enable current website**. Chrome asks permission for that one HTTPS origin. The extension does not request blanket website access at install time. If Chrome was paired before this feature was added, disconnect and pair Chrome again to register `browser.read_visible_page`. Page content is treated as untrusted text; VOSI does not follow instructions embedded in web pages. This milestone does not click arbitrary controls, sign in, submit forms, or purchase items.
+
+
+## VOSI native mobile app (0.2.0)
+
+The launcher now opens a native Jetpack Compose experience with five destinations:
+- **Home** — VOSI companion welcome, voice entry point, and shortcuts.
+- **Chat** — entry into the existing voice/companion workspace.
+- **Tasks** — activity and approval overview, with live task timeline integration planned next.
+- **Devices** — phone, Windows and browser connection overview plus a shortcut to existing pairing controls.
+- **Profile** — VOSI identity registration, six-digit email verification, sign-in and sign-out against the shared `/identity` API.
+
+The account session token is encrypted with an AES-GCM key held by Android Keystore. The account API uses the backend URL configured under Profile > Advanced server settings. For a phone connected to a development PC over USB, run `adb reverse tcp:8001 tcp:8001` and keep the development URL as `http://127.0.0.1:8001`. For normal use, configure the deployed HTTPS API URL. Registration remains unavailable until the backend identity challenge secret and SMTP settings are configured.
+
+The older native companion activity remains in the app and is opened from the new Chat and Devices destinations. Existing device pairing, voice, task polling, phone tools and WhatsApp notification features are retained; the Compose screens are the new app shell, not a replacement for those capabilities.
+
+### Current scope and limitations
+- The Tasks screen is currently an app overview; live task history and approvals still need their dedicated API/UI integration.
+- Chat currently opens the existing voice companion workspace; a fully native chat transcript/composer is a follow-up.
+- The Devices screen opens the existing pairing controls; richer device inventory and account linking UI is a follow-up.
+- The backend profile endpoint accepts only encrypted profile envelopes. The existing local profile key is device-local, so profile sync is intentionally not enabled until cross-device key recovery is designed.
+- This branch has not been tested on a physical Android phone. CI APK build status should be checked on the pull request.
