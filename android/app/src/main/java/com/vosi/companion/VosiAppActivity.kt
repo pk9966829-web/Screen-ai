@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.json.JSONObject
@@ -297,12 +298,148 @@ private fun ChatScreen(onOpenCompanion: () -> Unit) {
 
 @Composable
 private fun TasksScreen() {
-    Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        PageHeader("Your activity", "Follow what VOSI is doing for you.")
-        InfoTile(Icons.Outlined.PendingActions, "In progress", "Tasks requested from this phone appear here when task history sync is connected.")
-        InfoTile(Icons.Outlined.Verified, "Approvals", "Sensitive actions must show the exact action and ask you before proceeding.")
-        InfoTile(Icons.Outlined.History, "Recent activity", "Completed and failed task history will be available here.")
-        Text("Task timeline connection is the next app integration step.", color = Muted, fontSize = 12.sp)
+    val context = LocalContext.current
+    var tasks by remember { mutableStateOf(listOf<JSONObject>()) }
+    var approvals by remember { mutableStateOf(listOf<JSONObject>()) }
+    var status by remember { mutableStateOf("Connect your paired phone to load task activity.") }
+    var busy by remember { mutableStateOf(false) }
+
+    fun refreshTasks() {
+        if (busy) return
+        busy = true
+        status = "Syncing your task activity…"
+        thread {
+            try {
+                val credential = DeviceCredentialStore.load(context)
+                    ?: throw IllegalStateException("Pair this phone with VOSI to view its tasks and approvals.")
+                val base = credential.optString("backend_url").trimEnd('/')
+                val token = credential.optString("device_token")
+                val updateResponse = identityRequest(base, "/agent/tasks/updates", "GET", token, JSONObject())
+                val approvalResponse = identityRequest(base, "/agent/tasks/pending-approvals", "GET", token, JSONObject())
+                val taskArray = updateResponse.optJSONArray("updates") ?: org.json.JSONArray()
+                val approvalArray = approvalResponse.optJSONArray("approvals") ?: org.json.JSONArray()
+                val taskItems = (0 until taskArray.length()).mapNotNull { taskArray.optJSONObject(it) }
+                val approvalItems = (0 until approvalArray.length()).mapNotNull { approvalArray.optJSONObject(it) }
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    tasks = taskItems
+                    approvals = approvalItems
+                    status = if (taskItems.isEmpty()) "No tasks requested from this phone yet."
+                        else "Updated just now · ${taskItems.size} task(s)"
+                    busy = false
+                }
+            } catch (error: Exception) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    status = error.message ?: "Could not load VOSI task activity."
+                    busy = false
+                }
+            }
+        }
+    }
+
+    fun respondToApproval(approval: JSONObject, approve: Boolean) {
+        if (busy) return
+        busy = true
+        status = if (approve) "Sending your approval…" else "Declining this action…"
+        val taskId = approval.optString("task_id")
+        val stepId = approval.optString("step_id")
+        val digest = approval.optString("confirmation_digest")
+        thread {
+            try {
+                val credential = DeviceCredentialStore.load(context)
+                    ?: throw IllegalStateException("Pair this phone with VOSI first.")
+                val base = credential.optString("backend_url").trimEnd('/')
+                val token = credential.optString("device_token")
+                val path = if (approve) {
+                    "/agent/tasks/${taskId}/steps/${stepId}/approve-origin"
+                } else {
+                    "/agent/tasks/${taskId}/steps/${stepId}/reject-origin"
+                }
+                val body = if (approve) JSONObject().put("confirmation_digest", digest) else JSONObject()
+                identityRequest(base, path, "POST", token, body)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    busy = false
+                    status = if (approve) "Approval recorded. VOSI can continue with the approved step."
+                        else "You declined the action. The task was stopped."
+                    refreshTasks()
+                }
+            } catch (error: Exception) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    status = error.message ?: "Could not submit your decision."
+                    busy = false
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { refreshTasks() }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(22.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                PageHeader("Your activity", "Follow what VOSI is doing for you.")
+                TextButton(onClick = { refreshTasks() }, enabled = !busy) {
+                    if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Outlined.Refresh, "Refresh", tint = Accent)
+                }
+            }
+            Text(status, color = Muted, fontSize = 12.sp)
+        }
+        if (approvals.isNotEmpty()) {
+            item { Text("WAITING FOR YOUR APPROVAL", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            items(approvals.size) { index ->
+                val approval = approvals[index]
+                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text(approval.optString("goal", "VOSI needs your approval"), fontWeight = FontWeight.SemiBold)
+                        Text(approval.optString("title", "Review this action"), color = Muted, fontSize = 12.sp)
+                        val summary = approval.optJSONObject("arguments")?.optJSONObject("checkout_summary")
+                        if (summary != null) {
+                            Text("Merchant: ${summary.optString("merchant")}", fontSize = 12.sp)
+                            Text("Total: ${summary.optString("currency")} ${summary.optString("total")}", fontSize = 12.sp)
+                            Text("Items: ${summary.optJSONArray("items")?.length() ?: 0}", fontSize = 12.sp)
+                            Text("Delivery: ${summary.optString("delivery_address")}", fontSize = 12.sp)
+                            Text("Payment method: ${summary.optString("payment_method")}", fontSize = 12.sp)
+                        }
+                        Text("Review the exact details before approving. Approval applies only to this checkout snapshot.", color = Muted, fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Button(onClick = { respondToApproval(approval, true) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("Approve") }
+                            OutlinedButton(onClick = { respondToApproval(approval, false) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("Decline") }
+                        }
+                    }
+                }
+            }
+        }
+        item { Text("TASK HISTORY", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+        if (tasks.isEmpty()) {
+            item { InfoTile(Icons.Outlined.PendingActions, "No task history yet", "When you ask VOSI to perform a task from this phone, its progress and verified result will appear here.") }
+        } else {
+            items(tasks.size) { index ->
+                val task = tasks[index]
+                val progress = task.optJSONObject("progress")
+                val percent = progress?.optInt("percent", 0)?.coerceIn(0, 100) ?: 0
+                val current = task.optJSONObject("current_step")
+                val next = task.optJSONObject("next_step")
+                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text(task.optString("state", "planned").replaceFirstChar { it.uppercase() }, color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("${progress?.optInt("completed", 0) ?: 0}/${progress?.optInt("total", 0) ?: 0} steps", color = Muted, fontSize = 11.sp)
+                        }
+                        Text(task.optString("goal", "VOSI task"), fontWeight = FontWeight.SemiBold)
+                        LinearProgressIndicator(progress = percent / 100f, modifier = Modifier.fillMaxWidth())
+                        Text("${percent}% complete", color = Muted, fontSize = 11.sp)
+                        if (current != null) Text("Running: ${current.optString("title")}", fontSize = 12.sp)
+                        else if (next != null) Text("Next: ${next.optString("title")}", fontSize = 12.sp)
+                        if (task.optBoolean("waiting_for_approval")) Text("Waiting for your approval", color = Accent, fontSize = 12.sp)
+                        if (task.optString("error").isNotBlank()) Text(task.optString("error"), color = Color(0xFFFF9B9B), fontSize = 12.sp)
+                    }
+                }
+            }
+        }
     }
 }
 
