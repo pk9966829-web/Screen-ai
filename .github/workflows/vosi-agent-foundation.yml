@@ -18,6 +18,7 @@ on:
       - feature/vosi-account-scoped-companion
       - feature/vosi-account-scoped-task-runtime
       - feature/vosi-verified-retry-execution
+      - feature/vosi-account-scoped-screen-state
   pull_request:
     branches:
       - main
