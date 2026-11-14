@@ -188,6 +188,7 @@ class AgentRuntime:
                     idempotency_key TEXT UNIQUE,
                     goal TEXT NOT NULL,
                     origin_device_id TEXT,
+                    owner_user_id TEXT,
                     state TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -224,6 +225,9 @@ class AgentRuntime:
             columns = {row["name"] for row in db.execute("PRAGMA table_info(agent_tasks)").fetchall()}
             if "scheduled_at" not in columns:
                 db.execute("ALTER TABLE agent_tasks ADD COLUMN scheduled_at TEXT")
+            if "owner_user_id" not in columns:
+                db.execute("ALTER TABLE agent_tasks ADD COLUMN owner_user_id TEXT")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_agent_tasks_owner_created ON agent_tasks(owner_user_id, created_at)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_agent_steps_ready ON agent_steps(task_id, position, state)")
 
     def _connect(self):
@@ -245,6 +249,7 @@ class AgentRuntime:
         idempotency_key: str | None = None,
         expires_at: str | None = None,
         scheduled_at: str | None = None,
+        owner_user_id: str | None = None,
     ) -> dict[str, Any]:
         goal = str(goal or "").strip()
         if not goal or len(goal) > 2000:
@@ -254,6 +259,9 @@ class AgentRuntime:
         if idempotency_key is not None and (not isinstance(idempotency_key, str) or not 1 <= len(idempotency_key) <= 128):
             raise AgentRuntimeError("Invalid idempotency key.")
 
+        stored_idempotency_key = (
+            f"{owner_user_id or 'legacy'}:{idempotency_key}" if idempotency_key else None
+        )
         normalized: list[dict[str, Any]] = []
         seen_ids: set[str] = set()
         for position, raw in enumerate(steps):
@@ -304,15 +312,15 @@ class AgentRuntime:
             if idempotency_key:
                 existing = db.execute(
                     "SELECT task_id FROM agent_tasks WHERE idempotency_key = ?",
-                    (idempotency_key,),
+                    (stored_idempotency_key,),
                 ).fetchone()
                 if existing:
                     return self.get_task(existing["task_id"])
             db.execute(
                 """INSERT INTO agent_tasks
-                   (task_id, idempotency_key, goal, origin_device_id, state, created_at, updated_at, expires_at, scheduled_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (task_id, idempotency_key, goal, origin_device_id, initial_state, now, now, expires_at, scheduled_at),
+                   (task_id, idempotency_key, goal, origin_device_id, owner_user_id, state, created_at, updated_at, expires_at, scheduled_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (task_id, stored_idempotency_key, goal, origin_device_id, owner_user_id, initial_state, now, now, expires_at, scheduled_at),
             )
             for step in normalized:
                 db.execute(
@@ -542,6 +550,7 @@ class AgentRuntime:
             "task_id": task["task_id"],
             "goal": task["goal"],
             "origin_device_id": task["origin_device_id"],
+            "owner_user_id": task["owner_user_id"],
             "state": task["state"],
             "created_at": task["created_at"],
             "updated_at": task["updated_at"],
@@ -560,10 +569,21 @@ class AgentRuntime:
             "steps": step_items,
         }
 
-    def list_tasks(self, limit: int = 20) -> list[dict[str, Any]]:
+    def list_tasks(self, limit: int = 20, user_id: str | None = None) -> list[dict[str, Any]]:
         limit = max(1, min(int(limit), 100))
         with self._connect() as db:
-            rows = db.execute("SELECT task_id FROM agent_tasks ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            if user_id is None:
+                rows = db.execute("SELECT task_id FROM agent_tasks ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            elif user_id == "":
+                rows = db.execute(
+                    "SELECT task_id FROM agent_tasks WHERE owner_user_id IS NULL ORDER BY created_at DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+            else:
+                rows = db.execute(
+                    "SELECT task_id FROM agent_tasks WHERE owner_user_id = ? ORDER BY created_at DESC LIMIT ?",
+                    (user_id, limit),
+                ).fetchall()
         return [self.get_task(row["task_id"]) for row in rows]
 
     @staticmethod

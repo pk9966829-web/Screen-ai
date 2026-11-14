@@ -11,13 +11,13 @@
 
 ## Current limitation
 
-The existing agent task ledger and legacy desktop `/ask` memory/history paths have not yet been migrated to account ownership. The account-isolated companion chat therefore runs in conversation-only mode and does not enqueue tasks. Do not deploy the entire backend as a multi-tenant hosted service until task ownership, device claims, approvals, receipts, observations, and legacy interaction storage are also scoped to the account.
+Companion-created tasks now carry an account owner. Device task feeds are filtered by the linked account, and a device from another account cannot claim or submit results for that task. Approval feeds and device approvals are likewise filtered to the task owner. Legacy tasks created through the local admin-token API remain unowned and are visible only to the legacy local-device queue. The legacy desktop `/ask` memory/history and observation storage have not yet been migrated to account ownership. Do not deploy the entire backend as a multi-tenant hosted service until those remaining paths are scoped.
 
 ## Rollout
 
 1. Deploy the backend update.
 2. Sign in to the VOSI account in the Android Profile tab.
 3. Open Chat while the phone is paired. The first authenticated chat request links that device to the account.
-4. Pair and authenticate each additional device with the same account before using private shared chat.
+4. Pair each additional device and link it to the same account through the identity device-link flow before it can claim that account's tasks. The Android chat's first authenticated use links the phone automatically.
 
 Existing legacy chat history is not copied into account-scoped tables automatically. This avoids assigning previously global data to an account without explicit ownership confirmation.

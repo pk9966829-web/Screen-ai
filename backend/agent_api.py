@@ -127,7 +127,7 @@ def list_agent_tasks(
 def list_available_device_tasks(authorization: str | None = Header(default=None)):
     device = _authorize_device(authorization)
     available = []
-    for task in runtime.list_tasks(100):
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
         if task["state"] in {"completed", "failed", "cancelled"}:
             continue
         if task.get("scheduled_at") and task["scheduled_at"] > datetime.now(timezone.utc).isoformat():
@@ -208,6 +208,7 @@ def request_agent_task(
         goal=request.goal,
         steps=request.steps,
         origin_device_id=device["device_id"],
+        owner_user_id=device.get("user_id"),
         idempotency_key=request.idempotency_key,
         scheduled_at=request.scheduled_at,
     )
@@ -217,10 +218,13 @@ def request_agent_task(
 @router.get("/tasks/updates")
 def get_origin_device_task_updates(authorization: str | None = Header(default=None)):
     device = _authorize_device(authorization)
-    tasks = runtime.list_tasks(100)
+    tasks = runtime.list_tasks(100, user_id=device.get("user_id") or "")
     updates = []
     for task in tasks:
-        if task["origin_device_id"] != device["device_id"]:
+        if device.get("user_id"):
+            if task.get("owner_user_id") != device["user_id"]:
+                continue
+        elif task.get("origin_device_id") != device["device_id"]:
             continue
         updates.append({
             "task_id": task["task_id"],
@@ -260,7 +264,7 @@ def list_origin_task_approvals(authorization: str | None = Header(default=None))
     device = _authorize_device(authorization)
     approvals = []
     now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
-    for task in runtime.list_tasks(100):
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
         if task.get("origin_device_id") != device["device_id"]:
             continue
         if task.get("scheduled_at") and task["scheduled_at"] > now:
@@ -286,8 +290,8 @@ def approve_origin_task_step(
 ):
     device = _authorize_device(authorization)
     task = _runtime_call(runtime.get_task, task_id)
-    if task.get("origin_device_id") != device["device_id"]:
-        raise HTTPException(status_code=403, detail="Only the device that requested this task can approve it.")
+    if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Only the originating device in this account can approve the task.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
     if not step or not step["approval_required"] or step["state"] != "awaiting_approval":
         raise HTTPException(status_code=409, detail="This step is not awaiting approval.")
@@ -304,8 +308,8 @@ def approve_origin_task_step(
 def reject_origin_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
     device = _authorize_device(authorization)
     task = _runtime_call(runtime.get_task, task_id)
-    if task.get("origin_device_id") != device["device_id"]:
-        raise HTTPException(status_code=403, detail="Only the device that requested this task can reject it.")
+    if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Only the originating device in this account can reject the task.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
     if not step or step["capability"] != "commerce.order.place" or step["state"] != "awaiting_approval":
         raise HTTPException(status_code=409, detail="This order is not awaiting your approval.")
@@ -318,7 +322,7 @@ def list_desktop_task_approvals(authorization: str | None = Header(default=None)
     if device["platform"] != "desktop":
         raise HTTPException(status_code=403, detail="Only a paired desktop can receive Windows confirmation requests.")
     approvals = []
-    for task in runtime.list_tasks(100):
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
         for step in task["steps"]:
             if step["target_platform"] == "desktop" and step["state"] == "awaiting_approval" and step["capability"] in {"device.pc.shutdown", "device.pc.restart"} and step["capability"] in device["capabilities"]:
                 approvals.append({"task_id": task["task_id"], "goal": task["goal"], "step_id": step["step_id"], "title": step["title"], "capability": step["capability"]})
@@ -331,6 +335,8 @@ def approve_desktop_task_step(task_id: str, step_id: str, authorization: str | N
     if device["platform"] != "desktop":
         raise HTTPException(status_code=403, detail="Only a paired desktop can approve a Windows power action.")
     task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
     if not step or step["target_platform"] != "desktop" or step["capability"] not in {"device.pc.shutdown", "device.pc.restart"} or step["capability"] not in device["capabilities"]:
         raise HTTPException(status_code=403, detail="This desktop approval is not valid for the requested action.")
@@ -343,6 +349,8 @@ def reject_desktop_task_step(task_id: str, step_id: str, authorization: str | No
     if device["platform"] != "desktop":
         raise HTTPException(status_code=403, detail="Only a paired desktop can reject a Windows power action.")
     task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
     if not step or step["target_platform"] != "desktop" or step["capability"] not in {"device.pc.shutdown", "device.pc.restart"} or step["capability"] not in device["capabilities"]:
         raise HTTPException(status_code=403, detail="This desktop rejection is not valid for the requested action.")
@@ -435,6 +443,9 @@ def claim_agent_task_step(
     authorization: str | None = Header(default=None),
 ):
     device = _authorize_device(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
     step = _runtime_call(
         runtime.claim_next_step,
         task_id,
@@ -453,6 +464,9 @@ def record_agent_step_result(
     authorization: str | None = Header(default=None),
 ):
     device = _authorize_device(authorization)
+    existing_task = _runtime_call(runtime.get_task, task_id)
+    if existing_task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
     task = _runtime_call(
         runtime.record_step_result,
         task_id,

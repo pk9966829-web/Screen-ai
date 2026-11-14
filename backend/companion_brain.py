@@ -267,6 +267,7 @@ def _safe_task_plan(
     plan: Any, user_message: str, runtime: Any,
     paired_devices: list[dict[str, Any]] | None = None,
     origin_device_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Validate model-generated plans against the runtime capability allow-list."""
     if not isinstance(plan, dict) or not isinstance(plan.get("steps"), list):
@@ -294,6 +295,7 @@ def _safe_task_plan(
             and device.get("platform") == platform
             and capability in (device.get("capabilities") or [])
             for device in (paired_devices or [])
+            if user_id is None or device.get("user_id") == user_id
         )
         if not registered_executor:
             return None
@@ -311,6 +313,7 @@ def _safe_task_plan(
             idempotency_key="brain-" + hashlib.sha256((user_message.strip().lower() + datetime.now(timezone.utc).strftime("%Y%m%d%H%M")).encode("utf-8")).hexdigest()[:48],
             origin_device_id=origin_device_id,
             scheduled_at=plan.get("scheduled_at"),
+            owner_user_id=user_id,
         )
     except Exception:
         # An invalid or unsupported plan must never be represented as scheduled work.
@@ -412,7 +415,7 @@ Do not put markdown fences around JSON."""
             memory_saved = _save_memory_candidates(payload.get("memory_candidates"), user_id=user_id)
             planned_task = None
             if runtime is not None and payload.get("task_plan") is not None:
-                planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime, paired_devices, origin_device_id)
+                planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime, paired_devices, origin_device_id, user_id)
                 if planned_task:
                     if planned_task.get("state") == "awaiting_approval":
                         answer += "\n\nThis action is waiting for the required approval on the authorized device."
