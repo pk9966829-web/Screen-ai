@@ -208,7 +208,7 @@ def request_agent_task(
         goal=request.goal,
         steps=request.steps,
         origin_device_id=device["device_id"],
-        owner_user_id=device.get("user_id") or "",
+        owner_user_id=device.get("user_id"),
         idempotency_key=request.idempotency_key,
         scheduled_at=request.scheduled_at,
     )
