@@ -41,6 +41,11 @@ def _worker_config() -> tuple[str, str, str, set[str], int]:
 
 
 def _authorize(authorization: str | None) -> tuple[str, str, set[str], int]:
+    if os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}:
+        raise HTTPException(
+            status_code=503,
+            detail="The shared cloud worker is disabled in multi-tenant mode until worker leases are account-scoped.",
+        )
     token, worker_id, platform, capabilities, lease_seconds = _worker_config()
     scheme, _, supplied = (authorization or "").partition(" ")
     if not token:
