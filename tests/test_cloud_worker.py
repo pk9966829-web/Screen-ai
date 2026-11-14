@@ -149,3 +149,19 @@ def test_multi_tenant_cloud_worker_requires_a_valid_account_session(tmp_path, mo
     monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
     response = client.post("/cloud-worker/claim", headers=headers)
     assert response.status_code == 401
+
+
+def test_legacy_cloud_worker_cannot_claim_account_owned_tasks(tmp_path, monkeypatch):
+    runtime, client, headers = make_client(tmp_path, monkeypatch)
+    runtime.create_task("Private account task", [{
+        "capability": "browser.search_products", "target_platform": "browser",
+        "title": "Private search", "arguments": {"query": "private"},
+    }], owner_user_id="account-a")
+    runtime.create_task("Legacy local task", [{
+        "capability": "browser.search_products", "target_platform": "browser",
+        "title": "Local search", "arguments": {"query": "local"},
+    }])
+
+    claim = client.post("/cloud-worker/claim", headers=headers)
+    assert claim.status_code == 200
+    assert claim.json()["task"]["goal"] == "Legacy local task"
