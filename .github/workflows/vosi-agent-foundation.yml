@@ -17,8 +17,11 @@ on:
       - feature/vosi-task-planner-executor
       - feature/vosi-account-scoped-companion
       - feature/vosi-account-scoped-task-runtime
+      - feature/vosi-account-scoped-screen-state
+      - feature/vosi-single-node-production-deploy
       - feature/vosi-verified-retry-execution
       - feature/vosi-account-scoped-screen-state
+      - feature/vosi-single-node-production-deploy
   pull_request:
     branches:
       - main
