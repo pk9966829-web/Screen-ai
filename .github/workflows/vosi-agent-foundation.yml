@@ -19,6 +19,7 @@ on:
       - feature/vosi-account-scoped-task-runtime
       - feature/vosi-verified-retry-execution
       - feature/vosi-account-scoped-screen-state
+      - feature/vosi-single-node-production-deploy-v2
   pull_request:
     branches:
       - main
@@ -26,6 +27,7 @@ on:
       - feature/vosi-verified-retry-execution
       - feature/vosi-account-scoped-screen-state
       - feature/vosi-single-node-production-deploy
+      - feature/vosi-single-node-production-deploy-v2
       - feature/whatsapp-personal-android
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
@@ -118,3 +120,17 @@ jobs:
           npm run build
       - name: Check Windows Tauri desktop build
         run: cargo check --manifest-path "screen ai/src-tauri/Cargo.toml"
+
+  production-container-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose configuration
+        run: |
+          cp backend/.env.production.example backend/.env
+          cd backend
+          docker compose config --quiet
+      - name: Build production API image
+        run: docker build -f backend/Dockerfile -t vosi-api:ci .
+      - name: Build optional cloud browser worker image
+        run: docker build -f backend/Dockerfile.cloud-worker -t vosi-cloud-browser-worker:ci .
