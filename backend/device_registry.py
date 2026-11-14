@@ -160,6 +160,18 @@ class DeviceRegistry:
             "paired_at": _iso(now),
         }
 
+    @staticmethod
+    def _linked_user(db: sqlite3.Connection, device_id: str) -> str | None:
+        try:
+            row = db.execute(
+                "SELECT user_id FROM identity_device_links WHERE device_id = ?",
+                (device_id,),
+            ).fetchone()
+            return row["user_id"] if row else None
+        except sqlite3.OperationalError:
+            # Backward-compatible during initial identity schema creation.
+            return None
+
     def authenticate(self, token: str | None) -> dict[str, Any]:
         if not isinstance(token, str) or not token:
             raise AgentRuntimeError("A device bearer token is required.")
@@ -169,10 +181,12 @@ class DeviceRegistry:
                    WHERE revoked_at IS NULL AND token_hash = ?""",
                 (_hash(token),),
             ).fetchall()
-        # Compare the hash again using constant-time comparison before accepting it.
-        for row in rows:
-            if hmac.compare_digest(row["token_hash"], _hash(token)):
-                return self._device_dict(row)
+            # Compare the hash again using constant-time comparison before accepting it.
+            for row in rows:
+                if hmac.compare_digest(row["token_hash"], _hash(token)):
+                    device = self._device_dict(row)
+                    device["user_id"] = self._linked_user(db, row["device_id"])
+                    return device
         raise AgentRuntimeError("Invalid or revoked device token.")
 
     def heartbeat(self, device_id: str, token: str) -> dict[str, Any]:
@@ -187,12 +201,18 @@ class DeviceRegistry:
             )
         return {"device_id": device_id, "last_seen_at": now, "status": "online"}
 
-    def list_devices(self) -> list[dict[str, Any]]:
+    def list_devices(self, user_id: str | None = None) -> list[dict[str, Any]]:
         with self._connect() as db:
             rows = db.execute(
                 "SELECT * FROM paired_devices ORDER BY created_at DESC"
             ).fetchall()
-        return [self._device_dict(row) for row in rows]
+            devices = []
+            for row in rows:
+                device = self._device_dict(row)
+                device["user_id"] = self._linked_user(db, row["device_id"])
+                if user_id is None or device["user_id"] == user_id:
+                    devices.append(device)
+        return devices
 
     def revoke_device(self, device_id: str) -> dict[str, Any]:
         now = _iso(_now())
