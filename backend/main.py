@@ -571,7 +571,18 @@ def read_browser_results(request_id: str):
     return {"success": True, "results": result}
 
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+_cors_origins = [
+    origin.strip() for origin in os.getenv("VOSI_CORS_ORIGINS", "*").split(",")
+    if origin.strip()
+]
+_cors_origins = _cors_origins or ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_origins != ["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -582,7 +593,10 @@ pipeline = ScreenPipeline()
 _account_pipelines = {}
 _account_pipelines_lock = threading.Lock()
 _ACCOUNT_PIPELINE_LIMIT = 32
-_ACCOUNT_UPLOAD_ROOT = Path(__file__).resolve().parent / "account_uploads"
+_ACCOUNT_UPLOAD_ROOT = Path(os.getenv(
+    "VOSI_ACCOUNT_UPLOAD_DIR",
+    str(Path(__file__).resolve().parent / "account_uploads"),
+)).expanduser()
 
 
 def _account_user_id(account_token: str | None) -> str | None:
@@ -660,6 +674,49 @@ def root():
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
         "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness", "GET /companion/memories", "DELETE /companion/memories/{memory_id}", "POST /companion/voice"],
+    }
+
+
+@app.get("/health/live")
+def health_live():
+    """Liveness probe: the API process is responding."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def health_ready():
+    """Readiness probe: all persistent SQLite stores are reachable and production config is safe."""
+    try:
+        from database import initialize_database, get_connection
+
+        initialize_database()
+        with get_connection() as db:
+            db.execute("SELECT 1")
+        with agent_runtime._connect() as db:
+            db.execute("SELECT 1")
+        with identity_api.store._connect() as db:
+            db.execute("SELECT 1")
+        get_companion_memories(limit=1)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="VOSI storage is not ready.") from exc
+
+    multi_tenant = os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}
+    if multi_tenant:
+        if not os.getenv("VOSI_AGENT_TOKEN", "").strip():
+            raise HTTPException(status_code=503, detail="VOSI_AGENT_TOKEN must be configured in multi-tenant mode.")
+        if len(os.getenv("VOSI_IDENTITY_CHALLENGE_SECRET", "").strip()) < 32:
+            raise HTTPException(status_code=503, detail="VOSI_IDENTITY_CHALLENGE_SECRET must contain at least 32 characters.")
+        if not all(os.getenv(key, "").strip() for key in (
+            "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD", "VOSI_SMTP_FROM",
+        )):
+            raise HTTPException(status_code=503, detail="SMTP verification delivery must be configured in multi-tenant mode.")
+        if _cors_origins == ["*"]:
+            raise HTTPException(status_code=503, detail="Set VOSI_CORS_ORIGINS to explicit trusted origins in multi-tenant mode.")
+
+    return {
+        "status": "ready",
+        "mode": "multi-tenant" if multi_tenant else "single-user",
+        "storage": "sqlite-single-instance",
     }
 
 
