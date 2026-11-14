@@ -9,6 +9,7 @@ The Android app registers a persistent WorkManager schedule at application start
 - The worker uses the existing encrypted Android Keystore device credential and authenticated agent APIs.
 - It can execute only the already-registered low-risk Android-local capabilities: device.volume.set and device.alarm.create.
 - Each execution is reported to the backend with a verified receipt. Completion/failure updates can be surfaced as Android notifications.
+- Backend execution claims expire after five minutes without a receipt, allowing a later worker run to recover work abandoned by a crashed process.
 - Existing foreground polling remains available while the Companion activity is open.
 
 ## Platform limits
