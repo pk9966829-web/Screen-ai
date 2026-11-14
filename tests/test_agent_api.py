@@ -564,3 +564,37 @@ def test_device_queue_exposes_claims_abandoned_by_a_crashed_worker(monkeypatch, 
     recovered = client.post(f"/agent/tasks/{task['task_id']}/claim", headers=headers)
     assert recovered.status_code == 200
     assert recovered.json()["step"]["claimed_by"] == phone["device_id"]
+
+
+def test_device_result_api_accepts_bounded_retry_hint(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "retry-api.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post("/agent/devices/pairing", headers=admin, json={
+        "platform": "android", "label": "VOSI phone",
+    }).json()["pairing"]
+    phone = client.post("/agent/devices/pair", json={
+        "pairing_code": pairing["pairing_code"], "capabilities": ["device.volume.set"],
+    }).json()["device"]
+    device_headers = {"Authorization": f"Bearer {phone['device_token']}"}
+    task = client.post("/agent/tasks", headers=admin, json={
+        "goal": "Set phone volume",
+        "origin_device_id": phone["device_id"],
+        "steps": [{
+            "step_id": "volume", "capability": "device.volume.set",
+            "target_platform": "android", "title": "Set volume",
+            "arguments": {"volume": 40},
+        }],
+    }).json()["task"]
+    assert client.post(f"/agent/tasks/{task['task_id']}/claim", headers=device_headers).status_code == 200
+    response = client.post(
+        f"/agent/tasks/{task['task_id']}/steps/volume/result",
+        headers=device_headers,
+        json={"success": False, "verified": False, "error": "Temporary service error.", "retryable": True},
+    )
+    assert response.status_code == 200
+    assert response.json()["task"]["state"] == "ready"
+    assert response.json()["task"]["steps"][0]["attempt_count"] == 1
