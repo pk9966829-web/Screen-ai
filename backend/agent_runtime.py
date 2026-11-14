@@ -531,7 +531,12 @@ class AgentRuntime:
         completed_count = sum(1 for item in step_items if item["state"] == "completed")
         remaining = [item for item in step_items if item["state"] not in terminal]
         active = next((item for item in remaining if item["state"] == "running"), None)
-        next_item = active or (remaining[0] if remaining else None)
+        terminal_task = task["state"] in {"completed", "failed", "cancelled"}
+        next_item = None if terminal_task else (active or (remaining[0] if remaining else None))
+        task_error = task["error"] or next((
+            item["error"] for item in step_items
+            if item["state"] == "failed" and item.get("error")
+        ), None)
         total = len(step_items)
         return {
             "task_id": task["task_id"],
@@ -542,7 +547,7 @@ class AgentRuntime:
             "updated_at": task["updated_at"],
             "expires_at": task["expires_at"],
             "scheduled_at": task["scheduled_at"],
-            "error": task["error"],
+            "error": task_error,
             "progress": {
                 "completed": completed_count,
                 "total": total,
