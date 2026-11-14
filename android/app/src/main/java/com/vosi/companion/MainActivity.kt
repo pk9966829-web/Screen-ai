@@ -817,8 +817,8 @@ class MainActivity : Activity() {
                     baseUrl,
                     "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/result",
                     "POST",
-                    token,
-                    result
+                    token = token,
+                    body = result
                 )
                 if (resultCode !in 200..299) throw IllegalStateException("VOSI could not save the Android execution receipt (HTTP $resultCode).")
             } catch (error: Exception) {
@@ -831,8 +831,8 @@ class MainActivity : Activity() {
                     baseUrl,
                     "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/result",
                     "POST",
-                    token,
-                    failed
+                    token = token,
+                    body = failed
                 )
             }
         }
