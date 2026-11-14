@@ -101,8 +101,51 @@ def test_cloud_worker_rejects_invalid_token_and_missing_configuration(tmp_path, 
     assert client.get("/cloud-worker/health").status_code == 503
 
 
-def test_shared_cloud_worker_is_disabled_in_multi_tenant_mode(tmp_path, monkeypatch):
+def test_cloud_worker_claims_only_the_authenticated_account_tasks(tmp_path, monkeypatch):
+    runtime, client, headers = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
+    monkeypatch.setattr(
+        cloud_worker.identity_api.store,
+        "authenticate",
+        lambda token: {"user_id": token},
+    )
+    headers = {**headers, "X-VOSI-Account-Token": "account-a"}
+
+    account_a = runtime.create_task("A search", [{
+        "capability": "browser.search_products", "target_platform": "browser",
+        "title": "A products", "arguments": {"query": "body spray"},
+    }], owner_user_id="account-a")
+    account_b = runtime.create_task("B search", [{
+        "capability": "browser.search_products", "target_platform": "browser",
+        "title": "B products", "arguments": {"query": "shoes"},
+    }], owner_user_id="account-b")
+
+    health = client.get("/cloud-worker/health", headers=headers)
+    assert health.status_code == 200
+    assert health.json()["account_scoped"] is True
+
+    claim = client.post("/cloud-worker/claim", headers=headers)
+    assert claim.status_code == 200
+    assert claim.json()["task"]["task_id"] == account_a["task_id"]
+    assert runtime.get_task(account_b["task_id"])["state"] == "ready"
+
+    wrong_account_headers = {**headers, "X-VOSI-Account-Token": "account-b"}
+    heartbeat = client.post(
+        f"/cloud-worker/{account_a['task_id']}/steps/step-1/heartbeat",
+        headers=wrong_account_headers,
+    )
+    assert heartbeat.status_code == 404
+    result = client.post(
+        f"/cloud-worker/{account_a['task_id']}/steps/step-1/result",
+        headers=wrong_account_headers,
+        json={"success": True, "verified": True, "receipt": {"leaked": True}},
+    )
+    assert result.status_code == 404
+    assert runtime.get_task(account_a["task_id"])["state"] == "running"
+
+
+def test_multi_tenant_cloud_worker_requires_a_valid_account_session(tmp_path, monkeypatch):
     _, client, headers = make_client(tmp_path, monkeypatch)
     monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
     response = client.post("/cloud-worker/claim", headers=headers)
-    assert response.status_code == 503
+    assert response.status_code == 401
