@@ -51,3 +51,22 @@ def test_screen_pipelines_keep_live_context_separate_per_account(tmp_path, monke
     assert second.context.get_recent_observations() == []
     assert first.task.get_task_state()["task"] == "Private A workflow"
     assert second.task.get_task_state()["task"] is None
+
+
+def test_companion_memory_deletion_cannot_cross_account_boundary(tmp_path, monkeypatch):
+    import companion_brain
+
+    monkeypatch.setattr(companion_brain, "MEMORY_DB", tmp_path / "memories.sqlite3")
+    companion_brain._save_memory_candidates([{
+        "key": "project", "category": "project", "content": "Account A project",
+    }], user_id="account-a")
+    companion_brain._save_memory_candidates([{
+        "key": "project", "category": "project", "content": "Account B project",
+    }], user_id="account-b")
+    memory_a = companion_brain.get_companion_memories(user_id="account-a")[0]
+    memory_b = companion_brain.get_companion_memories(user_id="account-b")[0]
+
+    assert companion_brain.delete_companion_memory(memory_a["id"], user_id="account-b") is False
+    assert companion_brain.get_companion_memories(user_id="account-a")[0]["content"] == "Account A project"
+    assert companion_brain.get_companion_memories(user_id="account-b")[0]["id"] == memory_b["id"]
+    assert companion_brain.delete_companion_memory(memory_a["id"], user_id="account-a") is True
