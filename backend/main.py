@@ -579,7 +579,7 @@ _cors_origins = _cors_origins or ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_credentials=_cors_origins != ["*"],
+    allow_credentials="*" not in _cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -702,16 +702,16 @@ def health_ready():
 
     multi_tenant = os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}
     if multi_tenant:
-        if not os.getenv("VOSI_AGENT_TOKEN", "").strip():
-            raise HTTPException(status_code=503, detail="VOSI_AGENT_TOKEN must be configured in multi-tenant mode.")
+        if len(os.getenv("VOSI_AGENT_TOKEN", "").strip()) < 32:
+            raise HTTPException(status_code=503, detail="VOSI_AGENT_TOKEN must contain at least 32 characters in multi-tenant mode.")
         if len(os.getenv("VOSI_IDENTITY_CHALLENGE_SECRET", "").strip()) < 32:
             raise HTTPException(status_code=503, detail="VOSI_IDENTITY_CHALLENGE_SECRET must contain at least 32 characters.")
         if not all(os.getenv(key, "").strip() for key in (
             "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD", "VOSI_SMTP_FROM",
         )):
             raise HTTPException(status_code=503, detail="SMTP verification delivery must be configured in multi-tenant mode.")
-        if _cors_origins == ["*"]:
-            raise HTTPException(status_code=503, detail="Set VOSI_CORS_ORIGINS to explicit trusted origins in multi-tenant mode.")
+        if "*" in _cors_origins or any(not origin.startswith("https://") for origin in _cors_origins):
+            raise HTTPException(status_code=503, detail="Set VOSI_CORS_ORIGINS to explicit HTTPS trusted origins in multi-tenant mode.")
 
     return {
         "status": "ready",
