@@ -127,7 +127,7 @@ def test_production_readiness_rejects_wildcard_cors_for_multi_tenant(monkeypatch
     import main
 
     monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
-    monkeypatch.setenv("VOSI_AGENT_TOKEN", "configured-agent-token")
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "a" * 40)
     monkeypatch.setenv("VOSI_IDENTITY_CHALLENGE_SECRET", "x" * 40)
     monkeypatch.setenv("VOSI_SMTP_HOST", "smtp.example.com")
     monkeypatch.setenv("VOSI_SMTP_USERNAME", "user")
