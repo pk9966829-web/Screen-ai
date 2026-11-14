@@ -401,7 +401,7 @@ private fun TasksScreen() {
                         if (summary != null) {
                             Text("Merchant: ${summary.optString("merchant")}", fontSize = 12.sp)
                             Text("Total: ${summary.optString("currency")} ${summary.optString("total")}", fontSize = 12.sp)
-                            Text("Items: ${summary.optJSONArray("items")?.length() ?: 0}", fontSize = 12.sp)
+                            Text("Items: ${summary.optJSONArray("items")?.toString() ?: "Not provided"}", fontSize = 12.sp)
                             Text("Delivery: ${summary.optString("delivery_address")}", fontSize = 12.sp)
                             Text("Payment method: ${summary.optString("payment_method")}", fontSize = 12.sp)
                         }
