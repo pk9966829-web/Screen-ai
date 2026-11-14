@@ -116,3 +116,15 @@ jobs:
           npm run build
       - name: Check Windows Tauri desktop build
         run: cargo check --manifest-path "screen ai/src-tauri/Cargo.toml"
+
+  production-container-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose configuration
+        run: |
+          cp backend/.env.production.example backend/.env
+          cd backend
+          docker compose config --quiet
+      - name: Build production API image
+        run: docker build -f backend/Dockerfile -t vosi-api:ci .
