@@ -75,3 +75,29 @@ def test_account_device_task_feed_does_not_include_other_accounts(tmp_path, monk
 
     assert response.status_code == 200
     assert response.json()["tasks"] == []
+
+def test_planner_only_uses_devices_linked_to_the_same_account(tmp_path):
+    from companion_brain import _safe_task_plan
+
+    runtime = AgentRuntime(tmp_path / "planner.db")
+    plan = {
+        "goal": "Set phone volume",
+        "steps": [{
+            "step_id": "volume",
+            "capability": "device.volume.set",
+            "target_platform": "android",
+            "title": "Set phone volume",
+            "arguments": {"volume": 60},
+        }],
+    }
+    devices = [{
+        "device_id": "phone-a",
+        "user_id": "user-a",
+        "platform": "android",
+        "capabilities": ["device.volume.set"],
+        "status": "online",
+    }]
+
+    task = _safe_task_plan(plan, "Set phone volume to 60", runtime, devices, "phone-a", "user-a")
+    assert task["owner_user_id"] == "user-a"
+    assert _safe_task_plan(plan, "Set phone volume to 60", runtime, devices, "phone-b", "user-b") is None
