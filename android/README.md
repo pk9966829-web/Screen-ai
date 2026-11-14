@@ -136,3 +136,15 @@ The older native companion activity remains in the app and is opened from the ne
 - The Devices screen opens the existing pairing controls; richer device inventory and account linking UI is a follow-up.
 - The backend profile endpoint accepts only encrypted profile envelopes. The existing local profile key is device-local, so profile sync is intentionally not enabled until cross-device key recovery is designed.
 - This branch has not been tested on a physical Android phone. CI APK build status should be checked on the pull request.
+
+
+## Shared AI chat (0.3.0 integration)
+
+The native Compose **Chat** tab now uses the authenticated companion API with this phone's existing encrypted device credential:
+- Loads the latest shared conversation from `GET /companion/chat/history?limit=50`.
+- Sends messages to `POST /companion/chat` and appends VOSI's reply in the chat view.
+- Keeps the existing voice companion workspace available from the Home/Devices entry points.
+- Uses the backend URL and device token created during phone pairing; no token copy/paste is required in Chat.
+- Passes the currently active workflow state into the companion brain so a chat turn can retain the active task context.
+
+Pair the phone with VOSI and keep the backend running before using Chat. The Android build and companion API tests are checked in GitHub Actions. The current SQLite interaction and memory stores are still single-backend-instance stores; do not expose this shared chat backend to unrelated accounts until conversation and memory records are scoped to linked VOSI account IDs.
