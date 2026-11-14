@@ -75,6 +75,9 @@ class DeviceStepResultRequest(BaseModel):
     verified: bool
     receipt: dict[str, Any] = Field(default_factory=dict)
     error: str | None = Field(default=None, max_length=2000)
+    # Executors may request one bounded retry only for server-allowlisted,
+    # idempotent low-risk capabilities. False remains the safe default.
+    retryable: bool = False
 
 
 class DeviceTaskRequest(BaseModel):
@@ -476,5 +479,6 @@ def record_agent_step_result(
         request.verified,
         request.receipt,
         request.error,
+        request.retryable,
     )
     return {"success": True, "task": task}
