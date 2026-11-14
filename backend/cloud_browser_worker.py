@@ -119,7 +119,14 @@ def extract_products(page: Any) -> list[dict[str, Any]]:
 
 
 class VosiCloudBrowserWorker:
-    def __init__(self, base_url: str, token: str, worker_id: str, poll_seconds: float = 4.0):
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        worker_id: str,
+        account_token: str | None = None,
+        poll_seconds: float = 4.0,
+    ):
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.worker_id = worker_id
@@ -131,6 +138,8 @@ class VosiCloudBrowserWorker:
             "Content-Type": "application/json",
             "User-Agent": "VOSI-Cloud-Browser-Worker/1.0",
         })
+        if account_token:
+            self.session.headers["X-VOSI-Account-Token"] = account_token
 
     def _post(self, path: str, payload: dict[str, Any] | None = None, timeout: int = 20):
         response = self.session.post(self.base_url + path, json=payload, timeout=timeout)
@@ -270,12 +279,13 @@ def main() -> None:
     )
     base_url = os.getenv("VOSI_CLOUD_API_URL", "").strip()
     token = os.getenv("VOSI_CLOUD_WORKER_TOKEN", "").strip()
+    account_token = os.getenv("VOSI_CLOUD_WORKER_ACCOUNT_TOKEN", "").strip() or None
     worker_id = os.getenv("VOSI_CLOUD_WORKER_ID", "browser-worker-1").strip()
     if not base_url or not token:
         raise SystemExit("Set VOSI_CLOUD_API_URL and VOSI_CLOUD_WORKER_TOKEN.")
     if not base_url.startswith("https://"):
         raise SystemExit("VOSI_CLOUD_API_URL must use HTTPS.")
-    worker = VosiCloudBrowserWorker(base_url, token, worker_id)
+    worker = VosiCloudBrowserWorker(base_url, token, worker_id, account_token=account_token)
     signal.signal(signal.SIGTERM, lambda *_: worker.stop_event.set())
     signal.signal(signal.SIGINT, lambda *_: worker.stop_event.set())
     worker.run_forever()
