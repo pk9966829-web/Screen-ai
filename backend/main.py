@@ -92,6 +92,7 @@ def _run_gmail_oauth():
 
 @app.post("/gmail/connect")
 def connect_gmail():
+    _require_single_tenant_local_integration()
     if not gmail_auth_lock.acquire(blocking=False):
         return {"success": True, **gmail_auth_state, "message": "Gmail authorization is already running."}
     gmail_auth_state.update({"status": "connecting", "error": None})
@@ -101,6 +102,7 @@ def connect_gmail():
 
 @app.get("/gmail/status")
 def gmail_status():
+    _require_single_tenant_local_integration()
     if gmail_auth_state["status"] == "connecting":
         return {"success": True, **gmail_auth_state}
     try:
@@ -130,6 +132,7 @@ class GmailSendRequest(BaseModel):
 
 @app.post("/gmail/send")
 def send_gmail_message(req: GmailSendRequest):
+    _require_single_tenant_local_integration()
     recipient = (req.recipient or "").strip()
     subject = (req.subject or "Message from VOSI").strip()
     body = (req.body or "").strip()
@@ -409,6 +412,7 @@ def _gmail_natural_query(text: str):
 
 @app.post("/gmail/search")
 def search_gmail_natural(req: GmailSearchRequest):
+    _require_single_tenant_local_integration()
     original = (req.query or "").strip()
     if not original or len(original) > 500:
         return {"success": False, "error": "Enter a Gmail search under 500 characters."}
@@ -459,6 +463,7 @@ def search_gmail_natural(req: GmailSearchRequest):
 
 @app.get("/gmail/messages")
 def latest_gmail_messages(count: int = 5, q: str = ""):
+    _require_single_tenant_local_integration()
     """Read latest Gmail messages, or search using Gmail's native query syntax."""
     safe_count = max(1, min(count, 10))
     search_query = (q or "").strip()[:200]
@@ -512,6 +517,7 @@ class BrowserResultsRequest(BaseModel):
 
 @app.post("/browser/search")
 def queue_browser_search(req: BrowserSearchRequest):
+    _require_single_tenant_local_integration()
     global browser_pending_command
     query = (req.query or "").strip()
     if not query or len(query) > 180 or len(req.request_id) > 100:
@@ -534,11 +540,13 @@ def _require_paired_browser(authorization: Optional[str]):
 
 @app.get("/browser/command")
 def get_browser_command(authorization: Optional[str] = Header(default=None)):
+    _require_single_tenant_local_integration()
     _require_paired_browser(authorization)
     return {"success": True, "command": browser_pending_command}
 
 @app.post("/browser/ack/{request_id}")
 def acknowledge_browser_command(request_id: str, authorization: Optional[str] = Header(default=None)):
+    _require_single_tenant_local_integration()
     _require_paired_browser(authorization)
     global browser_pending_command
     if browser_pending_command and browser_pending_command.get("request_id") == request_id:
@@ -547,6 +555,7 @@ def acknowledge_browser_command(request_id: str, authorization: Optional[str] = 
 
 @app.post("/browser/results")
 def receive_browser_results(req: BrowserResultsRequest, authorization: Optional[str] = Header(default=None)):
+    _require_single_tenant_local_integration()
     _require_paired_browser(authorization)
     if len(req.products) > 30:
         req.products = req.products[:30]
@@ -555,6 +564,7 @@ def receive_browser_results(req: BrowserResultsRequest, authorization: Optional[
 
 @app.get("/browser/results/{request_id}")
 def read_browser_results(request_id: str):
+    _require_single_tenant_local_integration()
     result = browser_results.get(request_id)
     if not result:
         return {"success": False, "pending": True}
@@ -584,6 +594,14 @@ def _account_user_id(account_token: str | None) -> str | None:
         return identity_api.store.authenticate(account_token.strip())["user_id"]
     except identity_api.IdentityError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+def _require_single_tenant_local_integration():
+    if os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}:
+        raise HTTPException(
+            status_code=503,
+            detail="This local integration is not account-isolated yet and is disabled in multi-tenant mode.",
+        )
 
 
 def _pipeline_for_user(user_id: str | None):
@@ -809,6 +827,7 @@ def remove_companion_memory(
 
 @app.post("/letter/draft")
 def create_letter_draft(req: LetterDraftRequest):
+    _require_single_tenant_local_integration()
     recipient = (req.recipient or "").strip()
     purpose = (req.purpose or "").strip()
     if not recipient:
@@ -856,6 +875,7 @@ def create_letter_draft(req: LetterDraftRequest):
 
 @app.get("/letter/file/{filename}")
 def download_letter_draft(filename: str):
+    _require_single_tenant_local_integration()
     if not re.fullmatch(r"VOSI-Letter-\d{8}-\d{6}-[a-f0-9]{6}\.docx", filename):
         return {"success": False, "error": "Invalid letter file name."}
     file_path = (LETTER_DIR / filename).resolve()
