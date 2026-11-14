@@ -31,7 +31,7 @@ This milestone connects natural-language companion requests to the durable agent
 
 ## Current execution boundary
 
-The planner can queue work only for an executor that is actually installed, online and granted the capability. The Android background worker currently executes phone media-volume and alarm actions. Other device/browser actions require their respective desktop or browser executor to be running and paired. This code does not deploy a cloud worker or guarantee execution while every device is offline.
+The planner can queue work only for a capability with a concrete adapter, on an online paired device that has granted it. The Android background worker currently executes phone media-volume and alarm actions. The desktop adapter supports the registered Windows alarm, volume, timer, settings and approval-gated power actions; the browser adapter supports its registered public-page and product-search actions. Phone calls, WhatsApp sends, email sends, screen observation as a queued task, and commerce checkout are deliberately excluded until their reviewed executors are implemented. This code does not deploy a cloud worker or guarantee execution while every device is offline.
 
 ## Validation
 
