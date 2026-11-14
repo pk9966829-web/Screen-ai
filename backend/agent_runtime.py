@@ -574,6 +574,11 @@ class AgentRuntime:
         with self._connect() as db:
             if user_id is None:
                 rows = db.execute("SELECT task_id FROM agent_tasks ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            elif user_id == "":
+                rows = db.execute(
+                    "SELECT task_id FROM agent_tasks WHERE owner_user_id IS NULL ORDER BY created_at DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
             else:
                 rows = db.execute(
                     "SELECT task_id FROM agent_tasks WHERE owner_user_id = ? ORDER BY created_at DESC LIMIT ?",
