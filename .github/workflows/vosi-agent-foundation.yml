@@ -21,6 +21,8 @@ on:
   pull_request:
     branches:
       - main
+      - feature/vosi-account-scoped-task-runtime
+      - feature/vosi-verified-retry-execution
       - feature/whatsapp-personal-android
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
