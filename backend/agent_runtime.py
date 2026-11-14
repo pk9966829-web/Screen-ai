@@ -156,6 +156,9 @@ def _now() -> str:
 
 CLAIM_LEASE_SECONDS = 300
 
+# Only idempotent, low-risk operations may opt into one bounded retry.
+RETRYABLE_CAPABILITIES = {"device.volume.set", "browser.search_products", "browser.read_visible_page"}
+
 
 def _claim_timestamp_is_stale(claimed_at: str | None) -> bool:
     if not claimed_at:
@@ -214,6 +217,8 @@ class AgentRuntime:
                     idempotency_key TEXT NOT NULL,
                     claimed_by TEXT,
                     claimed_at TEXT,
+                    attempt_count INTEGER NOT NULL DEFAULT 0,
+                    max_attempts INTEGER NOT NULL DEFAULT 1,
                     finished_at TEXT,
                     receipt_json TEXT,
                     error TEXT,
@@ -228,6 +233,11 @@ class AgentRuntime:
             if "owner_user_id" not in columns:
                 db.execute("ALTER TABLE agent_tasks ADD COLUMN owner_user_id TEXT")
             db.execute("CREATE INDEX IF NOT EXISTS idx_agent_tasks_owner_created ON agent_tasks(owner_user_id, created_at)")
+            step_columns = {row["name"] for row in db.execute("PRAGMA table_info(agent_steps)").fetchall()}
+            if "attempt_count" not in step_columns:
+                db.execute("ALTER TABLE agent_steps ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0")
+            if "max_attempts" not in step_columns:
+                db.execute("ALTER TABLE agent_steps ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 1")
             db.execute("CREATE INDEX IF NOT EXISTS idx_agent_steps_ready ON agent_steps(task_id, position, state)")
 
     def _connect(self):
@@ -292,6 +302,7 @@ class AgentRuntime:
                 "title": title,
                 "arguments": arguments,
                 "approval_required": bool(metadata["requires_approval"]),
+                "max_attempts": 2 if capability in RETRYABLE_CAPABILITIES else 1,
                 "state": "awaiting_approval" if metadata["requires_approval"] else "pending",
                 "idempotency_key": uuid.uuid4().hex,
             })
@@ -326,13 +337,13 @@ class AgentRuntime:
                 db.execute(
                     """INSERT INTO agent_steps
                        (task_id, step_id, position, capability, target_platform, title, arguments_json,
-                        state, approval_required, idempotency_key)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        state, approval_required, idempotency_key, max_attempts)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         task_id, step["step_id"], step["position"], step["capability"],
                         step["target_platform"], step["title"],
                         json.dumps(step["arguments"], ensure_ascii=False),
-                        step["state"], int(step["approval_required"]), step["idempotency_key"],
+                        step["state"], int(step["approval_required"]), step["idempotency_key"], step["max_attempts"],
                     ),
                 )
         return self.get_task(task_id)
@@ -438,7 +449,7 @@ class AgentRuntime:
                 db.commit()
                 return None
             db.execute(
-                """UPDATE agent_steps SET state = 'running', claimed_by = ?, claimed_at = ?
+                """UPDATE agent_steps SET state = 'running', claimed_by = ?, claimed_at = ?, attempt_count = attempt_count + 1
                    WHERE task_id = ? AND step_id = ?
                      AND (state IN ('pending', 'ready') OR (state = 'running' AND claimed_at = ?))""",
                 (device_id, _now(), task_id, row["step_id"], row["claimed_at"]),
@@ -456,31 +467,45 @@ class AgentRuntime:
         verified: bool,
         receipt: dict[str, Any] | None = None,
         error: str | None = None,
+        retryable: bool = False,
     ) -> dict[str, Any]:
         if not isinstance(receipt or {}, dict) or len(json.dumps(receipt or {}, ensure_ascii=False)) > 10000:
             raise AgentRuntimeError("Execution receipt must be an object under 10 KB.")
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             step = db.execute(
-                "SELECT state, claimed_by FROM agent_steps WHERE task_id = ? AND step_id = ?",
+                "SELECT state, claimed_by, capability, attempt_count, max_attempts FROM agent_steps WHERE task_id = ? AND step_id = ?",
                 (task_id, step_id),
             ).fetchone()
             if not step:
                 raise AgentRuntimeError("Step not found.")
             if step["state"] != "running" or step["claimed_by"] != device_id:
                 raise AgentRuntimeError("Only the device holding the active execution claim can submit a result.")
-            completed = bool(success and verified and receipt)
-            state = "completed" if completed else "failed"
-            db.execute(
-                """UPDATE agent_steps SET state = ?, finished_at = ?, receipt_json = ?, error = ?
-                   WHERE task_id = ? AND step_id = ?""",
-                (state, _now(), json.dumps(receipt or {}, ensure_ascii=False), None if completed else (error or "Execution was not verified."), task_id, step_id),
-            )
             task_row = db.execute("SELECT state FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
             if not task_row:
                 raise AgentRuntimeError("Task not found.")
             if task_row["state"] == "cancelled":
                 raise AgentRuntimeError("Cancelled tasks cannot accept execution results.")
+            completed = bool(success and verified and receipt)
+            should_retry = bool(
+                not completed
+                and retryable
+                and step["capability"] in RETRYABLE_CAPABILITIES
+                and step["attempt_count"] < step["max_attempts"]
+            )
+            state = "completed" if completed else ("pending" if should_retry else "failed")
+            db.execute(
+                """UPDATE agent_steps SET state = ?, finished_at = ?, receipt_json = ?, error = ?
+                   WHERE task_id = ? AND step_id = ?""",
+                (
+                    state,
+                    None if should_retry else _now(),
+                    json.dumps(receipt or {}, ensure_ascii=False),
+                    None if completed else (error or "Execution was not verified."),
+                    task_id,
+                    step_id,
+                ),
+            )
             remaining = db.execute(
                 "SELECT COUNT(*) AS count FROM agent_steps WHERE task_id = ? AND state IN ('pending', 'ready', 'awaiting_approval', 'running')",
                 (task_id,),
@@ -601,6 +626,8 @@ class AgentRuntime:
             "idempotency_key": row["idempotency_key"],
             "claimed_by": row["claimed_by"],
             "claimed_at": row["claimed_at"],
+            "attempt_count": row["attempt_count"],
+            "max_attempts": row["max_attempts"],
             "finished_at": row["finished_at"],
             "receipt": json.loads(row["receipt_json"]) if row["receipt_json"] else None,
             "error": row["error"],
