@@ -70,3 +70,23 @@ def test_companion_memory_deletion_cannot_cross_account_boundary(tmp_path, monke
     assert companion_brain.get_companion_memories(user_id="account-a")[0]["content"] == "Account A project"
     assert companion_brain.get_companion_memories(user_id="account-b")[0]["id"] == memory_b["id"]
     assert companion_brain.delete_companion_memory(memory_a["id"], user_id="account-a") is True
+
+
+def test_existing_legacy_sqlite_tables_receive_additive_owner_columns(tmp_path, monkeypatch):
+    import sqlite3
+
+    path = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.execute("CREATE TABLE observations (id INTEGER PRIMARY KEY, timestamp TEXT NOT NULL, filename TEXT NOT NULL, file_size INTEGER NOT NULL, status TEXT NOT NULL)")
+        db.execute("CREATE TABLE interactions (id INTEGER PRIMARY KEY, timestamp TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, screens_considered INTEGER NOT NULL DEFAULT 0, task_json TEXT NOT NULL DEFAULT '{}')")
+        db.execute("CREATE TABLE task_events (id INTEGER PRIMARY KEY, task_key TEXT NOT NULL, task_name TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT, updated_at TEXT NOT NULL, current_step TEXT, next_step TEXT, completed_steps_json TEXT NOT NULL DEFAULT '[]')")
+        db.execute("INSERT INTO interactions (timestamp, question, answer) VALUES ('2026-01-01', 'Old local question', 'Old local answer')")
+    monkeypatch.setattr(database, "DATABASE_PATH", path)
+
+    database.initialize_database()
+
+    with sqlite3.connect(path) as db:
+        for table in ("observations", "interactions", "task_events"):
+            columns = {row[1] for row in db.execute(f"PRAGMA table_info({table})")}
+            assert "user_id" in columns
+        assert db.execute("SELECT user_id, question FROM interactions").fetchone() == (None, "Old local question")
