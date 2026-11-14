@@ -45,6 +45,30 @@ services:
     networks:
       - private
 
+  backup:
+    profiles: ["backup"]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      VOSI_AGENT_DB_PATH: /data/vosi_agent.db
+      VOSI_COMPANION_DB_PATH: /data/vosi_companion.sqlite3
+      VOSI_SCREEN_DB_PATH: /data/screen_ai.db
+      VOSI_ACCOUNT_UPLOAD_DIR: /data/account_uploads
+      VOSI_BACKUP_DATA_DIR: /data
+      VOSI_BACKUP_OUTPUT_DIR: /backups
+    volumes:
+      - vosi_data:/data:ro
+      - ./backups:/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    command: ["python", "backup_vosi.py"]
+    networks:
+      - private
+
   cloud-browser-worker:
     profiles: ["cloud-worker"]
     build:
