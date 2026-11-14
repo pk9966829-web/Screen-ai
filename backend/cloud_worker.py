@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 
 from agent_api import runtime
 from agent_runtime import CAPABILITIES, AgentRuntimeError
+import identity_api
+from identity_store import IdentityError
 
 router = APIRouter(prefix="/cloud-worker", tags=["VOSI Cloud Worker"])
 
@@ -40,12 +42,20 @@ def _worker_config() -> tuple[str, str, str, set[str], int]:
     return token, worker_id, platform, allowed, lease_seconds
 
 
-def _authorize(authorization: str | None) -> tuple[str, str, set[str], int]:
-    if os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}:
-        raise HTTPException(
-            status_code=503,
-            detail="The shared cloud worker is disabled in multi-tenant mode until worker leases are account-scoped.",
-        )
+def _authorize(
+    authorization: str | None,
+    account_token: str | None = None,
+) -> tuple[str, str, set[str], int, str | None]:
+    multi_tenant = os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}
+    user_id = None
+    if multi_tenant:
+        if not account_token or not account_token.strip():
+            raise HTTPException(status_code=401, detail="An authenticated VOSI account session is required for cloud-worker access.")
+        try:
+            account = identity_api.store.authenticate(account_token.strip())
+            user_id = account["user_id"]
+        except IdentityError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     token, worker_id, platform, capabilities, lease_seconds = _worker_config()
     scheme, _, supplied = (authorization or "").partition(" ")
     if not token:
@@ -54,21 +64,24 @@ def _authorize(authorization: str | None) -> tuple[str, str, set[str], int]:
         raise HTTPException(status_code=401, detail="Invalid cloud worker credential.")
     if not worker_id or len(worker_id) > 80 or not capabilities:
         raise HTTPException(status_code=503, detail="Configure a worker ID and at least one supported low-risk capability.")
-    return f"cloud-worker:{worker_id}", platform, capabilities, lease_seconds
+    return f"cloud-worker:{worker_id}", platform, capabilities, lease_seconds, user_id
 
 
-def _recover_expired_safe_claims(lease_seconds: int) -> int:
+def _recover_expired_safe_claims(lease_seconds: int, user_id: str | None = None) -> int:
     """Requeue only low-risk reversible cloud claims; never replay an order or other irreversible action."""
     cutoff = (datetime.now(timezone.utc) - timedelta(seconds=lease_seconds)).isoformat()
     recovered = 0
     with runtime._connect() as db:
         db.execute("BEGIN IMMEDIATE")
+        owner_filter = "" if user_id is None else " AND t.owner_user_id = ?"
+        parameters = (cutoff,) if user_id is None else (cutoff, user_id)
         rows = db.execute(
             """SELECT s.task_id, s.step_id, s.capability, s.approval_required
                FROM agent_steps s
+               JOIN agent_tasks t ON t.task_id = s.task_id
                WHERE s.state = 'running' AND s.claimed_by LIKE 'cloud-worker:%'
-                 AND s.claimed_at IS NOT NULL AND s.claimed_at < ?""",
-            (cutoff,),
+                 AND s.claimed_at IS NOT NULL AND s.claimed_at < ?""" + owner_filter,
+            parameters,
         ).fetchall()
         for row in rows:
             metadata = CAPABILITIES.get(row["capability"], {})
@@ -98,20 +111,27 @@ class CloudWorkerResult(BaseModel):
 
 
 @router.get("/health")
-def cloud_worker_health(authorization: str | None = Header(default=None)):
-    worker_id, platform, capabilities, lease_seconds = _authorize(authorization)
+def cloud_worker_health(
+    authorization: str | None = Header(default=None),
+    x_vosi_account_token: str | None = Header(default=None),
+):
+    worker_id, platform, capabilities, lease_seconds, user_id = _authorize(authorization, x_vosi_account_token)
     return {
         "success": True, "worker_id": worker_id, "platform": platform,
         "capabilities": sorted(capabilities), "lease_seconds": lease_seconds,
         "execution_mode": "external-adapter-required",
+        "account_scoped": user_id is not None,
     }
 
 
 @router.post("/claim")
-def claim_cloud_task(authorization: str | None = Header(default=None)):
-    worker_id, platform, capabilities, lease_seconds = _authorize(authorization)
-    recovered = _recover_expired_safe_claims(lease_seconds)
-    for task in runtime.list_tasks(100):
+def claim_cloud_task(
+    authorization: str | None = Header(default=None),
+    x_vosi_account_token: str | None = Header(default=None),
+):
+    worker_id, platform, capabilities, lease_seconds, user_id = _authorize(authorization, x_vosi_account_token)
+    recovered = _recover_expired_safe_claims(lease_seconds, user_id=user_id)
+    for task in runtime.list_tasks(100, user_id=user_id):
         if task["state"] in {"completed", "failed", "cancelled"}:
             continue
         if task.get("scheduled_at") and task["scheduled_at"] > datetime.now(timezone.utc).isoformat():
@@ -132,9 +152,18 @@ def claim_cloud_task(authorization: str | None = Header(default=None)):
 
 
 @router.post("/{task_id}/steps/{step_id}/heartbeat")
-def heartbeat_cloud_claim(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
-    worker_id, _, _, _ = _authorize(authorization)
+def heartbeat_cloud_claim(
+    task_id: str,
+    step_id: str,
+    authorization: str | None = Header(default=None),
+    x_vosi_account_token: str | None = Header(default=None),
+):
+    worker_id, _, _, _, user_id = _authorize(authorization, x_vosi_account_token)
     with runtime._connect() as db:
+        if user_id is not None:
+            owner = db.execute("SELECT owner_user_id FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
+            if owner is None or owner["owner_user_id"] != user_id:
+                raise HTTPException(status_code=404, detail="Task not found for this VOSI account.")
         cursor = db.execute(
             """UPDATE agent_steps SET claimed_at = ?
                WHERE task_id = ? AND step_id = ? AND state = 'running' AND claimed_by = ?""",
@@ -149,8 +178,14 @@ def heartbeat_cloud_claim(task_id: str, step_id: str, authorization: str | None 
 def submit_cloud_result(
     task_id: str, step_id: str, request: CloudWorkerResult,
     authorization: str | None = Header(default=None),
+    x_vosi_account_token: str | None = Header(default=None),
 ):
-    worker_id, _, _, _ = _authorize(authorization)
+    worker_id, _, _, _, user_id = _authorize(authorization, x_vosi_account_token)
+    if user_id is not None:
+        with runtime._connect() as db:
+            owner = db.execute("SELECT owner_user_id FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
+        if owner is None or owner["owner_user_id"] != user_id:
+            raise HTTPException(status_code=404, detail="Task not found for this VOSI account.")
     try:
         task = runtime.record_step_result(
             task_id, step_id, worker_id, request.success, request.verified,
