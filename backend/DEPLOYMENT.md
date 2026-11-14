@@ -45,7 +45,7 @@ Keep one API replica. SQLite is the supported store in this deployment profile; 
 - Rotate account, agent and provider credentials if exposed.
 - Configure firewall access to only ports 80/443 and administrative SSH.
 - Monitor `/health/live`, `/health/ready`, container restarts, disk usage and database backup success.
-- The shared cloud worker is intentionally disabled in multi-tenant mode until its leases and execution receipts are account-scoped.
+- The cloud-worker lease API accepts an authenticated `X-VOSI-Account-Token` in multi-tenant mode and scopes claims, heartbeats, results and expired-claim recovery to that account. The external worker must keep its account session and worker token in a secret store; do not share one worker session between accounts.
 - Gmail, WhatsApp, the legacy browser bridge and shared letter-file routes remain disabled in multi-tenant mode until account-specific connector authorization is implemented.
 
 ## Current production limits
@@ -55,3 +55,4 @@ Keep one API replica. SQLite is the supported store in this deployment profile; 
 - Android WorkManager remains best-effort and does not guarantee real-time background execution after force-stop or aggressive battery restrictions.
 - Physical Android, Windows, Chrome and production-domain tests are still required.
 - This configuration does not deploy itself to a cloud provider; a VM, DNS name, secrets and SMTP account must be supplied by the operator.
+- A cloud worker adapter is a separately deployed process and is not included in this Compose stack. It must use a real browser automation adapter, validate receipts and store its account session securely. The API lease endpoint alone does not perform web actions.
