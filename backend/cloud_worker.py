@@ -56,6 +56,9 @@ def _authorize(
             user_id = account["user_id"]
         except IdentityError as exc:
             raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    else:
+        # Legacy single-user workers may execute only unowned local tasks.
+        user_id = ""
     token, worker_id, platform, capabilities, lease_seconds = _worker_config()
     scheme, _, supplied = (authorization or "").partition(" ")
     if not token:
@@ -73,8 +76,12 @@ def _recover_expired_safe_claims(lease_seconds: int, user_id: str | None = None)
     recovered = 0
     with runtime._connect() as db:
         db.execute("BEGIN IMMEDIATE")
-        owner_filter = "" if user_id is None else " AND t.owner_user_id = ?"
-        parameters = (cutoff,) if user_id is None else (cutoff, user_id)
+        if user_id is None:
+            owner_filter, parameters = "", (cutoff,)
+        elif user_id == "":
+            owner_filter, parameters = " AND t.owner_user_id IS NULL", (cutoff,)
+        else:
+            owner_filter, parameters = " AND t.owner_user_id = ?", (cutoff, user_id)
         rows = db.execute(
             """SELECT s.task_id, s.step_id, s.capability, s.approval_required
                FROM agent_steps s
@@ -120,7 +127,7 @@ def cloud_worker_health(
         "success": True, "worker_id": worker_id, "platform": platform,
         "capabilities": sorted(capabilities), "lease_seconds": lease_seconds,
         "execution_mode": "external-adapter-required",
-        "account_scoped": user_id is not None,
+        "account_scoped": bool(user_id),
     }
 
 
@@ -162,7 +169,8 @@ def heartbeat_cloud_claim(
     with runtime._connect() as db:
         if user_id is not None:
             owner = db.execute("SELECT owner_user_id FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
-            if owner is None or owner["owner_user_id"] != user_id:
+            expected_owner = user_id or None
+            if owner is None or owner["owner_user_id"] != expected_owner:
                 raise HTTPException(status_code=404, detail="Task not found for this VOSI account.")
         cursor = db.execute(
             """UPDATE agent_steps SET claimed_at = ?
@@ -184,7 +192,8 @@ def submit_cloud_result(
     if user_id is not None:
         with runtime._connect() as db:
             owner = db.execute("SELECT owner_user_id FROM agent_tasks WHERE task_id = ?", (task_id,)).fetchone()
-        if owner is None or owner["owner_user_id"] != user_id:
+        expected_owner = user_id or None
+        if owner is None or owner["owner_user_id"] != expected_owner:
             raise HTTPException(status_code=404, detail="Task not found for this VOSI account.")
     try:
         task = runtime.record_step_result(
