@@ -778,10 +778,22 @@ async def receive_screen(
 ):
     user_id = _account_user_id(x_vosi_account_token)
     active_pipeline = _pipeline_for_user(user_id)
+    content_type = (file.content_type or "").lower()
+    suffix_by_type = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/webp": ".webp",
+    }
+    suffix = suffix_by_type.get(content_type)
+    if not suffix:
+        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG or WebP screen image.")
+    payload = await file.read(8 * 1024 * 1024 + 1)
+    if len(payload) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Screen image exceeds the 8 MB upload limit.")
     # Keep account screenshots outside the public /uploads static mount.
-    suffix = ".png" if file.content_type == "image/png" else ".jpg"
     file_path = _screen_upload_dir(user_id) / f"screen_{uuid4().hex}{suffix}"
-    file_path.write_bytes(await file.read())
+    file_path.write_bytes(payload)
     return active_pipeline.process_image(str(file_path))
 
 
