@@ -24,6 +24,8 @@ on:
       - main
       - feature/vosi-account-scoped-task-runtime
       - feature/vosi-verified-retry-execution
+      - feature/vosi-account-scoped-screen-state
+      - feature/vosi-single-node-production-deploy
       - feature/whatsapp-personal-android
       - feature/vosi-autonomous-companion-foundation
       - feature/vosi-continuous-voice-companion
