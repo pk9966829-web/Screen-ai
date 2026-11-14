@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -7,7 +8,7 @@ from datetime import datetime
 
 # Keep the database beside this module so launching the API from a different
 # working directory does not silently create a second, empty database.
-DATABASE_PATH = Path(__file__).resolve().parent / "screen_ai.db"
+DATABASE_PATH = Path(os.getenv("VOSI_SCREEN_DB_PATH", str(Path(__file__).resolve().parent / "screen_ai.db"))).expanduser()
 
 
 @contextmanager

@@ -571,7 +571,18 @@ def read_browser_results(request_id: str):
     return {"success": True, "results": result}
 
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+_cors_origins = [
+    origin.strip() for origin in os.getenv("VOSI_CORS_ORIGINS", "*").split(",")
+    if origin.strip()
+]
+_cors_origins = _cors_origins or ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials="*" not in _cors_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -582,7 +593,17 @@ pipeline = ScreenPipeline()
 _account_pipelines = {}
 _account_pipelines_lock = threading.Lock()
 _ACCOUNT_PIPELINE_LIMIT = 32
-_ACCOUNT_UPLOAD_ROOT = Path(__file__).resolve().parent / "account_uploads"
+_ACCOUNT_UPLOAD_ROOT = Path(os.getenv(
+    "VOSI_ACCOUNT_UPLOAD_DIR",
+    str(Path(__file__).resolve().parent / "account_uploads"),
+)).expanduser()
+# Live screen frames are ephemeral; remove stale frame files after a process restart.
+if _ACCOUNT_UPLOAD_ROOT.is_dir():
+    for stale_frame in _ACCOUNT_UPLOAD_ROOT.glob("*/screen_*"):
+        try:
+            stale_frame.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _account_user_id(account_token: str | None) -> str | None:
@@ -663,6 +684,56 @@ def root():
     }
 
 
+@app.get("/health/live")
+def health_live():
+    """Liveness probe: the API process is responding."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def health_ready():
+    """Verify persistent stores and required production security configuration."""
+    try:
+        from database import initialize_database, get_connection
+
+        initialize_database()
+        with get_connection() as db:
+            db.execute("SELECT 1")
+        with agent_runtime._connect() as db:
+            db.execute("SELECT 1")
+        with identity_api.store._connect() as db:
+            db.execute("SELECT 1")
+        get_companion_memories(limit=1)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="VOSI storage is not ready.") from exc
+
+    multi_tenant = os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}
+    if multi_tenant:
+        if len(os.getenv("VOSI_AGENT_TOKEN", "").strip()) < 32:
+            raise HTTPException(status_code=503, detail="VOSI_AGENT_TOKEN must contain at least 32 characters in multi-tenant mode.")
+        if len(os.getenv("VOSI_IDENTITY_CHALLENGE_SECRET", "").strip()) < 32:
+            raise HTTPException(status_code=503, detail="VOSI_IDENTITY_CHALLENGE_SECRET must contain at least 32 characters.")
+        if not all(os.getenv(key, "").strip() for key in (
+            "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD", "VOSI_SMTP_FROM",
+        )):
+            raise HTTPException(status_code=503, detail="SMTP verification delivery must be configured in multi-tenant mode.")
+        allowed_native_origins = {"tauri://localhost", "http://localhost", "http://127.0.0.1"}
+        if "*" in _cors_origins or any(
+            not origin.startswith("https://") and origin not in allowed_native_origins
+            for origin in _cors_origins
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Set VOSI_CORS_ORIGINS to explicit HTTPS trusted origins and approved local native-app origins in multi-tenant mode.",
+            )
+
+    return {
+        "status": "ready",
+        "mode": "multi-tenant" if multi_tenant else "single-user",
+        "storage": "sqlite-single-instance",
+    }
+
+
 @app.get("/state")
 def get_state(x_vosi_account_token: str | None = Header(default=None)):
     user_id = _account_user_id(x_vosi_account_token)
@@ -707,9 +778,21 @@ async def receive_screen(
     user_id = _account_user_id(x_vosi_account_token)
     active_pipeline = _pipeline_for_user(user_id)
     # Keep account screenshots outside the public /uploads static mount.
-    suffix = ".png" if file.content_type == "image/png" else ".jpg"
+    content_type = (file.content_type or "").lower()
+    suffix_by_type = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/webp": ".webp",
+    }
+    suffix = suffix_by_type.get(content_type)
+    if not suffix:
+        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG or WebP screen image.")
+    payload = await file.read(8 * 1024 * 1024 + 1)
+    if len(payload) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Screen image exceeds the 8 MB upload limit.")
     file_path = _screen_upload_dir(user_id) / f"screen_{uuid4().hex}{suffix}"
-    file_path.write_bytes(await file.read())
+    file_path.write_bytes(payload)
     return active_pipeline.process_image(str(file_path))
 
 
