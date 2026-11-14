@@ -718,8 +718,15 @@ def health_ready():
             "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD", "VOSI_SMTP_FROM",
         )):
             raise HTTPException(status_code=503, detail="SMTP verification delivery must be configured in multi-tenant mode.")
-        if "*" in _cors_origins or any(not origin.startswith("https://") for origin in _cors_origins):
-            raise HTTPException(status_code=503, detail="Set VOSI_CORS_ORIGINS to explicit HTTPS trusted origins in multi-tenant mode.")
+        allowed_native_origins = {"tauri://localhost", "http://localhost", "http://127.0.0.1"}
+        if "*" in _cors_origins or any(
+            not origin.startswith("https://") and origin not in allowed_native_origins
+            for origin in _cors_origins
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Set VOSI_CORS_ORIGINS to explicit HTTPS web origins and approved local native-app origins in multi-tenant mode.",
+            )
 
     return {
         "status": "ready",
