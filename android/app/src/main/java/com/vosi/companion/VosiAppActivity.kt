@@ -564,7 +564,7 @@ private fun identityRequest(base: String, path: String, method: String, token: S
     } finally { connection.disconnect() }
 }
 
-private object AccountSessionStore {
+object AccountSessionStore {
     private const val Alias = "vosi_account_session_v1"
     private const val Prefs = "vosi_account_session_secure"
     fun save(token: String, email: String) {
