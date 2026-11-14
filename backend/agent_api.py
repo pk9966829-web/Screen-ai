@@ -127,7 +127,7 @@ def list_agent_tasks(
 def list_available_device_tasks(authorization: str | None = Header(default=None)):
     device = _authorize_device(authorization)
     available = []
-    for task in runtime.list_tasks(100, user_id=device.get("user_id")):
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
         if task["state"] in {"completed", "failed", "cancelled"}:
             continue
         if task.get("scheduled_at") and task["scheduled_at"] > datetime.now(timezone.utc).isoformat():
@@ -208,7 +208,7 @@ def request_agent_task(
         goal=request.goal,
         steps=request.steps,
         origin_device_id=device["device_id"],
-        owner_user_id=device.get("user_id"),
+        owner_user_id=device.get("user_id") or "",
         idempotency_key=request.idempotency_key,
         scheduled_at=request.scheduled_at,
     )
@@ -218,10 +218,13 @@ def request_agent_task(
 @router.get("/tasks/updates")
 def get_origin_device_task_updates(authorization: str | None = Header(default=None)):
     device = _authorize_device(authorization)
-    tasks = runtime.list_tasks(100, user_id=device.get("user_id"))
+    tasks = runtime.list_tasks(100, user_id=device.get("user_id") or "")
     updates = []
     for task in tasks:
-        if task.get("owner_user_id") != device.get("user_id"):
+        if device.get("user_id"):
+            if task.get("owner_user_id") != device["user_id"]:
+                continue
+        elif task.get("origin_device_id") != device["device_id"]:
             continue
         updates.append({
             "task_id": task["task_id"],
@@ -261,7 +264,7 @@ def list_origin_task_approvals(authorization: str | None = Header(default=None))
     device = _authorize_device(authorization)
     approvals = []
     now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
-    for task in runtime.list_tasks(100, user_id=device.get("user_id")):
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
         if task.get("origin_device_id") != device["device_id"]:
             continue
         if task.get("scheduled_at") and task["scheduled_at"] > now:
@@ -319,7 +322,7 @@ def list_desktop_task_approvals(authorization: str | None = Header(default=None)
     if device["platform"] != "desktop":
         raise HTTPException(status_code=403, detail="Only a paired desktop can receive Windows confirmation requests.")
     approvals = []
-    for task in runtime.list_tasks(100, user_id=device.get("user_id")):
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
         for step in task["steps"]:
             if step["target_platform"] == "desktop" and step["state"] == "awaiting_approval" and step["capability"] in {"device.pc.shutdown", "device.pc.restart"} and step["capability"] in device["capabilities"]:
                 approvals.append({"task_id": task["task_id"], "goal": task["goal"], "step_id": step["step_id"], "title": step["title"], "capability": step["capability"]})
