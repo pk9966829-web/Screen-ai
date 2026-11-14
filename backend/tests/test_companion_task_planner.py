@@ -100,3 +100,23 @@ def test_planner_never_queues_capabilities_without_an_installed_executor():
     assert "phone.whatsapp.quick_reply" not in IMPLEMENTED_EXECUTORS["android"]
     assert "email.send" not in IMPLEMENTED_EXECUTORS["desktop"]
     assert "commerce.order.place" not in IMPLEMENTED_EXECUTORS["browser"]
+
+
+def test_failed_step_error_is_visible_and_does_not_suggest_later_steps(tmp_path):
+    runtime = AgentRuntime(tmp_path / "agent-failure.db")
+    task = runtime.create_task(
+        goal="Set volume then create alarm",
+        steps=[
+            {"step_id": "volume", "capability": "device.volume.set",
+             "target_platform": "android", "title": "Set volume", "arguments": {"volume": 50}},
+            {"step_id": "alarm", "capability": "device.alarm.create",
+             "target_platform": "android", "title": "Create alarm", "arguments": {"hour": 17, "minute": 0}},
+        ],
+    )
+    claimed = runtime.claim_next_step(task["task_id"], "phone-1", "android", {"device.volume.set"})
+    runtime.record_step_result(task["task_id"], claimed["step_id"], "phone-1",
+                                False, False, {}, "Android denied the volume change.")
+    failed = runtime.get_task(task["task_id"])
+    assert failed["state"] == "failed"
+    assert failed["error"] == "Android denied the volume change."
+    assert failed["next_step"] is None
