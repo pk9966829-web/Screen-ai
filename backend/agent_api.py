@@ -142,7 +142,7 @@ def list_available_device_tasks(authorization: str | None = Header(default=None)
             next_step
             and next_step["target_platform"] == device["platform"]
             and next_step["capability"] in device["capabilities"]
-            and next_step["state"] in {"pending", "ready"}
+            and (next_step["state"] in {"pending", "ready"} or runtime.is_claim_stale(next_step))
             and (not next_step["approval_required"] or next_step["state"] == "ready")
         ) else None
         if matching:
