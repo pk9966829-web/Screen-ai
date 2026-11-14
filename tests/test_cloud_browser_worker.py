@@ -57,3 +57,17 @@ def test_browser_network_allowlist_blocks_untrusted_origins():
     assert not is_allowed_browser_url("https://attacker.example/")
     assert not is_allowed_browser_url("http://www.flipkart.com/")
     assert not is_allowed_browser_url("https://flipkart.com.attacker.example/")
+
+
+def test_cloud_browser_worker_keeps_account_session_in_authorization_header():
+    from cloud_browser_worker import VosiCloudBrowserWorker
+
+    worker = VosiCloudBrowserWorker(
+        "https://api.example.com",
+        "worker-secret",
+        "browser-worker-1",
+        account_token="account-session-secret",
+    )
+    assert worker.session.headers["Authorization"] == "Bearer worker-secret"
+    assert worker.session.headers["X-VOSI-Account-Token"] == "account-session-secret"
+    worker.session.close()
