@@ -127,7 +127,7 @@ def test_cloud_worker_claims_only_the_authenticated_account_tasks(tmp_path, monk
     claim = client.post("/cloud-worker/claim", headers=headers)
     assert claim.status_code == 200
     assert claim.json()["task"]["task_id"] == account_a["task_id"]
-    assert runtime.get_task(account_b["task_id"])["state"] == "ready"
+    assert runtime.get_task(account_b["task_id"])["state"] == "planned"
 
     wrong_account_headers = {**headers, "X-VOSI-Account-Token": "account-b"}
     heartbeat = client.post(
