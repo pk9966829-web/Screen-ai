@@ -131,3 +131,5 @@ jobs:
           docker compose config --quiet
       - name: Build production API image
         run: docker build -f backend/Dockerfile -t vosi-api:ci .
+      - name: Build optional cloud browser worker image
+        run: docker build -f backend/Dockerfile.cloud-worker -t vosi-cloud-browser-worker:ci .
