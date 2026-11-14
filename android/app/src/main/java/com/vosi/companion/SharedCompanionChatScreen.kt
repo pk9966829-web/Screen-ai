@@ -42,17 +42,21 @@ fun SharedCompanionChatScreen() {
 
     LaunchedEffect(Unit) {
         val credential = DeviceCredentialStore.load(context)
+        val accountToken = AccountSessionStore.load()
         if (credential == null) {
             status = "Pair this phone with VOSI in the device workspace to start shared chat."
+        } else if (accountToken.isNullOrBlank()) {
+            status = "Sign in to your VOSI account in Profile to use private shared chat."
         } else {
-            status = "Loading your shared conversation…"
+            status = "Loading your private shared conversation…"
             thread {
                 try {
                     val history = companionChatRequest(
                         credential.getString("backend_url"),
                         "/companion/chat/history?limit=50",
                         "GET",
-                        credential.getString("device_token")
+                        credential.getString("device_token"),
+                        accountToken = accountToken
                     )
                     val restored = mutableListOf<CompanionChatMessage>()
                     val interactions = history.optJSONArray("interactions")
@@ -144,8 +148,13 @@ fun SharedCompanionChatScreen() {
                     val message = draft.trim()
                     if (message.isEmpty() || busy) return@FilledIconButton
                     val credential = DeviceCredentialStore.load(context)
+                    val accountToken = AccountSessionStore.load()
                     if (credential == null) {
                         status = "Pair this phone with VOSI before sending a message."
+                        return@FilledIconButton
+                    }
+                    if (accountToken.isNullOrBlank()) {
+                        status = "Sign in to your VOSI account in Profile before sending a private message."
                         return@FilledIconButton
                     }
                     messages = messages + CompanionChatMessage(message, true)
@@ -159,7 +168,8 @@ fun SharedCompanionChatScreen() {
                                 "/companion/chat",
                                 "POST",
                                 credential.getString("device_token"),
-                                JSONObject().put("message", message)
+                                JSONObject().put("message", message),
+                                accountToken
                             )
                             val answer = result.optString("response").trim()
                             if (!result.optBoolean("success") || answer.isEmpty()) {
@@ -196,7 +206,8 @@ private fun companionChatRequest(
     path: String,
     method: String,
     token: String,
-    body: JSONObject? = null
+    body: JSONObject? = null,
+    accountToken: String
 ): JSONObject {
     require(baseUrl.startsWith("https://") || baseUrl.startsWith("http://")) {
         "Your paired VOSI backend URL is invalid. Re-pair this phone if needed."
@@ -208,6 +219,7 @@ private fun companionChatRequest(
         connection.readTimeout = 45000
         connection.setRequestProperty("Accept", "application/json")
         connection.setRequestProperty("Authorization", "Bearer $token")
+        connection.setRequestProperty("X-VOSI-Account-Token", accountToken)
         if (body != null) {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")

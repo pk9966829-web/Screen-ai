@@ -228,6 +228,11 @@ class IdentityStore:
             "status": "revoked" if row["revoked_at"] else "linked",
         } for row in rows]
 
+    def get_linked_device_user(self, device_id: str) -> str | None:
+        with self._connect() as db:
+            row = db.execute("SELECT user_id FROM identity_device_links WHERE device_id = ?", (device_id,)).fetchone()
+        return row["user_id"] if row else None
+
     def link_device(self, user_id: str, device_id: str) -> None:
         now = _iso(_now())
         with self._connect() as db:

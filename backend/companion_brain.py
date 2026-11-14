@@ -56,17 +56,37 @@ def initialize_companion_memory() -> None:
             )
         """)
         db.execute("CREATE INDEX IF NOT EXISTS idx_companion_memories_updated ON companion_memories(updated_at)")
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS account_companion_memories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                memory_key TEXT NOT NULL,
+                category TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_id, memory_key)
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_account_companion_memories_user_updated ON account_companion_memories(user_id, updated_at)")
 
 
-def get_companion_memories(limit: int = 50) -> list[dict[str, Any]]:
+def get_companion_memories(limit: int = 50, user_id: str | None = None) -> list[dict[str, Any]]:
     initialize_companion_memory()
     safe_limit = max(1, min(int(limit), MAX_MEMORIES))
     with _connect() as db:
-        rows = db.execute(
-            "SELECT id, memory_key, category, content, created_at, updated_at "
-            "FROM companion_memories ORDER BY updated_at DESC, id DESC LIMIT ?",
-            (safe_limit,),
-        ).fetchall()
+        if user_id:
+            rows = db.execute(
+                "SELECT id, memory_key, category, content, created_at, updated_at "
+                "FROM account_companion_memories WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT ?",
+                (user_id, safe_limit),
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT id, memory_key, category, content, created_at, updated_at "
+                "FROM companion_memories ORDER BY updated_at DESC, id DESC LIMIT ?",
+                (safe_limit,),
+            ).fetchall()
     return [dict(row) for row in rows]
 
 
@@ -77,7 +97,7 @@ def delete_companion_memory(memory_id: int) -> bool:
         return cursor.rowcount > 0
 
 
-def _save_memory_candidates(candidates: Any) -> int:
+def _save_memory_candidates(candidates: Any, user_id: str | None = None) -> int:
     if not isinstance(candidates, list):
         return 0
     initialize_companion_memory()
@@ -115,22 +135,40 @@ def _save_memory_candidates(candidates: Any) -> int:
             )
             if sensitive:
                 continue
-            db.execute(
-                """INSERT INTO companion_memories
-                   (memory_key, category, content, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(memory_key) DO UPDATE SET
-                     category=excluded.category, content=excluded.content,
-                     updated_at=excluded.updated_at""",
-                (key, category, content, now, now),
-            )
+            if user_id:
+                db.execute(
+                    """INSERT INTO account_companion_memories
+                       (user_id, memory_key, category, content, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(user_id, memory_key) DO UPDATE SET
+                         category=excluded.category, content=excluded.content,
+                         updated_at=excluded.updated_at""",
+                    (user_id, key, category, content, now, now),
+                )
+            else:
+                db.execute(
+                    """INSERT INTO companion_memories
+                       (memory_key, category, content, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(memory_key) DO UPDATE SET
+                         category=excluded.category, content=excluded.content,
+                         updated_at=excluded.updated_at""",
+                    (key, category, content, now, now),
+                )
             saved += 1
-        # Keep the newest bounded set; this is not a substitute for user-managed export.
-        db.execute(
-            """DELETE FROM companion_memories WHERE id NOT IN
-               (SELECT id FROM companion_memories ORDER BY updated_at DESC, id DESC LIMIT ?)""",
-            (MAX_MEMORIES,),
-        )
+        # Keep a bounded set independently for each account.
+        if user_id:
+            db.execute(
+                """DELETE FROM account_companion_memories WHERE user_id = ? AND id NOT IN
+                   (SELECT id FROM account_companion_memories WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT ?)""",
+                (user_id, user_id, MAX_MEMORIES),
+            )
+        else:
+            db.execute(
+                """DELETE FROM companion_memories WHERE id NOT IN
+                   (SELECT id FROM companion_memories ORDER BY updated_at DESC, id DESC LIMIT ?)""",
+                (MAX_MEMORIES,),
+            )
     return saved
 
 
@@ -286,10 +324,11 @@ def answer_companion(
     runtime: Any = None,
     paired_devices: list[dict[str, Any]] | None = None,
     origin_device_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Generate a conversational answer, update safe memories, and optionally queue a validated plan."""
     initialize_companion_memory()
-    memories = get_companion_memories()
+    memories = get_companion_memories(user_id=user_id)
     providers = _provider_candidates()
     if not providers:
         return {
@@ -370,7 +409,7 @@ Do not put markdown fences around JSON."""
             answer = str(payload.get("answer") or "").strip()
             if not answer:
                 raise ValueError("The AI returned an empty answer.")
-            memory_saved = _save_memory_candidates(payload.get("memory_candidates"))
+            memory_saved = _save_memory_candidates(payload.get("memory_candidates"), user_id=user_id)
             planned_task = None
             if runtime is not None and payload.get("task_plan") is not None:
                 planned_task = _safe_task_plan(payload.get("task_plan"), message, runtime, paired_devices, origin_device_id)
@@ -389,7 +428,7 @@ Do not put markdown fences around JSON."""
                 "action": "planned" if planned_task else "answer",
                 "confidence": 0.9,
                 "provider": provider["name"],
-                "memory_count": len(get_companion_memories()),
+                "memory_count": len(get_companion_memories(user_id=user_id)),
                 "memories_updated": memory_saved,
                 "task_plan": planned_task,
                 "workflow_update": {},
