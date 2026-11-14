@@ -99,3 +99,10 @@ def test_cloud_worker_rejects_invalid_token_and_missing_configuration(tmp_path, 
     assert client.get("/cloud-worker/health", headers={"Authorization": "Bearer wrong"}).status_code == 401
     monkeypatch.delenv("VOSI_CLOUD_WORKER_TOKEN")
     assert client.get("/cloud-worker/health").status_code == 503
+
+
+def test_shared_cloud_worker_is_disabled_in_multi_tenant_mode(tmp_path, monkeypatch):
+    _, client, headers = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
+    response = client.post("/cloud-worker/claim", headers=headers)
+    assert response.status_code == 503

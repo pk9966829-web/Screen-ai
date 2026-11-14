@@ -26,6 +26,11 @@ class WhatsAppSyncRequest(BaseModel):
 
 
 def _authorize(authorization: Optional[str]):
+    if os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}:
+        raise HTTPException(
+            status_code=503,
+            detail="The legacy shared WhatsApp inbox is disabled in multi-tenant mode until it has account-scoped authorization.",
+        )
     expected = os.getenv("VOSI_COMPANION_TOKEN", "").strip()
     if not expected:
         raise HTTPException(status_code=503, detail="Companion pairing is not configured.")

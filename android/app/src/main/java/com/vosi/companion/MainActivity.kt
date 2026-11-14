@@ -321,6 +321,7 @@ class MainActivity : Activity() {
         path: String,
         method: String,
         token: String? = null,
+        accountToken: String? = null,
         body: JSONObject? = null,
         readTimeoutMs: Int = 15000
     ): Pair<Int, String> {
@@ -330,6 +331,7 @@ class MainActivity : Activity() {
             connection.connectTimeout = 10000
             connection.readTimeout = readTimeoutMs
             if (token != null) connection.setRequestProperty("Authorization", "Bearer $token")
+            if (!accountToken.isNullOrBlank()) connection.setRequestProperty("X-VOSI-Account-Token", accountToken)
             if (body != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
@@ -453,6 +455,7 @@ class MainActivity : Activity() {
             deviceStatus.text = "Your phone is no longer paired with VOSI."
             return
         }
+        val accountToken = AccountSessionStore.load()
         voiceConversationButton.isEnabled = false
         deviceStatus.text = "VOSI is thinking…"
         thread {
@@ -463,6 +466,7 @@ class MainActivity : Activity() {
                     "/companion/voice",
                     "POST",
                     token = credential.getString("device_token"),
+                    accountToken = accountToken,
                     body = payload,
                     readTimeoutMs = 45000
                 )
@@ -813,8 +817,8 @@ class MainActivity : Activity() {
                     baseUrl,
                     "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/result",
                     "POST",
-                    token,
-                    result
+                    token = token,
+                    body = result
                 )
                 if (resultCode !in 200..299) throw IllegalStateException("VOSI could not save the Android execution receipt (HTTP $resultCode).")
             } catch (error: Exception) {
@@ -827,8 +831,8 @@ class MainActivity : Activity() {
                     baseUrl,
                     "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/result",
                     "POST",
-                    token,
-                    failed
+                    token = token,
+                    body = failed
                 )
             }
         }

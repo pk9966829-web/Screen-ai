@@ -90,10 +90,20 @@ def get_companion_memories(limit: int = 50, user_id: str | None = None) -> list[
     return [dict(row) for row in rows]
 
 
-def delete_companion_memory(memory_id: int) -> bool:
+def delete_companion_memory(memory_id: int, user_id: str | None = None) -> bool:
+    """Delete a memory only from the caller's own storage partition."""
     initialize_companion_memory()
     with _connect() as db:
-        cursor = db.execute("DELETE FROM companion_memories WHERE id = ?", (int(memory_id),))
+        if user_id:
+            cursor = db.execute(
+                "DELETE FROM account_companion_memories WHERE id = ? AND user_id = ?",
+                (int(memory_id), user_id),
+            )
+        else:
+            cursor = db.execute(
+                "DELETE FROM companion_memories WHERE id = ?",
+                (int(memory_id),),
+            )
         return cursor.rowcount > 0
 
 
