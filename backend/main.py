@@ -28,6 +28,8 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from companion import router as companion_router
 app.include_router(companion_router)
+from companion_core_api import router as companion_core_router
+app.include_router(companion_core_router)
 from agent_api import router as agent_router, devices as agent_devices, runtime as agent_runtime
 from agent_runtime import AgentRuntimeError
 from voice_api import router as voice_router
