@@ -65,9 +65,9 @@ def create_voice_turn(
         if os.getenv("VOSI_MULTI_TENANT", "").strip().lower() in {"1", "true", "yes"}:
             raise HTTPException(status_code=401, detail="Sign in to your VOSI account before using shared voice chat.")
         device = _authenticate_voice_device(authorization)
-        recent = get_recent_interactions(limit=8, user_id=None)
-        task_state = get_active_task(user_id=None) or {}
-        paired_devices = agent_api.devices.list_devices(user_id=None)
+        recent = get_recent_interactions(limit=8)
+        task_state = get_active_task() or {}
+        paired_devices = agent_api.devices.list_devices()
 
     result = answer_companion(
         transcript,
