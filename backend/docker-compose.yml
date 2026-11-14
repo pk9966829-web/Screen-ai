@@ -65,7 +65,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    command: ["python", "backup_vosi.py"]
+    # Bypass the API entrypoint: /data is intentionally mounted read-only.
+    entrypoint: ["python"]
+    command: ["backup_vosi.py"]
     networks:
       - private
 
