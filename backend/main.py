@@ -597,6 +597,14 @@ _ACCOUNT_UPLOAD_ROOT = Path(os.getenv(
     "VOSI_ACCOUNT_UPLOAD_DIR",
     str(Path(__file__).resolve().parent / "account_uploads"),
 )).expanduser()
+# Live screen frames are intentionally ephemeral. Remove stale account frames
+# after restart because their in-memory pipeline references no longer exist.
+if _ACCOUNT_UPLOAD_ROOT.is_dir():
+    for stale_frame in _ACCOUNT_UPLOAD_ROOT.glob("*/screen_*"):
+        try:
+            stale_frame.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _account_user_id(account_token: str | None) -> str | None:
