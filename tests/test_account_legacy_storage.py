@@ -1,6 +1,9 @@
 import sys
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
+
 BACKEND_DIR = Path(__file__).resolve().parents[1] / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 
@@ -90,3 +93,31 @@ def test_existing_legacy_sqlite_tables_receive_additive_owner_columns(tmp_path, 
             columns = {row[1] for row in db.execute(f"PRAGMA table_info({table})")}
             assert "user_id" in columns
         assert db.execute("SELECT user_id, question FROM interactions").fetchone() == (None, "Old local question")
+
+
+def test_multi_tenant_legacy_routes_require_a_valid_account_session(monkeypatch):
+    import main
+
+    monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
+    with pytest.raises(HTTPException) as missing:
+        main._account_user_id(None)
+    assert missing.value.status_code == 401
+
+    monkeypatch.setattr(main.identity_api.store, "authenticate", lambda token: {"user_id": "account-a"})
+    assert main._account_user_id("valid-session") == "account-a"
+    with pytest.raises(HTTPException) as blocked:
+        main._require_single_tenant_local_integration()
+    assert blocked.value.status_code == 503
+
+
+def test_legacy_history_route_reads_only_the_authenticated_account(tmp_path, monkeypatch):
+    import main
+
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "screen-ai.sqlite3")
+    database.initialize_database()
+    database.save_interaction("A private question", "A answer", user_id="account-a")
+    database.save_interaction("B private question", "B answer", user_id="account-b")
+    monkeypatch.setattr(main.identity_api.store, "authenticate", lambda token: {"user_id": token})
+
+    response = main.get_history(limit=20, x_vosi_account_token="account-a")
+    assert [item["question"] for item in response["interactions"]] == ["A private question"]
