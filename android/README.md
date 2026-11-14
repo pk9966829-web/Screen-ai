@@ -100,7 +100,7 @@ Task completion updates are fetched from the backend using the phone's own devic
 
 When a Flipkart search completes, the Companion can optionally speak a short top-three product summary. Enable **Speak browser recommendations** in the Companion screen. Speech is off by default and runs only while the Companion is open; it uses Android's built-in text-to-speech engine. Ranking is a transparent heuristic based on visible ratings, review counts, and then price—not an AI quality guarantee. The completion notification remains available even when speech is disabled.
 
-If the Windows PC was paired before these desktop capabilities were added, disconnect and pair the PC again. The Android phone can keep its existing pairing because its task-request capability is unchanged. Keep the Companion open to execute and receive updates; persistent background operation is not yet implemented.
+If the Windows PC was paired before these desktop capabilities were added, disconnect and pair the PC again. The Android phone can keep its existing pairing because its task-request capability is unchanged. Foreground polling remains active while the Companion is open. WorkManager now provides best-effort background polling for low-risk Android phone tasks; see BACKGROUND_EXECUTION.md for supported actions and platform limits.
 
 
 ## Windows settings and power requests from the phone

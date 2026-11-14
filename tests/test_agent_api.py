@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -525,3 +526,41 @@ def test_phone_browser_open_tab_rejects_non_https_and_embedded_credentials(monke
             }],
         })
         assert response.status_code == 422
+
+
+def test_device_queue_exposes_claims_abandoned_by_a_crashed_worker(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "admin-secret")
+    db_path = tmp_path / "stale-device-queue.sqlite3"
+    agent_api.devices = DeviceRegistry(db_path)
+    agent_api.runtime = AgentRuntime(db_path)
+    client = make_client()
+    admin = {"Authorization": "Bearer admin-secret"}
+    pairing = client.post("/agent/devices/pairing", headers=admin, json={
+        "platform": "android", "label": "VOSI phone",
+    }).json()["pairing"]
+    phone = client.post("/agent/devices/pair", json={
+        "pairing_code": pairing["pairing_code"], "capabilities": ["device.volume.set"],
+    }).json()["device"]
+    headers = {"Authorization": f"Bearer {phone['device_token']}"}
+    task = client.post("/agent/tasks", headers=admin, json={
+        "goal": "Set phone volume", "origin_device_id": phone["device_id"],
+        "steps": [{
+            "step_id": "volume", "capability": "device.volume.set", "target_platform": "android",
+            "title": "Set phone volume", "arguments": {"volume": 40},
+        }],
+    }).json()["task"]
+    claim = client.post(f"/agent/tasks/{task['task_id']}/claim", headers=headers)
+    assert claim.json()["step"]["state"] == "running"
+
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "UPDATE agent_steps SET claimed_at = ? WHERE task_id = ? AND step_id = ?",
+            ("2000-01-01T00:00:00+00:00", task["task_id"], "volume"),
+        )
+
+    available = client.get("/agent/tasks/available", headers=headers)
+    assert available.status_code == 200
+    assert available.json()["tasks"][0]["task_id"] == task["task_id"]
+    recovered = client.post(f"/agent/tasks/{task['task_id']}/claim", headers=headers)
+    assert recovered.status_code == 200
+    assert recovered.json()["step"]["claimed_by"] == phone["device_id"]

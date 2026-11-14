@@ -13,6 +13,7 @@ on:
       - feature/vosi-shared-user-identity-backend
       - feature/vosi-native-android-app
       - feature/vosi-android-shared-chat
+      - feature/vosi-android-background-worker
   pull_request:
     branches:
       - main
@@ -26,6 +27,8 @@ on:
       - feature/vosi-personal-identity-onboarding
       - feature/vosi-shared-user-identity-backend
       - feature/vosi-companion-core
+      - feature/vosi-android-shared-chat
+      - feature/vosi-android-background-worker
   workflow_dispatch:
 
 jobs:

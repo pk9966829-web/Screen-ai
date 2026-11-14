@@ -29,6 +29,7 @@ object DeviceCredentialStore {
             .putString(IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .putString(CIPHERTEXT, Base64.encodeToString(encrypted, Base64.NO_WRAP))
             .apply()
+        VosiBackgroundTaskScheduler.ensureScheduled(context)
     }
 
     fun load(context: Context): JSONObject? {

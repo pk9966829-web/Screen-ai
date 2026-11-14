@@ -7,7 +7,6 @@ plugins {
 android {
     namespace = "com.vosi.companion"
     compileSdk = 36
-
     defaultConfig {
         applicationId = "com.vosi.companion"
         minSdk = 26
@@ -15,9 +14,7 @@ android {
         versionCode = 2
         versionName = "0.2.0"
     }
-
     buildFeatures { compose = true }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -34,5 +31,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

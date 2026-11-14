@@ -154,6 +154,21 @@ _ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,99}$")
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+CLAIM_LEASE_SECONDS = 300
+
+
+def _claim_timestamp_is_stale(claimed_at: str | None) -> bool:
+    if not claimed_at:
+        return True
+    try:
+        claimed = datetime.fromisoformat(claimed_at.replace("Z", "+00:00"))
+        if claimed.tzinfo is None:
+            claimed = claimed.replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - claimed.astimezone(timezone.utc)).total_seconds()
+        return age >= CLAIM_LEASE_SECONDS
+    except (TypeError, ValueError):
+        return True
+
 
 class AgentRuntimeError(ValueError):
     """Raised when a task or step violates the VOSI agent contract."""
@@ -376,6 +391,10 @@ class AgentRuntime:
             db.commit()
         return self.get_task(task_id)
 
+    @staticmethod
+    def is_claim_stale(step: dict[str, Any]) -> bool:
+        return step.get("state") == "running" and _claim_timestamp_is_stale(step.get("claimed_at"))
+
     def claim_next_step(self, task_id: str, device_id: str, device_platform: str, granted_capabilities: set[str]) -> dict[str, Any] | None:
         if not device_id or len(device_id) > 100:
             raise AgentRuntimeError("A valid device ID is required.")
@@ -400,7 +419,7 @@ class AgentRuntime:
                    ORDER BY position LIMIT 1""",
                 (task_id,),
             ).fetchone()
-            if not row or row["state"] not in {"pending", "ready"}:
+            if not row or (row["state"] not in {"pending", "ready"} and not (row["state"] == "running" and _claim_timestamp_is_stale(row["claimed_at"]))):
                 db.commit()
                 return None
             if row["approval_required"] and row["state"] != "ready":
@@ -412,8 +431,9 @@ class AgentRuntime:
                 return None
             db.execute(
                 """UPDATE agent_steps SET state = 'running', claimed_by = ?, claimed_at = ?
-                   WHERE task_id = ? AND step_id = ? AND state IN ('pending', 'ready')""",
-                (device_id, _now(), task_id, row["step_id"]),
+                   WHERE task_id = ? AND step_id = ?
+                     AND (state IN ('pending', 'ready') OR (state = 'running' AND claimed_at = ?))""",
+                (device_id, _now(), task_id, row["step_id"], row["claimed_at"]),
             )
             db.execute("UPDATE agent_tasks SET state = 'running', updated_at = ? WHERE task_id = ?", (_now(), task_id))
             db.commit()
