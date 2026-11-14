@@ -138,3 +138,71 @@ def test_stale_execution_claim_can_be_recovered_after_worker_crash(tmp_path):
     assert recovered["state"] == "running"
     assert recovered["claimed_by"] == "phone-1"
     assert recovered["claimed_at"] != "2000-01-01T00:00:00+00:00"
+
+
+def test_explicit_retry_is_bounded_for_allowlisted_idempotent_actions(tmp_path):
+    agent = runtime(tmp_path)
+    task = agent.create_task("Set phone volume", [step("device.volume.set", "android")])
+
+    first = agent.claim_next_step(task["task_id"], "phone-1", "android", {"device.volume.set"})
+    assert first["attempt_count"] == 1
+    assert first["max_attempts"] == 2
+    retry = agent.record_step_result(
+        task["task_id"], "search", "phone-1",
+        success=False, verified=False, error="Temporary device service error.",
+        retryable=True,
+    )
+    assert retry["state"] == "ready"
+    assert retry["steps"][0]["state"] == "pending"
+    assert retry["steps"][0]["attempt_count"] == 1
+
+    second = agent.claim_next_step(task["task_id"], "phone-1", "android", {"device.volume.set"})
+    assert second["attempt_count"] == 2
+    exhausted = agent.record_step_result(
+        task["task_id"], "search", "phone-1",
+        success=False, verified=False, error="The retry also failed.",
+        retryable=True,
+    )
+    assert exhausted["state"] == "failed"
+    assert exhausted["steps"][0]["state"] == "failed"
+    assert exhausted["steps"][0]["attempt_count"] == 2
+
+
+def test_retry_signal_cannot_repeat_non_idempotent_alarm_creation(tmp_path):
+    agent = runtime(tmp_path)
+    alarm = {
+        "step_id": "alarm",
+        "capability": "device.alarm.create",
+        "target_platform": "android",
+        "title": "Create alarm",
+        "arguments": {"hour": 7, "minute": 30},
+    }
+    task = agent.create_task("Create alarm", [alarm])
+    claimed = agent.claim_next_step(task["task_id"], "phone-1", "android", {"device.alarm.create"})
+    assert claimed["max_attempts"] == 1
+    result = agent.record_step_result(
+        task["task_id"], "alarm", "phone-1",
+        success=False, verified=False, error="Uncertain whether alarm was created.",
+        retryable=True,
+    )
+    assert result["state"] == "failed"
+    assert result["steps"][0]["attempt_count"] == 1
+
+
+def test_retryable_failure_can_finish_on_verified_second_attempt(tmp_path):
+    agent = runtime(tmp_path)
+    task = agent.create_task("Search products", [step()])
+    agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.search_products"})
+    pending = agent.record_step_result(
+        task["task_id"], "search", "chrome-1",
+        success=False, verified=False, error="Temporary network error.", retryable=True,
+    )
+    assert pending["state"] == "ready"
+    agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.search_products"})
+    done = agent.record_step_result(
+        task["task_id"], "search", "chrome-1",
+        success=True, verified=True, receipt={"status": "completed", "result_count": 5},
+    )
+    assert done["state"] == "completed"
+    assert done["steps"][0]["attempt_count"] == 2
+    assert done["steps"][0]["error"] is None
