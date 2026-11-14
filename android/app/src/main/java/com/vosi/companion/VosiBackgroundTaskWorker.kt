@@ -42,7 +42,6 @@ class VosiBackgroundTaskWorker(
             val baseUrl = credential.getString("backend_url").trimEnd('/')
             val deviceId = credential.getString("device_id")
             val token = credential.getString("device_token")
-
             val (heartbeatCode, heartbeatBody) = request(
                 baseUrl, "/agent/devices/${segment(deviceId)}/heartbeat", "POST", token
             )
@@ -53,7 +52,6 @@ class VosiBackgroundTaskWorker(
             if (heartbeatCode !in 200..299 || !JSONObject(heartbeatBody).optBoolean("success")) {
                 throw IOException("VOSI backend heartbeat failed (HTTP $heartbeatCode).")
             }
-
             executeAvailableTasks(baseUrl, token)
             publishTaskUpdates(baseUrl, token)
             Result.success()
@@ -68,20 +66,14 @@ class VosiBackgroundTaskWorker(
         val (code, body) = request(baseUrl, "/agent/tasks/available", "GET", token)
         if (code !in 200..299) throw IOException("Task queue unavailable (HTTP $code).")
         val tasks = JSONObject(body).optJSONArray("tasks") ?: JSONArray()
-
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
-            val capability = task.optString("capability")
-            if (capability !in setOf("device.alarm.create", "device.volume.set")) continue
-
+            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set")) continue
             val taskId = task.optString("task_id")
-            val (claimCode, claimBody) = request(
-                baseUrl, "/agent/tasks/${segment(taskId)}/claim", "POST", token
-            )
+            val (claimCode, claimBody) = request(baseUrl, "/agent/tasks/${segment(taskId)}/claim", "POST", token)
             if (claimCode !in 200..299) continue
             val step = JSONObject(claimBody).optJSONObject("step") ?: continue
             val stepId = step.optString("step_id")
-
             val result = try {
                 val args = step.optJSONObject("arguments") ?: JSONObject()
                 val confirmation = when (step.optString("capability")) {
@@ -89,26 +81,16 @@ class VosiBackgroundTaskWorker(
                     "device.alarm.create" -> schedulePhoneAlarm(taskId, args)
                     else -> throw IllegalArgumentException("This Android capability is not supported in background.")
                 }
-                JSONObject()
-                    .put("success", true)
-                    .put("verified", true)
-                    .put("receipt", JSONObject()
-                        .put("capability", step.optString("capability"))
+                JSONObject().put("success", true).put("verified", true)
+                    .put("receipt", JSONObject().put("capability", step.optString("capability"))
                         .put("confirmation", confirmation))
             } catch (error: Exception) {
-                JSONObject()
-                    .put("success", false)
-                    .put("verified", false)
-                    .put("receipt", JSONObject())
+                JSONObject().put("success", false).put("verified", false).put("receipt", JSONObject())
                     .put("error", (error.message ?: "Android background task failed").take(1500))
             }
-
             val (resultCode, _) = request(
-                baseUrl,
-                "/agent/tasks/${segment(taskId)}/steps/${segment(stepId)}/result",
-                "POST",
-                token,
-                result
+                baseUrl, "/agent/tasks/${segment(taskId)}/steps/${segment(stepId)}/result",
+                "POST", token, result
             )
             if (resultCode !in 200..299) throw IOException("Could not save the task receipt (HTTP $resultCode).")
         }
@@ -121,8 +103,9 @@ class VosiBackgroundTaskWorker(
         val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         val target = (maxVolume * percent / 100.0).toInt()
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
-        val actual = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        check(actual == target) { "Android did not apply the requested volume." }
+        check(audio.getStreamVolume(AudioManager.STREAM_MUSIC) == target) {
+            "Android did not apply the requested volume."
+        }
         return "Phone media volume set to $percent%."
     }
 
@@ -137,12 +120,9 @@ class VosiBackgroundTaskWorker(
             set(Calendar.MILLISECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
         }
-        val intent = Intent(applicationContext, VosiAlarmReceiver::class.java)
-            .putExtra("title", "VOSI alarm")
+        val intent = Intent(applicationContext, VosiAlarmReceiver::class.java).putExtra("title", "VOSI alarm")
         val pending = PendingIntent.getBroadcast(
-            applicationContext,
-            taskId.hashCode(),
-            intent,
+            applicationContext, taskId.hashCode(), intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val manager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -166,9 +146,7 @@ class VosiBackgroundTaskWorker(
             for (stepIndex in 0 until steps.length()) {
                 val step = steps.optJSONObject(stepIndex) ?: continue
                 val receipt = step.optJSONObject("receipt")
-                if (receipt != null && receipt.optString("confirmation").isNotBlank()) {
-                    detail = receipt.optString("confirmation")
-                }
+                if (receipt != null && receipt.optString("confirmation").isNotBlank()) detail = receipt.optString("confirmation")
                 if (step.optString("error").isNotBlank()) detail = step.optString("error")
             }
             postStatus(task.optString("goal", "VOSI task"), detail, state == "completed")
@@ -180,9 +158,9 @@ class VosiBackgroundTaskWorker(
         val channelId = "vosi_background_tasks"
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(channelId, "VOSI background tasks", NotificationManager.IMPORTANCE_DEFAULT)
-            )
+            manager.createNotificationChannel(NotificationChannel(
+                channelId, "VOSI background tasks", NotificationManager.IMPORTANCE_DEFAULT
+            ))
         }
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(applicationContext, channelId)
@@ -190,26 +168,18 @@ class VosiBackgroundTaskWorker(
             @Suppress("DEPRECATION")
             Notification.Builder(applicationContext)
         }
-        val notification = builder
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+        val notification = builder.setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(if (completed) "VOSI task completed" else title)
             .setContentText(detail)
             .setStyle(Notification.BigTextStyle().bigText("$title\n$detail"))
-            .setAutoCancel(true)
-            .build()
-        try {
-            manager.notify(title.hashCode(), notification)
-        } catch (_: SecurityException) {
-            // Task execution remains valid when Android notification permission is denied.
+            .setAutoCancel(true).build()
+        try { manager.notify(title.hashCode(), notification) } catch (_: SecurityException) {
+            // Execution remains valid when notification permission is denied.
         }
     }
 
     private fun request(
-        baseUrl: String,
-        path: String,
-        method: String,
-        token: String,
-        body: JSONObject? = null
+        baseUrl: String, path: String, method: String, token: String, body: JSONObject? = null
     ): Pair<Int, String> {
         val connection = URL(baseUrl + path).openConnection() as HttpURLConnection
         try {
@@ -225,9 +195,7 @@ class VosiBackgroundTaskWorker(
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             return code to (stream?.bufferedReader()?.use { it.readText() } ?: "")
-        } finally {
-            connection.disconnect()
-        }
+        } finally { connection.disconnect() }
     }
 
     private fun segment(value: String): String =
@@ -238,31 +206,24 @@ object VosiBackgroundTaskScheduler {
     private const val PERIODIC_WORK = "vosi-background-task-poll"
 
     fun ensureScheduled(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val periodic = PeriodicWorkRequestBuilder<VosiBackgroundTaskWorker>(15, TimeUnit.MINUTES)
             .setConstraints(constraints)
             .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            PERIODIC_WORK,
-            ExistingPeriodicWorkPolicy.KEEP,
-            periodic
+            PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, periodic
         )
+        runSoon(context)
     }
 
     fun runSoon(context: Context) {
         val request = OneTimeWorkRequestBuilder<VosiBackgroundTaskWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            )
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
-            "vosi-background-task-immediate",
-            ExistingWorkPolicy.REPLACE,
-            request
+            "vosi-background-task-immediate", ExistingWorkPolicy.REPLACE, request
         )
     }
 }
