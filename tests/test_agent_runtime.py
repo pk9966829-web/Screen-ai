@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -117,3 +118,23 @@ def test_verified_receipt_completes_task(tmp_path):
     )
     assert result["state"] == "completed"
     assert result["steps"][0]["receipt"]["status"] == "completed"
+
+
+def test_stale_execution_claim_can_be_recovered_after_worker_crash(tmp_path):
+    agent = runtime(tmp_path)
+    task = agent.create_task("Set phone volume", [step("device.volume.set", "android")])
+    claimed = agent.claim_next_step(task["task_id"], "phone-1", "android", {"device.volume.set"})
+    assert claimed["state"] == "running"
+
+    with sqlite3.connect(agent.database_path) as db:
+        db.execute(
+            "UPDATE agent_steps SET claimed_at = ? WHERE task_id = ? AND step_id = ?",
+            ("2000-01-01T00:00:00+00:00", task["task_id"], "search"),
+        )
+
+    available = agent.get_task(task["task_id"])["steps"][0]
+    assert agent.is_claim_stale(available)
+    recovered = agent.claim_next_step(task["task_id"], "phone-1", "android", {"device.volume.set"})
+    assert recovered["state"] == "running"
+    assert recovered["claimed_by"] == "phone-1"
+    assert recovered["claimed_at"] != "2000-01-01T00:00:00+00:00"
