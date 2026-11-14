@@ -64,14 +64,17 @@ def companion_chat(
         raise HTTPException(status_code=422, detail="Write a message before sending it to VOSI.")
     user_id = account["user_id"]
     recent = get_recent_turns(user_id, limit=8)
-    # The task ledger is not yet account-scoped. Do not create cross-account tasks
-    # from this account-isolated chat until the runtime migration is complete.
+    account_tasks = agent_api.runtime.list_tasks(100, user_id=user_id)
+    active_task = next(
+        (task for task in account_tasks if task["state"] not in {"completed", "failed", "cancelled"}),
+        {},
+    )
     result = answer_companion(
         message,
         recent_interactions=recent,
-        task_state={},
-        runtime=None,
-        paired_devices=[],
+        task_state=active_task,
+        runtime=agent_api.runtime,
+        paired_devices=agent_api.devices.list_devices(user_id=user_id),
         origin_device_id=device.get("device_id"),
         user_id=user_id,
     )
@@ -86,7 +89,7 @@ def companion_chat(
         "platform": device.get("platform"),
         "message": message,
         "response": response_text[:12000],
-        "task": None,
+        "task": result.get("task_plan"),
         "provider": result.get("provider"),
         "memory_count": result.get("memory_count", len(get_companion_memories(user_id=user_id))),
         "interaction_recorded": recorded,
