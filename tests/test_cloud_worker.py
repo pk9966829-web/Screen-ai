@@ -120,6 +120,18 @@ def test_cloud_worker_claims_only_the_authenticated_account_tasks(tmp_path, monk
         "title": "B products", "arguments": {"query": "shoes"},
     }], owner_user_id="account-b")
 
+    old_claim = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    with runtime._connect() as db:
+        db.execute(
+            "UPDATE agent_tasks SET state = 'running' WHERE task_id = ?",
+            (account_b["task_id"],),
+        )
+        db.execute(
+            """UPDATE agent_steps SET state = 'running', claimed_by = ?, claimed_at = ?
+               WHERE task_id = ? AND step_id = 'step-1'""",
+            ("cloud-worker:test", old_claim, account_b["task_id"]),
+        )
+
     health = client.get("/cloud-worker/health", headers=headers)
     assert health.status_code == 200
     assert health.json()["account_scoped"] is True
@@ -127,7 +139,7 @@ def test_cloud_worker_claims_only_the_authenticated_account_tasks(tmp_path, monk
     claim = client.post("/cloud-worker/claim", headers=headers)
     assert claim.status_code == 200
     assert claim.json()["task"]["task_id"] == account_a["task_id"]
-    assert runtime.get_task(account_b["task_id"])["state"] == "planned"
+    assert runtime.get_step(account_b["task_id"], "step-1")["state"] == "running"
 
     wrong_account_headers = {**headers, "X-VOSI-Account-Token": "account-b"}
     heartbeat = client.post(
