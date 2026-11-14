@@ -121,3 +121,21 @@ def test_legacy_history_route_reads_only_the_authenticated_account(tmp_path, mon
 
     response = main.get_history(limit=20, x_vosi_account_token="account-a")
     assert [item["question"] for item in response["interactions"]] == ["A private question"]
+
+
+def test_production_readiness_rejects_wildcard_cors_for_multi_tenant(monkeypatch):
+    import main
+
+    monkeypatch.setenv("VOSI_MULTI_TENANT", "true")
+    monkeypatch.setenv("VOSI_AGENT_TOKEN", "a" * 40)
+    monkeypatch.setenv("VOSI_IDENTITY_CHALLENGE_SECRET", "x" * 40)
+    monkeypatch.setenv("VOSI_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("VOSI_SMTP_USERNAME", "user")
+    monkeypatch.setenv("VOSI_SMTP_PASSWORD", "secret")
+    monkeypatch.setenv("VOSI_SMTP_FROM", "noreply@example.com")
+    monkeypatch.setattr(main, "_cors_origins", ["*"])
+
+    with pytest.raises(HTTPException) as blocked:
+        main.health_ready()
+    assert blocked.value.status_code == 503
+    assert "VOSI_CORS_ORIGINS" in blocked.value.detail
