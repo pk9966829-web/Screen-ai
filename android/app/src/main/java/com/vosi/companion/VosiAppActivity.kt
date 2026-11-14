@@ -115,7 +115,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                     onDevices = { tab = VosiTab.DEVICES },
                     onTalk = onOpenCompanion
                 )
-                VosiTab.CHAT -> ChatScreen(onOpenCompanion)
+                VosiTab.CHAT -> SharedCompanionChatScreen()
                 VosiTab.TASKS -> TasksScreen()
                 VosiTab.DEVICES -> DevicesScreen(onOpenCompanion)
                 VosiTab.PROFILE -> ProfileScreen(
