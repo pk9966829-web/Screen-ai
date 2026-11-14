@@ -45,6 +45,31 @@ services:
     networks:
       - private
 
+  cloud-browser-worker:
+    profiles: ["cloud-worker"]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile.cloud-worker
+    env_file:
+      - .env
+    environment:
+      VOSI_CLOUD_API_URL: https://${VOSI_DOMAIN}
+      VOSI_CLOUD_WORKER_ACCOUNT_TOKEN: ${VOSI_CLOUD_WORKER_ACCOUNT_TOKEN:-}
+    restart: unless-stopped
+    init: true
+    shm_size: "1gb"
+    pids_limit: 256
+    mem_limit: 2g
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - private
+
 volumes:
   vosi_data:
   caddy_data:
