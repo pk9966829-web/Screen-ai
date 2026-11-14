@@ -22,6 +22,18 @@ MEMORY_DB = Path(os.getenv("VOSI_COMPANION_DB_PATH", str(BACKEND_DIR / "vosi_com
 ALLOWED_MEMORY_CATEGORIES = {"preference", "goal", "project", "workflow", "other"}
 MAX_MEMORIES = 50
 
+# Only capabilities with a concrete adapter are eligible for automatic planning.
+# Capability metadata alone is not proof that a platform can execute an action.
+IMPLEMENTED_EXECUTORS = {
+    "android": {"device.alarm.create", "device.volume.set"},
+    "desktop": {
+        "device.alarm.create", "device.volume.set", "device.volume.action",
+        "device.timer.create", "device.bluetooth.settings.open",
+        "device.wifi.settings.open", "device.pc.shutdown", "device.pc.restart",
+    },
+    "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page"},
+}
+
 
 def _connect():
     MEMORY_DB.parent.mkdir(parents=True, exist_ok=True)
@@ -233,6 +245,7 @@ def _safe_task_plan(
         arguments = step.get("arguments", {})
         metadata = next((item for item in runtime.list_capabilities() if item["name"] == capability), None)
         if (capability not in allowed or not metadata or platform not in metadata.get("platforms", [])
+                or capability not in IMPLEMENTED_EXECUTORS.get(platform, set())
                 or not title or len(title) > 200 or not _validate_plan_arguments(capability, arguments)):
             return None
         registered_executor = any(
@@ -305,6 +318,8 @@ For online purchases, do research and preparation first. Never invent checkout d
 The final order submission step, if supported, must use commerce.order.place with a complete checkout_summary containing merchant, items, delivery_address, total, currency, and payment_method. It is always high-risk and requires a separate explicit approval from the originating user after the summary is shown. Never treat general task consent as payment approval.
 A scheduled task must pause for approval at checkout; do not automatically pay or submit an order while the user is away.
 Only use capabilities in this exact allow-list: {json.dumps(runtime.list_capabilities() if runtime else [])}.
+The currently implemented adapters are: {json.dumps({key: sorted(value) for key, value in IMPLEMENTED_EXECUTORS.items()})}.
+Do not plan phone calls, WhatsApp sends, email sends, screen observation, account actions, checkout/order submission, or any capability without a concrete adapter in that map.
 Registered device executors and their capabilities: {json.dumps([
     {"platform": d.get("platform"), "capabilities": d.get("capabilities", []), "status": d.get("status")}
     for d in (paired_devices or []) if d.get("status") != "revoked"
