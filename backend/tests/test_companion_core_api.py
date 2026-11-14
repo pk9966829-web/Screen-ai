@@ -41,6 +41,16 @@ def test_chat_requires_both_device_and_account_credentials(monkeypatch):
 
 def test_chat_uses_account_scoped_history_and_memory(monkeypatch):
     linked = _authenticate(monkeypatch)
+    class FakeRuntime:
+        def list_tasks(self, limit, user_id=None):
+            assert user_id == "account-a"
+            return []
+
+    fake_runtime = FakeRuntime()
+    monkeypatch.setattr(api.agent_api, "runtime", fake_runtime)
+    monkeypatch.setattr(api.agent_api.devices, "list_devices", lambda user_id=None: [
+        {"device_id": "android-device-a", "user_id": user_id, "platform": "android", "status": "online", "capabilities": []}
+    ])
     monkeypatch.setattr(api, "get_recent_turns", lambda user_id, limit=8: [])
     monkeypatch.setattr(
         api, "get_companion_memories",
@@ -65,7 +75,7 @@ def test_chat_uses_account_scoped_history_and_memory(monkeypatch):
     assert response.status_code == 200
     assert response.json()["response"] == "Hello from VOSI."
     assert response.json()["interaction_recorded"] is True
-    assert observed == {"user_id": "account-a", "runtime": None}
+    assert observed == {"user_id": "account-a", "runtime": fake_runtime}
     assert saved == [("account-a", "Hello VOSI", "Hello from VOSI.")]
     assert linked == [("account-a", "android-device-a")]
 
