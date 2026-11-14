@@ -671,12 +671,23 @@ def ask_screen_ai(req: AskRequest):
         )
         result["companion_brain"] = False
     else:
+        paired_devices = agent_devices.list_devices()
+        # The existing desktop UI contract has no device-id field. When exactly one
+        # online desktop is paired, safely attribute tasks to that local executor so
+        # its task updates and approval prompts return to the originating machine.
+        online_desktops = [
+            device for device in paired_devices
+            if device.get("platform") == "desktop"
+            and device.get("status") not in {"revoked", "offline"}
+        ]
+        origin_device_id = online_desktops[0].get("device_id") if len(online_desktops) == 1 else None
         result = answer_companion(
             message,
             recent_interactions=prior_interactions,
             task_state=state.get("task") or {},
             runtime=agent_runtime,
-            paired_devices=agent_devices.list_devices(),
+            paired_devices=paired_devices,
+            origin_device_id=origin_device_id,
         )
         result["companion_brain"] = True
 
