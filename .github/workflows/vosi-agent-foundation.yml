@@ -12,6 +12,7 @@ on:
       - feature/vosi-personal-identity-onboarding
       - feature/vosi-shared-user-identity-backend
       - feature/vosi-native-android-app
+      - feature/vosi-companion-core
       - feature/vosi-android-shared-chat
   pull_request:
     branches:
