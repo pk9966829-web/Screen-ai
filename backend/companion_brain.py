@@ -195,8 +195,11 @@ def _validate_plan_arguments(capability: str, arguments: dict[str, Any]) -> bool
         raw = arguments.get("url")
         if not isinstance(raw, str) or len(raw) > 2048:
             return False
-        parsed = urlsplit(raw.strip())
-        return parsed.scheme == "https" and bool(parsed.hostname) and not parsed.username and not parsed.password
+        try:
+            parsed = urlsplit(raw.strip())
+            return parsed.scheme == "https" and bool(parsed.hostname) and not parsed.username and not parsed.password
+        except ValueError:
+            return False
     if capability == "browser.read_visible_page":
         return not arguments
     if capability == "device.volume.set":
