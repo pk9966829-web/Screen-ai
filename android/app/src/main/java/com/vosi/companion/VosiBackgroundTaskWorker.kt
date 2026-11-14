@@ -47,7 +47,7 @@ class VosiBackgroundTaskWorker(
             )
             if (heartbeatCode == 401 || heartbeatCode == 403) {
                 postStatus("VOSI needs you to reconnect this phone", "Open VOSI and pair this phone again.")
-                return Result.failure()
+                return Result.success()
             }
             if (heartbeatCode !in 200..299 || !JSONObject(heartbeatBody).optBoolean("success")) {
                 throw IOException("VOSI backend heartbeat failed (HTTP $heartbeatCode).")
