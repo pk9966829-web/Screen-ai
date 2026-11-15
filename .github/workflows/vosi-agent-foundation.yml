@@ -22,6 +22,7 @@ on:
       - feature/vosi-single-node-production-deploy-v2
       - feature/vosi-android-dashboard-shell
       - feature/vosi-chatgpt-mobile-shell
+      - feature/vosi-whatsapp-approved-replies
       - feature/vosi-production-backup-recovery
   pull_request:
     branches:

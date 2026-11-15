@@ -182,7 +182,7 @@ def request_agent_task(
                 "device.bluetooth.settings.open", "device.wifi.settings.open",
                 "device.pc.shutdown", "device.pc.restart",
             },
-            "android": {"device.alarm.create", "device.volume.set"},
+            "android": {"device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply"},
         }
         if capability not in supported_targets.get(target_platform, set()):
             raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
@@ -194,7 +194,18 @@ def request_agent_task(
                 raise HTTPException(status_code=422, detail="Chrome can open only a valid HTTPS URL without embedded credentials.")
         if target_platform == "browser" and capability == "browser.read_visible_page" and arguments not in (None, {}):
             raise HTTPException(status_code=422, detail="Reading the active page does not accept additional arguments.")
-        if capability in {"device.pc.shutdown", "device.pc.restart"}:
+        if capability == "phone.whatsapp.quick_reply":
+            notification_key = arguments.get("notification_key") if isinstance(arguments, dict) else None
+            sender = arguments.get("sender") if isinstance(arguments, dict) else None
+            message = arguments.get("message") if isinstance(arguments, dict) else None
+            if (
+                not details or details["risk"] != "high" or not details["requires_approval"]
+                or not isinstance(notification_key, str) or not 1 <= len(notification_key) <= 1000
+                or not isinstance(sender, str) or not 1 <= len(sender.strip()) <= 100
+                or not isinstance(message, str) or not 1 <= len(message.strip()) <= 2000
+            ):
+                raise HTTPException(status_code=422, detail="WhatsApp replies require a recent notification, recipient, message, and explicit approval.")
+        elif capability in {"device.pc.shutdown", "device.pc.restart"}:
             if not details or details["risk"] != "high" or not details["requires_approval"]:
                 raise HTTPException(status_code=403, detail="This Windows action must remain approval-gated.")
         elif capability == "commerce.order.place":
@@ -298,8 +309,8 @@ def approve_origin_task_step(
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
     if not step or not step["approval_required"] or step["state"] != "awaiting_approval":
         raise HTTPException(status_code=409, detail="This step is not awaiting approval.")
-    if step["capability"] != "commerce.order.place":
-        raise HTTPException(status_code=403, detail="This approval route is reserved for reviewed online orders.")
+    if step["capability"] not in {"commerce.order.place", "phone.whatsapp.quick_reply"}:
+        raise HTTPException(status_code=403, detail="This approval route is limited to supported high-risk actions.")
     if any(previous["state"] != "completed" for previous in task["steps"][:step["position"]]):
         raise HTTPException(status_code=409, detail="Finish the order preparation steps before approving checkout.")
     if not hmac.compare_digest(_approval_digest(step["arguments"]), request.confirmation_digest):
@@ -314,8 +325,8 @@ def reject_origin_task_step(task_id: str, step_id: str, authorization: str | Non
     if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
         raise HTTPException(status_code=403, detail="Only the originating device in this account can reject the task.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
-    if not step or step["capability"] != "commerce.order.place" or step["state"] != "awaiting_approval":
-        raise HTTPException(status_code=409, detail="This order is not awaiting your approval.")
+    if not step or step["capability"] not in {"commerce.order.place", "phone.whatsapp.quick_reply"} or step["state"] != "awaiting_approval":
+        raise HTTPException(status_code=409, detail="This action is not awaiting your approval.")
     return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
 
 

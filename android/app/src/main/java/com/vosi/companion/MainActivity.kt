@@ -447,7 +447,16 @@ class MainActivity : Activity() {
             return
         }
         deviceCommandInput.setText(transcript)
-        sendVoiceTurn(transcript)
+        val whatsappReply = Regex(
+            """^(?:reply|respond)\s+(?:to\s+)?(?:the\s+)?(?:latest\s+)?(?:whatsapp\s+)?(?:message\s+)?from\s+.+?\s+(?:with|saying)\s+.+$""",
+            RegexOption.IGNORE_CASE
+        ).matches(transcript)
+        if (whatsappReply) {
+            deviceCommandInput.setText(transcript)
+            sendDeviceTaskRequest()
+        } else {
+            sendVoiceTurn(transcript)
+        }
     }
 
     private fun sendVoiceTurn(transcript: String) {
@@ -509,12 +518,45 @@ class MainActivity : Activity() {
         val steps = JSONArray()
         val normalized = query.lowercase()
         val goal: String
+        val whatsappReplyMatch = Regex(
+            """^(?:reply|respond)\s+(?:to\s+)?(?:the\s+)?(?:latest\s+)?(?:whatsapp\s+)?(?:message\s+)?from\s+(.+?)\s+(?:with|saying)\s+(.+)$""",
+            RegexOption.IGNORE_CASE
+        ).find(query)
         val alarmMatch = Regex(
             """(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?""",
             RegexOption.IGNORE_CASE
         ).find(query)
 
-        if (alarmMatch != null) {
+        if (whatsappReplyMatch != null) {
+            if (!WhatsAppNotificationListener.isNotificationAccessEnabled(this)) {
+                deviceStatus.text = "Enable WhatsApp notification access first. VOSI reads notification previews only."
+                openNotificationAccessSettings()
+                return
+            }
+            val senderQuery = whatsappReplyMatch.groupValues[1].trim()
+            val replyText = whatsappReplyMatch.groupValues[2].trim()
+            if (replyText.isBlank() || replyText.length > 2000) {
+                deviceStatus.text = "Keep the WhatsApp reply between 1 and 2,000 characters."
+                return
+            }
+            val latest = WhatsAppNotificationListener.latestMessageForSender(this, senderQuery)
+            val notificationKey = latest?.optString("key").orEmpty()
+            val sender = latest?.optString("sender").orEmpty()
+            if (notificationKey.isBlank() || sender.isBlank()) {
+                deviceStatus.text = "I couldn't find one unambiguous recent WhatsApp notification from '$senderQuery'."
+                return
+            }
+            goal = "Reply to the latest WhatsApp notification from $sender"
+            steps.put(JSONObject()
+                .put("step_id", "whatsapp-quick-reply")
+                .put("capability", "phone.whatsapp.quick_reply")
+                .put("target_platform", "android")
+                .put("title", "Send the explicitly requested WhatsApp reply to $sender")
+                .put("arguments", JSONObject()
+                    .put("notification_key", notificationKey)
+                    .put("sender", sender)
+                    .put("message", replyText)))
+        } else if (alarmMatch != null) {
             var hour = alarmMatch.groupValues[1].toIntOrNull() ?: -1
             val minute = alarmMatch.groupValues[2].ifBlank { "0" }.toIntOrNull() ?: -1
             val meridiem = alarmMatch.groupValues[3].lowercase()
@@ -696,6 +738,7 @@ class MainActivity : Activity() {
                     throw IllegalStateException(response.optString("detail", "VOSI could not accept this command."))
                 }
                 val task = response.getJSONObject("task")
+                refreshPendingPhoneApprovals(baseUrl, token)
                 runOnUiThread {
                     deviceCommandInput.text.clear()
                     deviceStatus.text = "Command queued for VOSI • Task " + task.optString("task_id").take(8) + ". Waiting for the target device to execute and confirm it."
@@ -707,6 +750,74 @@ class MainActivity : Activity() {
                     sendDeviceCommandButton.isEnabled = true
                 }
             }
+        }
+    }
+
+    /**
+     * High-risk phone actions never execute when first queued. Present the exact
+     * recipient and message and require a fresh, explicit tap on Approve.
+     */
+    private fun refreshPendingPhoneApprovals(baseUrl: String, token: String) {
+        val (code, body) = requestDeviceApi(baseUrl, "/agent/tasks/pending-approvals", "GET", token)
+        if (code !in 200..299) return
+        val approvals = JSONObject(body).optJSONArray("approvals") ?: JSONArray()
+        for (index in 0 until approvals.length()) {
+            val item = approvals.optJSONObject(index) ?: continue
+            if (item.optString("capability") != "phone.whatsapp.quick_reply") continue
+            val taskId = item.optString("task_id")
+            val stepId = item.optString("step_id")
+            val digest = item.optString("confirmation_digest")
+            val args = item.optJSONObject("arguments") ?: JSONObject()
+            val sender = args.optString("sender").take(100)
+            val message = args.optString("message").take(2000)
+            if (taskId.isBlank() || stepId.isBlank() || digest.length != 64 || sender.isBlank() || message.isBlank()) continue
+            runOnUiThread {
+                if (isFinishing || isDestroyed || !activityResumed) return@runOnUiThread
+                AlertDialog.Builder(this)
+                    .setTitle("Approve WhatsApp reply?")
+                    .setMessage("Recipient: $sender\n\nExact message to send:\n$message\n\nVOSI will use the active WhatsApp notification reply action. Delivery cannot be independently verified.")
+                    .setPositiveButton("Approve & send") { _, _ ->
+                        thread {
+                            val payload = JSONObject().put("confirmation_digest", digest)
+                            val (approveCode, approveBody) = requestDeviceApi(
+                                baseUrl,
+                                "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/approve-origin",
+                                "POST",
+                                token = token,
+                                body = payload
+                            )
+                            val approved = approveCode in 200..299 && JSONObject(approveBody).optBoolean("success")
+                            runOnUiThread {
+                                deviceStatus.text = if (approved) {
+                                    "Reply approved. VOSI will send it using WhatsApp's notification action."
+                                } else {
+                                    JSONObject(approveBody).optString("detail", "Approval failed. Review the task and try again.")
+                                }
+                            }
+                            if (approved) runOnUiThread { heartbeatPhoneDevice() }
+                        }
+                    }
+                    .setNegativeButton("Reject") { _, _ ->
+                        thread {
+                            val (rejectCode, rejectBody) = requestDeviceApi(
+                                baseUrl,
+                                "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/reject-origin",
+                                "POST",
+                                token = token
+                            )
+                            runOnUiThread {
+                                deviceStatus.text = if (rejectCode in 200..299) {
+                                    "WhatsApp reply rejected. Nothing was sent."
+                                } else {
+                                    JSONObject(rejectBody).optString("detail", "Could not reject the pending reply.")
+                                }
+                            }
+                        }
+                    }
+                    .setOnCancelListener { }
+                    .show()
+            }
+            break
         }
     }
 
@@ -757,7 +868,7 @@ class MainActivity : Activity() {
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
             val capability = task.optString("capability")
-            if (capability !in setOf("device.alarm.create", "device.volume.set")) continue
+            if (capability !in setOf("device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = requestDeviceApi(
                 baseUrl,
@@ -772,6 +883,21 @@ class MainActivity : Activity() {
                 val args = step.optJSONObject("arguments") ?: JSONObject()
                 val confirmation: String
                 when (step.optString("capability")) {
+                    "phone.whatsapp.quick_reply" -> {
+                        if (!WhatsAppNotificationListener.isNotificationAccessEnabled(this)) {
+                            throw IllegalStateException("WhatsApp notification access is disabled.")
+                        }
+                        val key = args.optString("notification_key")
+                        val sender = args.optString("sender").trim()
+                        val message = args.optString("message").trim()
+                        if (key.isBlank() || sender.isBlank() || message.isBlank() || message.length > 2000) {
+                            throw IllegalArgumentException("The approved WhatsApp reply is incomplete.")
+                        }
+                        if (!WhatsAppNotificationListener.replyToNotification(key, message)) {
+                            throw IllegalStateException("WhatsApp no longer exposes a reply action for this notification.")
+                        }
+                        confirmation = "WhatsApp reply action submitted to $sender. Delivery is not confirmed by WhatsApp."
+                    }
                     "device.volume.set" -> {
                         val percent = args.optInt("volume", -1)
                         if (percent !in 0..100) throw IllegalArgumentException("Phone volume must be between 0 and 100.")

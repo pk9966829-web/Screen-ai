@@ -68,7 +68,7 @@ class VosiBackgroundTaskWorker(
         val tasks = JSONObject(body).optJSONArray("tasks") ?: JSONArray()
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
-            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set")) continue
+            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = request(baseUrl, "/agent/tasks/${segment(taskId)}/claim", "POST", token)
             if (claimCode !in 200..299) continue
@@ -77,6 +77,7 @@ class VosiBackgroundTaskWorker(
             val result = try {
                 val args = step.optJSONObject("arguments") ?: JSONObject()
                 val confirmation = when (step.optString("capability")) {
+                    "phone.whatsapp.quick_reply" -> sendWhatsAppQuickReply(args)
                     "device.volume.set" -> setPhoneVolume(args)
                     "device.alarm.create" -> schedulePhoneAlarm(taskId, args)
                     else -> throw IllegalArgumentException("This Android capability is not supported in background.")
@@ -94,6 +95,22 @@ class VosiBackgroundTaskWorker(
             )
             if (resultCode !in 200..299) throw IOException("Could not save the task receipt (HTTP $resultCode).")
         }
+    }
+
+    private fun sendWhatsAppQuickReply(args: JSONObject): String {
+        require(WhatsAppNotificationListener.isNotificationAccessEnabled(applicationContext)) {
+            "WhatsApp notification access is disabled."
+        }
+        val key = args.optString("notification_key")
+        val sender = args.optString("sender").trim()
+        val message = args.optString("message").trim()
+        require(key.isNotBlank() && sender.isNotBlank() && message.isNotBlank() && message.length <= 2000) {
+            "The approved WhatsApp reply is incomplete."
+        }
+        check(WhatsAppNotificationListener.replyToNotification(key, message)) {
+            "WhatsApp no longer exposes a reply action for this notification."
+        }
+        return "WhatsApp reply action submitted to $sender. Delivery is not confirmed by WhatsApp."
     }
 
     private fun setPhoneVolume(args: JSONObject): String {
