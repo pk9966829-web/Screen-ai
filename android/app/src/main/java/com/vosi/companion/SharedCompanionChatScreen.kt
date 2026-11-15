@@ -34,14 +34,14 @@ private val ChatMuted = Color(0xFF9BA5BC)
 private data class CompanionChatMessage(val text: String, val fromUser: Boolean)
 
 @Composable
-fun SharedCompanionChatScreen() {
+fun SharedCompanionChatScreen(initialDraft: String = "") {
     val context = LocalContext.current
     var messages by remember {
         mutableStateOf(
             listOf(CompanionChatMessage("Hi, I'm VOSI. Your conversations can continue across your paired devices.", false))
         )
     }
-    var draft by remember { mutableStateOf("") }
+    var draft by remember { mutableStateOf(initialDraft) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Connecting to your paired VOSI phone…") }
     val listState = rememberLazyListState()
