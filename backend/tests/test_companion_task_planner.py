@@ -11,6 +11,7 @@ class FakeRuntime:
             {"name": "device.volume.set", "platforms": ["android", "desktop"]},
             {"name": "browser.search_products", "platforms": ["browser"]},
             {"name": "device.alarm.create", "platforms": ["android", "desktop"]},
+            {"name": "phone.whatsapp.quick_reply", "platforms": ["android"]},
         ]
 
     def create_task(self, **kwargs):
@@ -120,3 +121,17 @@ def test_failed_step_error_is_visible_and_does_not_suggest_later_steps(tmp_path)
     assert failed["state"] == "failed"
     assert failed["error"] == "Android denied the volume change."
     assert failed["next_step"] is None
+
+
+def test_whatsapp_reply_plan_requires_bounded_notification_sender_and_message():
+    valid = {"notification_key": "active-notification-key", "sender": "Alex", "message": "I will call you later."}
+    assert _validate_plan_arguments("phone.whatsapp.quick_reply", valid)
+    assert not _validate_plan_arguments("phone.whatsapp.quick_reply", {**valid, "notification_key": ""})
+    assert not _validate_plan_arguments("phone.whatsapp.quick_reply", {**valid, "sender": " "})
+    assert not _validate_plan_arguments("phone.whatsapp.quick_reply", {**valid, "message": " "})
+    assert not _validate_plan_arguments("phone.whatsapp.quick_reply", {**valid, "message": "x" * 2001})
+
+
+def test_whatsapp_reply_is_registered_only_for_android_executor():
+    assert "phone.whatsapp.quick_reply" in IMPLEMENTED_EXECUTORS["android"]
+    assert "phone.whatsapp.quick_reply" not in IMPLEMENTED_EXECUTORS["desktop"]
