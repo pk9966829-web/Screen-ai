@@ -309,8 +309,8 @@ def approve_origin_task_step(
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
     if not step or not step["approval_required"] or step["state"] != "awaiting_approval":
         raise HTTPException(status_code=409, detail="This step is not awaiting approval.")
-    if step["capability"] != "commerce.order.place":
-        raise HTTPException(status_code=403, detail="This approval route is reserved for reviewed online orders.")
+    if step["capability"] not in {"commerce.order.place", "phone.whatsapp.quick_reply"}:
+        raise HTTPException(status_code=403, detail="This approval route is limited to supported high-risk actions.")
     if any(previous["state"] != "completed" for previous in task["steps"][:step["position"]]):
         raise HTTPException(status_code=409, detail="Finish the order preparation steps before approving checkout.")
     if not hmac.compare_digest(_approval_digest(step["arguments"]), request.confirmation_digest):
@@ -325,8 +325,8 @@ def reject_origin_task_step(task_id: str, step_id: str, authorization: str | Non
     if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
         raise HTTPException(status_code=403, detail="Only the originating device in this account can reject the task.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
-    if not step or step["capability"] != "commerce.order.place" or step["state"] != "awaiting_approval":
-        raise HTTPException(status_code=409, detail="This order is not awaiting your approval.")
+    if not step or step["capability"] not in {"commerce.order.place", "phone.whatsapp.quick_reply"} or step["state"] != "awaiting_approval":
+        raise HTTPException(status_code=409, detail="This action is not awaiting your approval.")
     return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
 
 
