@@ -93,7 +93,7 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
     }
 
     Column(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1020), ChatInk, ChatInk))).padding(horizontal = 18.dp, vertical = 16.dp),
+        Modifier.fillMaxSize().background(Color.Transparent).padding(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -107,8 +107,8 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                 Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(29.dp))
             }
             Column {
-                Text("Talk to VOSI", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("One conversation. All your devices.", color = ChatMuted, fontSize = 11.sp)
+                Text("VOSI", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 1.sp)
+                Text("Your conversation", color = ChatMuted, fontSize = 11.sp)
             }
         }
 
