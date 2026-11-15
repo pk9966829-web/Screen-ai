@@ -158,7 +158,16 @@ fun SharedCompanionChatScreen() {
                 placeholder = { Text("Message VOSI…") },
                 enabled = !busy,
                 maxLines = 4,
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ChatAccent,
+                    unfocusedBorderColor = Color(0xFF303A54),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = ChatAccent,
+                    focusedPlaceholderColor = ChatMuted,
+                    unfocusedPlaceholderColor = ChatMuted
+                )
             )
             FilledIconButton(
                 onClick = {
@@ -206,7 +215,11 @@ fun SharedCompanionChatScreen() {
                     }
                 },
                 enabled = !busy && draft.isNotBlank(),
-                modifier = Modifier.size(52.dp)
+                modifier = Modifier.size(52.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = ChatAccent,
+                    contentColor = ChatInk
+                )
             ) {
                 if (busy) {
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
