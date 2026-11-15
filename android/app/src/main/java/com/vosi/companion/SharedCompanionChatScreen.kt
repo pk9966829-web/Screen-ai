@@ -27,8 +27,8 @@ import java.net.URL
 import kotlin.concurrent.thread
 
 private val ChatInk = Color(0xFF080A12)
-private val ChatPanel = Color(0xFF141827)
-private val ChatAccent = Color(0xFFB69CFF)
+private val ChatPanel = Color(0xB90B1728)
+private val ChatAccent = Color(0xFF72D8F3)
 private val ChatMuted = Color(0xFF9BA5BC)
 
 private data class CompanionChatMessage(val text: String, val fromUser: Boolean)
@@ -124,7 +124,7 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                     horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start
                 ) {
                     Surface(
-                        color = if (message.fromUser) Color(0xFF51447E) else ChatPanel,
+                        color = if (message.fromUser) Color(0xB52D5F91) else ChatPanel,
                         shape = RoundedCornerShape(
                             topStart = 18.dp, topEnd = 18.dp,
                             bottomStart = if (message.fromUser) 18.dp else 5.dp,
