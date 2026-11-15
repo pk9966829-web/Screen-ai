@@ -738,6 +738,7 @@ class MainActivity : Activity() {
                     throw IllegalStateException(response.optString("detail", "VOSI could not accept this command."))
                 }
                 val task = response.getJSONObject("task")
+                refreshPendingPhoneApprovals(baseUrl, token)
                 runOnUiThread {
                     deviceCommandInput.text.clear()
                     deviceStatus.text = "Command queued for VOSI • Task " + task.optString("task_id").take(8) + ". Waiting for the target device to execute and confirm it."
@@ -749,6 +750,74 @@ class MainActivity : Activity() {
                     sendDeviceCommandButton.isEnabled = true
                 }
             }
+        }
+    }
+
+    /**
+     * High-risk phone actions never execute when first queued. Present the exact
+     * recipient and message and require a fresh, explicit tap on Approve.
+     */
+    private fun refreshPendingPhoneApprovals(baseUrl: String, token: String) {
+        val (code, body) = requestDeviceApi(baseUrl, "/agent/tasks/pending-approvals", "GET", token)
+        if (code !in 200..299) return
+        val approvals = JSONObject(body).optJSONArray("approvals") ?: JSONArray()
+        for (index in 0 until approvals.length()) {
+            val item = approvals.optJSONObject(index) ?: continue
+            if (item.optString("capability") != "phone.whatsapp.quick_reply") continue
+            val taskId = item.optString("task_id")
+            val stepId = item.optString("step_id")
+            val digest = item.optString("confirmation_digest")
+            val args = item.optJSONObject("arguments") ?: JSONObject()
+            val sender = args.optString("sender").take(100)
+            val message = args.optString("message").take(2000)
+            if (taskId.isBlank() || stepId.isBlank() || digest.length != 64 || sender.isBlank() || message.isBlank()) continue
+            runOnUiThread {
+                if (isFinishing || isDestroyed || !activityResumed) return@runOnUiThread
+                AlertDialog.Builder(this)
+                    .setTitle("Approve WhatsApp reply?")
+                    .setMessage("Recipient: $sender\n\nExact message to send:\n$message\n\nVOSI will use the active WhatsApp notification reply action. Delivery cannot be independently verified.")
+                    .setPositiveButton("Approve & send") { _, _ ->
+                        thread {
+                            val payload = JSONObject().put("confirmation_digest", digest)
+                            val (approveCode, approveBody) = requestDeviceApi(
+                                baseUrl,
+                                "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/approve-origin",
+                                "POST",
+                                token = token,
+                                body = payload
+                            )
+                            val approved = approveCode in 200..299 && JSONObject(approveBody).optBoolean("success")
+                            runOnUiThread {
+                                deviceStatus.text = if (approved) {
+                                    "Reply approved. VOSI will send it using WhatsApp's notification action."
+                                } else {
+                                    JSONObject(approveBody).optString("detail", "Approval failed. Review the task and try again.")
+                                }
+                            }
+                            if (approved) heartbeatPhoneDevice()
+                        }
+                    }
+                    .setNegativeButton("Reject") { _, _ ->
+                        thread {
+                            val (rejectCode, rejectBody) = requestDeviceApi(
+                                baseUrl,
+                                "/agent/tasks/${Uri.encode(taskId)}/steps/${Uri.encode(stepId)}/reject-origin",
+                                "POST",
+                                token = token
+                            )
+                            runOnUiThread {
+                                deviceStatus.text = if (rejectCode in 200..299) {
+                                    "WhatsApp reply rejected. Nothing was sent."
+                                } else {
+                                    JSONObject(rejectBody).optString("detail", "Could not reject the pending reply.")
+                                }
+                            }
+                        }
+                    }
+                    .setOnCancelListener { }
+                    .show()
+            }
+            break
         }
     }
 
