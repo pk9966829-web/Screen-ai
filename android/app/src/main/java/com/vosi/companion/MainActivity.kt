@@ -485,6 +485,7 @@ class MainActivity : Activity() {
                     throw IllegalStateException(response.optString("detail",
                         response.optString("response", "VOSI could not answer this voice turn.")))
                 }
+                refreshPendingPhoneApprovals(credential.getString("backend_url"), credential.getString("device_token"))
                 val answer = response.optString("response", "I'm here.")
                 runOnUiThread {
                     deviceStatus.text = "You: $transcript\nVOSI: $answer"
