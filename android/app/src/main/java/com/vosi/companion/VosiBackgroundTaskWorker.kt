@@ -68,7 +68,7 @@ class VosiBackgroundTaskWorker(
         val tasks = JSONObject(body).optJSONArray("tasks") ?: JSONArray()
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
-            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply")) continue
+            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply", "phone.notification.quick_reply")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = request(baseUrl, "/agent/tasks/${segment(taskId)}/claim", "POST", token)
             if (claimCode !in 200..299) continue
@@ -78,6 +78,7 @@ class VosiBackgroundTaskWorker(
                 val args = step.optJSONObject("arguments") ?: JSONObject()
                 val confirmation = when (step.optString("capability")) {
                     "phone.whatsapp.quick_reply" -> sendWhatsAppQuickReply(args)
+                    "phone.notification.quick_reply" -> sendAppNotificationReply(args)
                     "device.volume.set" -> setPhoneVolume(args)
                     "device.alarm.create" -> schedulePhoneAlarm(taskId, args)
                     else -> throw IllegalArgumentException("This Android capability is not supported in background.")
@@ -111,6 +112,24 @@ class VosiBackgroundTaskWorker(
             "WhatsApp no longer exposes a reply action for this notification."
         }
         return "WhatsApp reply action submitted to $sender. Delivery is not confirmed by WhatsApp."
+    }
+
+    private fun sendAppNotificationReply(args: JSONObject): String {
+        require(WhatsAppNotificationListener.isNotificationAccessEnabled(applicationContext)) {
+            "VOSI notification access is disabled."
+        }
+        val key = args.optString("notification_key")
+        val packageName = args.optString("package_name")
+        val sender = args.optString("sender").trim()
+        val message = args.optString("message").trim()
+        require(key.isNotBlank() && packageName.matches(Regex("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+")) &&
+            message.isNotBlank() && message.length <= 2000) {
+            "The approved app reply is incomplete or its target package is invalid."
+        }
+        check(WhatsAppNotificationListener.replyToAppNotification(key, message, packageName)) {
+            "The target app no longer exposes an active reply action. Open its conversation and try again."
+        }
+        return "Reply action submitted to ${sender.ifBlank { packageName }}. The target app does not provide delivery confirmation."
     }
 
     private fun setPhoneVolume(args: JSONObject): String {

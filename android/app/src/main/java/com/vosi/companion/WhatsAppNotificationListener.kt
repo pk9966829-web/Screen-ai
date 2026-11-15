@@ -13,7 +13,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Reads only notifications posted by the user's installed WhatsApp app.
+ * Reads message previews only from notifications that expose a direct reply action.
  * Notification contents stay on this Android device in private app storage.
  */
 class WhatsAppNotificationListener : NotificationListenerService() {
@@ -33,9 +33,10 @@ class WhatsAppNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName != WHATSAPP_PACKAGE) return
         val notification = sbn.notification ?: return
         if ((notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return
+        val actions = notification.actions ?: return
+        if (actions.none { !it.remoteInputs.isNullOrEmpty() }) return
 
         val extras = notification.extras ?: return
         val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
@@ -45,20 +46,27 @@ class WhatsAppNotificationListener : NotificationListenerService() {
             )?.toString()?.trim().orEmpty()
         if (message.isBlank()) return
 
+        val appLabel = try {
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
+        } catch (_: Exception) {
+            sbn.packageName
+        }
         val item = JSONObject().apply {
             put("key", sbn.key)
-            put("sender", sender.ifBlank { "WhatsApp message" })
+            put("packageName", sbn.packageName)
+            put("appLabel", appLabel.take(80))
+            put("sender", sender.ifBlank { appLabel })
             put("message", message)
             put("postedAt", sbn.postTime)
         }
         saveMessage(applicationContext, item)
     }
 
-    // Replies only when this active WhatsApp notification exposes a RemoteInput action.
-    private fun replyToActiveNotification(key: String, text: String): Boolean {
-        if (text.isBlank()) return false
+    // Replies only when this active notification belongs to the expected app and exposes RemoteInput.
+    private fun replyToActiveNotification(key: String, text: String, expectedPackage: String?): Boolean {
+        if (text.isBlank() || text.length > 2000) return false
         val sbn = activeNotifications?.firstOrNull { it.key == key } ?: return false
-        if (sbn.packageName != WHATSAPP_PACKAGE) return false
+        if (expectedPackage.isNullOrBlank() || sbn.packageName != expectedPackage) return false
 
         val actions = sbn.notification.actions ?: return false
         val replyAction = actions.firstOrNull { !it.remoteInputs.isNullOrEmpty() } ?: return false
@@ -106,13 +114,33 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         }
 
         fun replyToNotification(key: String, text: String): Boolean =
-            activeInstance?.replyToActiveNotification(key, text) == true
+            activeInstance?.replyToActiveNotification(key, text, WHATSAPP_PACKAGE) == true
 
-        /** Resolve one unambiguous recent sender from local notification previews. */
+        /** Reply through another app only when its exact package and active RemoteInput action match. */
+        fun replyToAppNotification(key: String, text: String, packageName: String): Boolean =
+            activeInstance?.replyToActiveNotification(key, text, packageName) == true
+
+        /** Resolve one sender in one messaging app without guessing across apps. */
+        fun latestReplyableMessageForApp(context: Context, appQuery: String, senderQuery: String): JSONObject? {
+            val app = appQuery.trim()
+            val sender = senderQuery.trim()
+            if (app.isBlank() || sender.isBlank() || app.length > 80 || sender.length > 100) return null
+            val appMatches = recentMessages(context).filter {
+                it.optString("appLabel").contains(app, ignoreCase = true) ||
+                    it.optString("packageName").contains(app, ignoreCase = true)
+            }
+            val packages = appMatches.map { it.optString("packageName") }.filter { it.isNotBlank() }.distinct()
+            if (packages.size != 1) return null
+            val matches = appMatches.filter { it.optString("sender").contains(sender, ignoreCase = true) }
+            val senders = matches.map { it.optString("sender") }.distinctBy { it.lowercase() }
+            return if (senders.size == 1) matches.firstOrNull()?.let { JSONObject(it.toString()) } else null
+        }
+
+        /** Resolve one unambiguous recent WhatsApp sender from local notification previews. */
         fun latestMessageForSender(context: Context, senderQuery: String): JSONObject? {
             val query = senderQuery.trim()
             if (query.isBlank() || query.length > 100) return null
-            val messages = recentMessages(context)
+            val messages = recentMessages(context).filter { it.optString("packageName") == WHATSAPP_PACKAGE }
             messages.firstOrNull { it.optString("sender").equals(query, ignoreCase = true) }?.let {
                 return JSONObject(it.toString())
             }

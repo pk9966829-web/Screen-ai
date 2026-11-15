@@ -25,7 +25,7 @@ MAX_MEMORIES = 50
 # Only capabilities with a concrete adapter are eligible for automatic planning.
 # Capability metadata alone is not proof that a platform can execute an action.
 IMPLEMENTED_EXECUTORS = {
-    "android": {"device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply", "phone.call"},
+    "android": {"device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply", "phone.notification.quick_reply", "phone.call"},
     "desktop": {
         "device.alarm.create", "device.volume.set", "device.volume.action",
         "device.timer.create", "device.bluetooth.settings.open",
@@ -267,6 +267,17 @@ def _validate_plan_arguments(capability: str, arguments: dict[str, Any]) -> bool
             and isinstance(sender, str) and 1 <= len(sender.strip()) <= 100
             and isinstance(message, str) and 1 <= len(message.strip()) <= 2000
         )
+    if capability == "phone.notification.quick_reply":
+        key = arguments.get("notification_key")
+        package_name = arguments.get("package_name")
+        sender = arguments.get("sender", "")
+        message = arguments.get("message")
+        return (
+            isinstance(key, str) and 1 <= len(key) <= 1000
+            and isinstance(package_name, str) and re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+", package_name) is not None
+            and isinstance(sender, str) and len(sender) <= 100
+            and isinstance(message, str) and 1 <= len(message.strip()) <= 2000
+        )
     if capability == "device.volume.action":
         return arguments.get("action") in {"up", "down", "mute", "unmute"}
     if capability in {"device.bluetooth.settings.open", "device.wifi.settings.open",
@@ -387,7 +398,7 @@ The final order submission step, if supported, must use commerce.order.place wit
 A scheduled task must pause for approval at checkout; do not automatically pay or submit an order while the user is away.
 Only use capabilities in this exact allow-list: {json.dumps(runtime.list_capabilities() if runtime else [])}.
 The currently implemented adapters are: {json.dumps({key: sorted(value) for key, value in IMPLEMENTED_EXECUTORS.items()})}.
-Do not plan WhatsApp sends, email sends, screen observation, account actions, checkout/order submission, or any capability without a concrete adapter in that map. A phone.call step is allowed only when the user supplied a complete phone number and must pause for exact-number approval.
+Do not plan arbitrary app sends, email sends, screen observation, account actions, checkout/order submission, or any capability without a concrete adapter in that map. Messaging replies may use only an active notification action exposed by the target app, and must pause for approval. A phone.call step is allowed only when the user supplied a complete phone number and must pause for exact-number approval.
 Registered device executors and their capabilities: {json.dumps([
     {"platform": d.get("platform"), "capabilities": d.get("capabilities", []), "status": d.get("status")}
     for d in (paired_devices or []) if d.get("status") != "revoked"
