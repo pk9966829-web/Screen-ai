@@ -274,7 +274,7 @@ def _validate_plan_arguments(capability: str, arguments: dict[str, Any]) -> bool
         message = arguments.get("message")
         return (
             isinstance(key, str) and 1 <= len(key) <= 1000
-            and isinstance(package_name, str) and re.fullmatch(r"[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+", package_name) is not None
+            and isinstance(package_name, str) and re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+", package_name) is not None
             and isinstance(sender, str) and len(sender) <= 100
             and isinstance(message, str) and 1 <= len(message.strip()) <= 2000
         )
