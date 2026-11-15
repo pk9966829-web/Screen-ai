@@ -24,6 +24,7 @@ on:
       - feature/vosi-chatgpt-mobile-shell
       - feature/vosi-whatsapp-approved-replies
       - feature/vosi-approved-phone-calls
+      - feature/vosi-incoming-call-screening
       - feature/vosi-production-backup-recovery
   pull_request:
     branches:
@@ -49,6 +50,8 @@ on:
       - feature/vosi-android-futuristic-ui
       - feature/vosi-android-dashboard-shell
       - feature/vosi-account-scoped-companion
+      - feature/vosi-approved-phone-calls
+      - feature/vosi-incoming-call-screening
   workflow_dispatch:
 
 jobs:
