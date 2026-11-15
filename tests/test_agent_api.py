@@ -228,7 +228,7 @@ def test_paired_phone_can_request_only_low_risk_device_tasks(monkeypatch, tmp_pa
                 "capability": "phone.call",
                 "target_platform": "android",
                 "title": "Call contact",
-                "arguments": {"number": "+10000000000"},
+                "arguments": {"phone_number": "+10000000000"},
             }],
         },
     )

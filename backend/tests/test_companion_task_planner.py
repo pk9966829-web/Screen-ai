@@ -12,6 +12,7 @@ class FakeRuntime:
             {"name": "browser.search_products", "platforms": ["browser"]},
             {"name": "device.alarm.create", "platforms": ["android", "desktop"]},
             {"name": "phone.whatsapp.quick_reply", "platforms": ["android"]},
+            {"name": "phone.call", "platforms": ["android"]},
         ]
 
     def create_task(self, **kwargs):
@@ -97,7 +98,7 @@ def test_runtime_exposes_progress_and_next_step(tmp_path):
 
 
 def test_planner_never_queues_capabilities_without_an_installed_executor():
-    assert "phone.call" not in IMPLEMENTED_EXECUTORS["android"]
+    assert "phone.call" in IMPLEMENTED_EXECUTORS["android"]
     assert "phone.whatsapp.quick_reply" in IMPLEMENTED_EXECUTORS["android"]
     assert "email.send" not in IMPLEMENTED_EXECUTORS["desktop"]
     assert "commerce.order.place" not in IMPLEMENTED_EXECUTORS["browser"]
@@ -135,3 +136,14 @@ def test_whatsapp_reply_plan_requires_bounded_notification_sender_and_message():
 def test_whatsapp_reply_is_registered_only_for_android_executor():
     assert "phone.whatsapp.quick_reply" in IMPLEMENTED_EXECUTORS["android"]
     assert "phone.whatsapp.quick_reply" not in IMPLEMENTED_EXECUTORS["desktop"]
+
+
+def test_phone_call_plan_requires_a_valid_number():
+    assert _validate_plan_arguments("phone.call", {"phone_number": "+919876543210"})
+    assert not _validate_plan_arguments("phone.call", {"phone_number": "123"})
+    assert not _validate_plan_arguments("phone.call", {"phone_number": ""})
+
+
+def test_phone_call_is_registered_only_for_android_executor():
+    assert "phone.call" in IMPLEMENTED_EXECUTORS["android"]
+    assert "phone.call" not in IMPLEMENTED_EXECUTORS["desktop"]

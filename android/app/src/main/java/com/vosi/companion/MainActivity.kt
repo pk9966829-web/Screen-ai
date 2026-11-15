@@ -485,6 +485,7 @@ class MainActivity : Activity() {
                     throw IllegalStateException(response.optString("detail",
                         response.optString("response", "VOSI could not answer this voice turn.")))
                 }
+                refreshPendingPhoneApprovals(credential.getString("backend_url"), credential.getString("device_token"))
                 val answer = response.optString("response", "I'm here.")
                 runOnUiThread {
                     deviceStatus.text = "You: $transcript\nVOSI: $answer"
@@ -522,6 +523,7 @@ class MainActivity : Activity() {
             """^(?:reply|respond)\s+(?:to\s+)?(?:the\s+)?(?:latest\s+)?(?:whatsapp\s+)?(?:message\s+)?from\s+(.+?)\s+(?:with|saying)\s+(.+)$""",
             RegexOption.IGNORE_CASE
         ).find(query)
+        val callMatch = Regex("""^(?:please\s+)?(?:call|phone)\s+(\+?[0-9][0-9 ()-]{5,24})$""", RegexOption.IGNORE_CASE).find(query)
         val alarmMatch = Regex(
             """(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?""",
             RegexOption.IGNORE_CASE
@@ -556,6 +558,12 @@ class MainActivity : Activity() {
                     .put("notification_key", notificationKey)
                     .put("sender", sender)
                     .put("message", replyText)))
+        } else if (callMatch != null) {
+            val number = callMatch.groupValues[1].replace(Regex("[^0-9+]"), "")
+            if (number.count { it.isDigit() } !in 7..15 || number.drop(1).contains("+")) { deviceStatus.text = "Enter a valid phone number."; return }
+            if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) { requestPermissions(arrayOf(Manifest.permission.CALL_PHONE), callPermission); deviceStatus.text = "Grant phone-call permission, then repeat the command."; return }
+            goal = "Call $number"
+            steps.put(JSONObject().put("step_id", "place-approved-phone-call").put("capability", "phone.call").put("target_platform", "android").put("title", "Place a phone call to $number").put("arguments", JSONObject().put("contact_name", "Phone number").put("phone_number", number)))
         } else if (alarmMatch != null) {
             var hour = alarmMatch.groupValues[1].toIntOrNull() ?: -1
             val minute = alarmMatch.groupValues[2].ifBlank { "0" }.toIntOrNull() ?: -1
@@ -763,20 +771,21 @@ class MainActivity : Activity() {
         val approvals = JSONObject(body).optJSONArray("approvals") ?: JSONArray()
         for (index in 0 until approvals.length()) {
             val item = approvals.optJSONObject(index) ?: continue
-            if (item.optString("capability") != "phone.whatsapp.quick_reply") continue
+            if (item.optString("capability") !in setOf("phone.whatsapp.quick_reply", "phone.call")) continue
             val taskId = item.optString("task_id")
             val stepId = item.optString("step_id")
             val digest = item.optString("confirmation_digest")
             val args = item.optJSONObject("arguments") ?: JSONObject()
-            val sender = args.optString("sender").take(100)
-            val message = args.optString("message").take(2000)
+            val isCall = item.optString("capability") == "phone.call"
+            val sender = if (isCall) args.optString("phone_number") else args.optString("sender").take(100)
+            val message = if (isCall) "Approve placing this phone call?" else args.optString("message").take(2000)
             if (taskId.isBlank() || stepId.isBlank() || digest.length != 64 || sender.isBlank() || message.isBlank()) continue
             runOnUiThread {
                 if (isFinishing || isDestroyed || !activityResumed) return@runOnUiThread
                 AlertDialog.Builder(this)
-                    .setTitle("Approve WhatsApp reply?")
-                    .setMessage("Recipient: $sender\n\nExact message to send:\n$message\n\nVOSI will use the active WhatsApp notification reply action. Delivery cannot be independently verified.")
-                    .setPositiveButton("Approve & send") { _, _ ->
+                    .setTitle(if (isCall) "Approve phone call?" else "Approve WhatsApp reply?")
+                    .setMessage(if (isCall) "Call this number?\n$sender\n\nVOSI will start the call only after your approval." else "Recipient: $sender\n\nExact message to send:\n$message\n\nVOSI will use the active WhatsApp notification reply action. Delivery cannot be independently verified.")
+                    .setPositiveButton(if (isCall) "Approve & call" else "Approve & send") { _, _ ->
                         thread {
                             val payload = JSONObject().put("confirmation_digest", digest)
                             val (approveCode, approveBody) = requestDeviceApi(
@@ -868,7 +877,7 @@ class MainActivity : Activity() {
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
             val capability = task.optString("capability")
-            if (capability !in setOf("device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply")) continue
+            if (capability !in setOf("device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply", "phone.call")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = requestDeviceApi(
                 baseUrl,
@@ -883,6 +892,14 @@ class MainActivity : Activity() {
                 val args = step.optJSONObject("arguments") ?: JSONObject()
                 val confirmation: String
                 when (step.optString("capability")) {
+                    "phone.call" -> {
+                        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) throw IllegalStateException("Phone-call permission is not granted.")
+                        val number = args.optString("phone_number").trim()
+                        val digits = number.replace(Regex("[^0-9+]"), "")
+                        if (digits.count { it.isDigit() } !in 7..15 || digits.drop(1).contains("+")) throw IllegalArgumentException("Approved phone number is invalid.")
+                        startActivity(Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(digits))))
+                        confirmation = "Android accepted the call request. Call connection is not verified."
+                    }
                     "phone.whatsapp.quick_reply" -> {
                         if (!WhatsAppNotificationListener.isNotificationAccessEnabled(this)) {
                             throw IllegalStateException("WhatsApp notification access is disabled.")
