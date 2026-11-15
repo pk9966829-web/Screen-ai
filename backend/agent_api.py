@@ -182,7 +182,7 @@ def request_agent_task(
                 "device.bluetooth.settings.open", "device.wifi.settings.open",
                 "device.pc.shutdown", "device.pc.restart",
             },
-            "android": {"device.alarm.create", "device.volume.set"},
+            "android": {"device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply"},
         }
         if capability not in supported_targets.get(target_platform, set()):
             raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
@@ -194,7 +194,18 @@ def request_agent_task(
                 raise HTTPException(status_code=422, detail="Chrome can open only a valid HTTPS URL without embedded credentials.")
         if target_platform == "browser" and capability == "browser.read_visible_page" and arguments not in (None, {}):
             raise HTTPException(status_code=422, detail="Reading the active page does not accept additional arguments.")
-        if capability in {"device.pc.shutdown", "device.pc.restart"}:
+        if capability == "phone.whatsapp.quick_reply":
+            notification_key = arguments.get("notification_key") if isinstance(arguments, dict) else None
+            sender = arguments.get("sender") if isinstance(arguments, dict) else None
+            message = arguments.get("message") if isinstance(arguments, dict) else None
+            if (
+                not details or details["risk"] != "high" or not details["requires_approval"]
+                or not isinstance(notification_key, str) or not 1 <= len(notification_key) <= 1000
+                or not isinstance(sender, str) or not 1 <= len(sender.strip()) <= 100
+                or not isinstance(message, str) or not 1 <= len(message.strip()) <= 2000
+            ):
+                raise HTTPException(status_code=422, detail="WhatsApp replies require a recent notification, recipient, message, and explicit approval.")
+        elif capability in {"device.pc.shutdown", "device.pc.restart"}:
             if not details or details["risk"] != "high" or not details["requires_approval"]:
                 raise HTTPException(status_code=403, detail="This Windows action must remain approval-gated.")
         elif capability == "commerce.order.place":
