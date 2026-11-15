@@ -25,7 +25,7 @@ MAX_MEMORIES = 50
 # Only capabilities with a concrete adapter are eligible for automatic planning.
 # Capability metadata alone is not proof that a platform can execute an action.
 IMPLEMENTED_EXECUTORS = {
-    "android": {"device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply"},
+    "android": {"device.alarm.create", "device.volume.set", "phone.whatsapp.quick_reply", "phone.call"},
     "desktop": {
         "device.alarm.create", "device.volume.set", "device.volume.action",
         "device.timer.create", "device.bluetooth.settings.open",
@@ -254,6 +254,10 @@ def _validate_plan_arguments(capability: str, arguments: dict[str, Any]) -> bool
         return integer("volume", 0, 100)
     if capability == "device.alarm.create":
         return integer("hour", 0, 23) and integer("minute", 0, 59)
+    if capability == "phone.call":
+        number = arguments.get("phone_number")
+        digits = re.sub(r"[^0-9]", "", number) if isinstance(number, str) else ""
+        return isinstance(number, str) and len(number) <= 32 and 7 <= len(digits) <= 15
     if capability == "phone.whatsapp.quick_reply":
         key = arguments.get("notification_key")
         sender = arguments.get("sender")
