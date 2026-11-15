@@ -344,7 +344,7 @@ def reject_origin_task_step(task_id: str, step_id: str, authorization: str | Non
     if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
         raise HTTPException(status_code=403, detail="Only the originating device in this account can reject the task.")
     step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
-    if not step or step["capability"] not in {"commerce.order.place", "phone.whatsapp.quick_reply", "phone.call"} or step["state"] != "awaiting_approval":
+    if not step or step["capability"] not in {"commerce.order.place", "phone.whatsapp.quick_reply", "phone.notification.quick_reply", "phone.call"} or step["state"] != "awaiting_approval":
         raise HTTPException(status_code=409, detail="This action is not awaiting your approval.")
     return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
 
