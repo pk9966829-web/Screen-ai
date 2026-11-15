@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 import agent_api
 from agent_runtime import AgentRuntimeError
 from companion_brain import answer_companion
-from database import get_recent_interactions, save_interaction
+from database import get_active_task, get_recent_interactions, save_interaction
 
 router = APIRouter(prefix="/companion", tags=["VOSI Companion Voice"])
 
@@ -48,7 +48,7 @@ def create_voice_turn(
     result = answer_companion(
         transcript,
         recent_interactions=recent,
-        task_state={},
+        task_state=get_active_task() or {},
         runtime=agent_api.runtime,
         paired_devices=agent_api.devices.list_devices(),
         origin_device_id=device.get("device_id"),

@@ -82,6 +82,8 @@ def test_voice_turn_uses_shared_brain_and_persists_the_transcript(monkeypatch):
 
     monkeypatch.setattr(voice_api, "answer_companion", fake_answer)
     monkeypatch.setattr(voice_api, "get_recent_interactions", lambda limit: [{"question": "Earlier chat"}])
+    active_task = {"task": "Prepare assignment", "status": "active"}
+    monkeypatch.setattr(voice_api, "get_active_task", lambda: active_task)
     monkeypatch.setattr(voice_api, "save_interaction", lambda *args, **kwargs: saved.append((args, kwargs)))
 
     response = make_client().post(
@@ -97,6 +99,7 @@ def test_voice_turn_uses_shared_brain_and_persists_the_transcript(monkeypatch):
     assert payload["voice_mode"] == "tap_to_talk"
     assert captured["message"] == "What were we working on?"
     assert captured["recent_interactions"] == [{"question": "Earlier chat"}]
+    assert captured["task_state"] == active_task
     assert saved and saved[0][0][0] == "What were we working on?"
 
 

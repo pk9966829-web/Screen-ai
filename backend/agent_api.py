@@ -228,6 +228,16 @@ def get_origin_device_task_updates(authorization: str | None = Header(default=No
             "state": task["state"],
             "updated_at": task["updated_at"],
             "error": task["error"],
+            "progress": task.get("progress"),
+            "current_step": (
+                {key: task["current_step"].get(key) for key in ("step_id", "title", "capability", "state")}
+                if task.get("current_step") else None
+            ),
+            "next_step": (
+                {key: task["next_step"].get(key) for key in ("step_id", "title", "capability", "state")}
+                if task.get("next_step") else None
+            ),
+            "waiting_for_approval": task.get("waiting_for_approval", False),
             "steps": [{
                 "step_id": step["step_id"],
                 "title": step["title"],

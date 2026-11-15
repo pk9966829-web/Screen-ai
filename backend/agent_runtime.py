@@ -526,6 +526,18 @@ class AgentRuntime:
                 "SELECT * FROM agent_steps WHERE task_id = ? ORDER BY position",
                 (task_id,),
             ).fetchall()
+        step_items = [self._step_dict(row) for row in steps]
+        terminal = {"completed", "failed", "skipped"}
+        completed_count = sum(1 for item in step_items if item["state"] == "completed")
+        remaining = [item for item in step_items if item["state"] not in terminal]
+        active = next((item for item in remaining if item["state"] == "running"), None)
+        terminal_task = task["state"] in {"completed", "failed", "cancelled"}
+        next_item = None if terminal_task else (active or (remaining[0] if remaining else None))
+        task_error = task["error"] or next((
+            item["error"] for item in step_items
+            if item["state"] == "failed" and item.get("error")
+        ), None)
+        total = len(step_items)
         return {
             "task_id": task["task_id"],
             "goal": task["goal"],
@@ -535,8 +547,17 @@ class AgentRuntime:
             "updated_at": task["updated_at"],
             "expires_at": task["expires_at"],
             "scheduled_at": task["scheduled_at"],
-            "error": task["error"],
-            "steps": [self._step_dict(row) for row in steps],
+            "error": task_error,
+            "progress": {
+                "completed": completed_count,
+                "total": total,
+                "percent": int(completed_count * 100 / total) if total else 0,
+                "remaining": len(remaining),
+            },
+            "current_step": active,
+            "next_step": next_item,
+            "waiting_for_approval": any(item["state"] == "awaiting_approval" for item in step_items),
+            "steps": step_items,
         }
 
     def list_tasks(self, limit: int = 20) -> list[dict[str, Any]]:
