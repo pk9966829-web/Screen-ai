@@ -565,6 +565,7 @@ class MainActivity : Activity() {
                 .put("arguments", JSONObject()
                     .put("notification_key", notificationKey)
                     .put("package_name", packageName)
+                    .put("app_label", appLabel)
                     .put("sender", sender)
                     .put("message", replyText)))
         } else if (whatsappReplyMatch != null) {
@@ -818,7 +819,7 @@ class MainActivity : Activity() {
             val isCall = capability == "phone.call"
             val isGenericReply = capability == "phone.notification.quick_reply"
             val sender = if (isCall) args.optString("phone_number") else args.optString("sender").take(100)
-            val appLabel = args.optString("package_name")
+            val appLabel = args.optString("app_label", args.optString("package_name"))
             val message = if (isCall) "Approve placing this phone call?" else args.optString("message").take(2000)
             if (taskId.isBlank() || stepId.isBlank() || digest.length != 64 || sender.isBlank() || message.isBlank()) continue
             runOnUiThread {
