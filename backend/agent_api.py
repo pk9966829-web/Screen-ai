@@ -187,6 +187,8 @@ def request_agent_task(
         }
         if capability not in supported_targets.get(target_platform, set()):
             raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
+        if capability == "phone.call" and capability not in device["capabilities"]:
+            raise HTTPException(status_code=403, detail="This paired phone has not granted the phone.call capability.")
         arguments = step.get("arguments") if isinstance(step, dict) else None
         if target_platform == "browser" and capability == "browser.open_tab":
             raw_url = arguments.get("url") if isinstance(arguments, dict) else None
