@@ -783,7 +783,7 @@ class MainActivity : Activity() {
                 if (isFinishing || isDestroyed || !activityResumed) return@runOnUiThread
                 AlertDialog.Builder(this)
                     .setTitle(if (isCall) "Approve phone call?" else "Approve WhatsApp reply?")
-                    .setMessage("Recipient: $sender\n\nExact message to send:\n$message\n\nVOSI will use the active WhatsApp notification reply action. Delivery cannot be independently verified.")
+                    .setMessage(if (isCall) "Call this number?\n$sender\n\nVOSI will start the call only after your approval." else "Recipient: $sender\n\nExact message to send:\n$message\n\nVOSI will use the active WhatsApp notification reply action. Delivery cannot be independently verified.")
                     .setPositiveButton(if (isCall) "Approve & call" else "Approve & send") { _, _ ->
                         thread {
                             val payload = JSONObject().put("confirmation_digest", digest)
