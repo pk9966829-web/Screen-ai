@@ -28,6 +28,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import java.net.URI
+import java.time.Instant
 import java.util.Calendar
 import org.json.JSONArray
 import org.json.JSONObject
@@ -48,6 +53,7 @@ class MainActivity : Activity() {
     private lateinit var devicePairingCode: EditText
     private lateinit var deviceStatus: TextView
     private lateinit var pairDeviceButton: Button
+    private lateinit var scanQrButton: Button
     private lateinit var heartbeatDeviceButton: Button
     private lateinit var disconnectDeviceButton: Button
     private lateinit var deviceCommandInput: EditText
@@ -127,6 +133,10 @@ class MainActivity : Activity() {
             text = "Pair this phone with VOSI"
             setOnClickListener { pairPhoneDevice() }
         }
+        scanQrButton = Button(this).apply {
+            text = "Scan desktop QR code"
+            setOnClickListener { scanDesktopPairingQr() }
+        }
         deviceStatus = TextView(this).apply {
             textSize = 13f
             setPadding(0, 8, 0, 8)
@@ -154,6 +164,7 @@ class MainActivity : Activity() {
         root.addView(deviceBackendUrl, matchWidth())
         root.addView(devicePairingCode, matchWidth())
         root.addView(pairDeviceButton, matchWidth())
+        root.addView(scanQrButton, matchWidth())
         root.addView(heartbeatDeviceButton, matchWidth())
         root.addView(disconnectDeviceButton, matchWidth())
         root.addView(deviceStatus)
@@ -345,6 +356,64 @@ class MainActivity : Activity() {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun scanDesktopPairingQr() {
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .enableAutoZoom()
+            .build()
+        scanQrButton.isEnabled = false
+        deviceStatus.text = "Opening secure QR scanner…"
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { barcode ->
+                scanQrButton.isEnabled = true
+                val raw = barcode.rawValue
+                if (raw.isNullOrBlank()) {
+                    deviceStatus.text = "The QR code was empty. Please scan the VOSI desktop code again."
+                    return@addOnSuccessListener
+                }
+                try {
+                    val payload = JSONObject(raw)
+                    require(payload.optString("type") == "vosi-device-pairing" && payload.optInt("version") == 1) {
+                        "This QR code is not a supported VOSI pairing code."
+                    }
+                    val backend = payload.getString("backend_url").trim().trimEnd('/')
+                    val uri = URI(backend)
+                    require(uri.scheme in listOf("http", "https") && !uri.host.isNullOrBlank()) {
+                        "The QR code contains an invalid backend address."
+                    }
+                    require(!uri.host.equals("localhost", true) && uri.host != "127.0.0.1" && uri.host != "::1") {
+                        "The QR code points to localhost. Generate it again while the desktop and phone are on the same network."
+                    }
+                    val code = payload.getString("pairing_code").trim()
+                    require(code.length in 20..128) { "The QR code does not contain a valid one-time pairing code." }
+                    val expiry = Instant.parse(payload.getString("expires_at"))
+                    require(expiry.isAfter(Instant.now())) { "This QR code has expired. Generate a new one on your desktop." }
+                    AlertDialog.Builder(this)
+                        .setTitle("Pair with this VOSI desktop?")
+                        .setMessage("Backend: " + uri.host + "\n\nThe one-time code expires in a few minutes. Continue only if this is your computer.")
+                        .setNegativeButton("Cancel") { _, _ ->
+                            deviceStatus.text = "Pairing cancelled. No device was connected."
+                        }
+                        .setPositiveButton("Pair phone") { _, _ ->
+                            deviceBackendUrl.setText(backend)
+                            devicePairingCode.setText(code)
+                            pairPhoneDevice()
+                        }
+                        .show()
+                } catch (error: Exception) {
+                    deviceStatus.text = "Invalid VOSI QR code: " + (error.message ?: "could not read pairing details")
+                }
+            }
+            .addOnCanceledListener {
+                scanQrButton.isEnabled = true
+                deviceStatus.text = "QR scanning cancelled."
+            }
+            .addOnFailureListener { error ->
+                scanQrButton.isEnabled = true
+                deviceStatus.text = "Could not start QR scanner: " + (error.message ?: "Google Play services scanner unavailable")
+            }
     }
 
     private fun pairPhoneDevice() {

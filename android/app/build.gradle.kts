@@ -11,8 +11,8 @@ android {
         applicationId = "com.vosi.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -32,5 +32,6 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

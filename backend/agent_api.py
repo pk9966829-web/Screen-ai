@@ -4,6 +4,7 @@ import hmac
 import json
 import os
 import re
+import socket
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -423,7 +424,29 @@ def create_local_phone_pairing(request: Request):
     if client_host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="Phone pairing-code generation is available only on this computer.")
     pairing = _runtime_call(devices.create_pairing, "android", "VOSI Android phone")
-    return {"success": True, "pairing": pairing}
+    # The QR must point at an address the phone can reach on the same LAN.
+    # An explicit URL is useful for machines with multiple network adapters.
+    backend_url = os.getenv("VOSI_PAIRING_BACKEND_URL", "").strip().rstrip("/")
+    if not backend_url:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.connect(("192.0.2.1", 80))
+                lan_host = probe.getsockname()[0]
+            if not lan_host or lan_host.startswith("127."):
+                raise OSError("No LAN IPv4 address is available.")
+            backend_port = os.getenv("VOSI_BACKEND_PORT", "8001").strip()
+            if not backend_port.isdigit() or not 1 <= int(backend_port) <= 65535:
+                raise OSError("VOSI_BACKEND_PORT is invalid.")
+            backend_url = f"http://{lan_host}:{int(backend_port)}"
+        except OSError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not determine the desktop LAN address. Set VOSI_PAIRING_BACKEND_URL to the reachable backend URL.",
+            ) from exc
+    parsed_backend = urlsplit(backend_url)
+    if parsed_backend.scheme not in {"http", "https"} or not parsed_backend.hostname or parsed_backend.username or parsed_backend.password:
+        raise HTTPException(status_code=503, detail="VOSI_PAIRING_BACKEND_URL must be a valid HTTP or HTTPS backend URL.")
+    return {"success": True, "pairing": pairing, "backend_url": backend_url}
 
 
 @router.post("/devices/pairing")

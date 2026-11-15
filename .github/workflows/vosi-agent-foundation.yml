@@ -26,6 +26,7 @@ on:
       - feature/vosi-approved-phone-calls
       - feature/vosi-incoming-call-screening
       - feature/vosi-production-backup-recovery
+      - feature/vosi-qr-device-pairing
   pull_request:
     branches:
       - main

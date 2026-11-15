@@ -6,6 +6,7 @@
     <title>Vosi - Your Screen Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -734,7 +735,18 @@
                             Start screen sharing
                         </button>
                     </div>
-                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4"><div class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">One-time Android pairing code</div><div class="mt-2 flex items-center gap-2"><code id="phone-pair-code" class="min-w-0 flex-1 break-all rounded-lg bg-black/40 p-3 text-sm text-cyan-200"></code><button id="phone-pair-copy" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200">Copy</button></div><p id="phone-pair-expiry" class="mt-2 text-[11px] text-slate-400"></p></div><p id="phone-pair-status" class="mt-2 w-full max-w-xl text-center text-xs text-slate-400" role="status">Connect your Android phone to VOSI.</p>
+                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
+                        <div class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Scan with VOSI on your Android phone</div>
+                        <div class="mt-3 flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+                            <div id="phone-pair-qr" class="rounded-xl bg-white p-3" aria-label="One-time VOSI phone pairing QR code"></div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs leading-relaxed text-slate-300">Open VOSI on your phone, tap <strong>Scan desktop QR code</strong>, then confirm the pairing request.</p>
+                                <div class="mt-3 flex items-center gap-2"><code id="phone-pair-code" class="min-w-0 flex-1 break-all rounded-lg bg-black/40 p-3 text-xs text-cyan-200"></code><button id="phone-pair-copy" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200">Copy fallback code</button></div>
+                                <p id="phone-pair-expiry" class="mt-2 text-[11px] text-slate-400"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="phone-pair-status" class="mt-2 w-full max-w-xl text-center text-xs text-slate-400" role="status">Connect your Android phone to VOSI.</p>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
@@ -2751,9 +2763,29 @@
             }
             phoneCode.textContent = data.pairing.pairing_code;
             const expiry = new Date(data.pairing.expires_at);
-            phoneExpiry.textContent = "Expires at " + expiry.toLocaleTimeString() + ". Generate a new code if this one expires.";
+            phoneExpiry.textContent = "Expires at " + expiry.toLocaleTimeString() + ". This QR is single-use and valid for five minutes.";
+            const qrTarget = document.getElementById("phone-pair-qr");
+            if (!window.QRCode || !qrTarget || !data.backend_url) {
+                throw new Error("QR generator or LAN backend address is unavailable. Check the desktop connection and reload VOSI.");
+            }
+            qrTarget.replaceChildren();
+            const qrPayload = JSON.stringify({
+                type: "vosi-device-pairing",
+                version: 1,
+                backend_url: data.backend_url,
+                pairing_code: data.pairing.pairing_code,
+                expires_at: data.pairing.expires_at
+            });
+            new QRCode(qrTarget, {
+                text: qrPayload,
+                width: 220,
+                height: 220,
+                colorDark: "#050505",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
             phoneCodeWrap?.classList.remove("hidden");
-            if (phoneStatus) phoneStatus.textContent = "Code ready. Enter it in the Android VOSI app under Pair This Phone With VOSI.";
+            if (phoneStatus) phoneStatus.textContent = "QR ready. Scan it from VOSI on your Android phone and approve the pairing.";
         } catch (error) {
             if (phoneStatus) phoneStatus.textContent = String(error?.message || error);
         } finally {
