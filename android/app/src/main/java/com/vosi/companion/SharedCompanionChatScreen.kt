@@ -10,12 +10,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color\nimport androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +24,11 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
+
+private val ChatInk = Color(0xFF080A12)
+private val ChatPanel = Color(0xFF141827)
+private val ChatAccent = Color(0xFFB69CFF)
+private val ChatMuted = Color(0xFF9BA5BC)
 
 private data class CompanionChatMessage(val text: String, val fromUser: Boolean)
 
@@ -87,12 +92,23 @@ fun SharedCompanionChatScreen() {
     }
 
     Column(
-        Modifier.fillMaxSize().background(Color(0xFF090A0D)).padding(horizontal = 18.dp, vertical = 16.dp),
+        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1020), ChatInk, ChatInk))).padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column {
-            Text("Talk to VOSI", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("One conversation across your paired devices.", color = Color(0xFF9A9EAA), fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier.size(48.dp).background(
+                    Brush.radialGradient(listOf(Color(0xFF8D78F0), Color(0xFF273B67), ChatPanel)),
+                    RoundedCornerShape(50)
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(29.dp))
+            }
+            Column {
+                Text("Talk to VOSI", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("One conversation. All your devices.", color = ChatMuted, fontSize = 11.sp)
+            }
         }
 
         LazyColumn(
@@ -107,7 +123,7 @@ fun SharedCompanionChatScreen() {
                     horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start
                 ) {
                     Surface(
-                        color = if (message.fromUser) Color(0xFF514675) else Color(0xFF15171D),
+                        color = if (message.fromUser) Color(0xFF51447E) else ChatPanel,
                         shape = RoundedCornerShape(
                             topStart = 18.dp, topEnd = 18.dp,
                             bottomStart = if (message.fromUser) 18.dp else 5.dp,
@@ -127,7 +143,7 @@ fun SharedCompanionChatScreen() {
             }
         }
 
-        Text(status, color = Color(0xFF9A9EAA), fontSize = 11.sp)
+        Text(status, color = ChatMuted, fontSize = 11.sp)
 
         Row(
             Modifier.fillMaxWidth(),
