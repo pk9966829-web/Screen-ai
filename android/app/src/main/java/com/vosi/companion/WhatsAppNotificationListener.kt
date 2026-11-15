@@ -120,6 +120,22 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         fun replyToAppNotification(key: String, text: String, packageName: String): Boolean =
             activeInstance?.replyToActiveNotification(key, text, packageName) == true
 
+        /** Resolve one sender in one messaging app without guessing across apps. */
+        fun latestReplyableMessageForApp(context: Context, appQuery: String, senderQuery: String): JSONObject? {
+            val app = appQuery.trim()
+            val sender = senderQuery.trim()
+            if (app.isBlank() || sender.isBlank() || app.length > 80 || sender.length > 100) return null
+            val appMatches = recentMessages(context).filter {
+                it.optString("appLabel").contains(app, ignoreCase = true) ||
+                    it.optString("packageName").contains(app, ignoreCase = true)
+            }
+            val packages = appMatches.map { it.optString("packageName") }.filter { it.isNotBlank() }.distinct()
+            if (packages.size != 1) return null
+            val matches = appMatches.filter { it.optString("sender").contains(sender, ignoreCase = true) }
+            val senders = matches.map { it.optString("sender") }.distinctBy { it.lowercase() }
+            return if (senders.size == 1) matches.firstOrNull()?.let { JSONObject(it.toString()) } else null
+        }
+
         /** Resolve one unambiguous recent WhatsApp sender from local notification previews. */
         fun latestMessageForSender(context: Context, senderQuery: String): JSONObject? {
             val query = senderQuery.trim()
