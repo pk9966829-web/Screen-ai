@@ -387,7 +387,7 @@ The final order submission step, if supported, must use commerce.order.place wit
 A scheduled task must pause for approval at checkout; do not automatically pay or submit an order while the user is away.
 Only use capabilities in this exact allow-list: {json.dumps(runtime.list_capabilities() if runtime else [])}.
 The currently implemented adapters are: {json.dumps({key: sorted(value) for key, value in IMPLEMENTED_EXECUTORS.items()})}.
-Do not plan phone calls, WhatsApp sends, email sends, screen observation, account actions, checkout/order submission, or any capability without a concrete adapter in that map.
+Do not plan WhatsApp sends, email sends, screen observation, account actions, checkout/order submission, or any capability without a concrete adapter in that map. A phone.call step is allowed only when the user supplied a complete phone number and must pause for exact-number approval.
 Registered device executors and their capabilities: {json.dumps([
     {"platform": d.get("platform"), "capabilities": d.get("capabilities", []), "status": d.get("status")}
     for d in (paired_devices or []) if d.get("status") != "revoked"
