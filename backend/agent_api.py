@@ -220,7 +220,7 @@ def request_agent_task(
             if (
                 not details or details["risk"] != "high" or not details["requires_approval"]
                 or not isinstance(notification_key, str) or not 1 <= len(notification_key) <= 1000
-                or not isinstance(package_name, str) or not re.fullmatch(r"[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+", package_name)
+                or not isinstance(package_name, str) or not re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+", package_name)
                 or not isinstance(message, str) or not 1 <= len(message.strip()) <= 2000
             ):
                 raise HTTPException(status_code=422, detail="Cross-app replies require a valid active app notification, message, and explicit approval.")
