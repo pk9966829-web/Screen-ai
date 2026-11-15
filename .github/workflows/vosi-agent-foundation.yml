@@ -23,6 +23,7 @@ on:
       - feature/vosi-android-dashboard-shell
       - feature/vosi-chatgpt-mobile-shell
       - feature/vosi-whatsapp-approved-replies
+      - feature/vosi-approved-phone-calls
       - feature/vosi-production-backup-recovery
   pull_request:
     branches:
