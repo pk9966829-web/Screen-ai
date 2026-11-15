@@ -794,7 +794,7 @@ class MainActivity : Activity() {
                                     JSONObject(approveBody).optString("detail", "Approval failed. Review the task and try again.")
                                 }
                             }
-                            if (approved) heartbeatPhoneDevice()
+                            if (approved) runOnUiThread { heartbeatPhoneDevice() }
                         }
                     }
                     .setNegativeButton("Reject") { _, _ ->
