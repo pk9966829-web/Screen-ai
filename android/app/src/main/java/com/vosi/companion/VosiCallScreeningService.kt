@@ -53,8 +53,13 @@ class VosiCallScreeningService : CallScreeningService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val caller = number.ifBlank { "Private or unavailable number" }
-        val notification = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            Notification.Builder(this, channelId) else @Suppress("DEPRECATION") Notification.Builder(this))
+        @Suppress("DEPRECATION")
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channelId)
+        } else {
+            Notification.Builder(this)
+        }
+        val notification = builder
             .setSmallIcon(android.R.drawable.sym_action_call)
             .setContentTitle("Incoming call detected by VOSI")
             .setContentText(caller)
