@@ -288,17 +288,35 @@ private fun DrawerEntry(label: String, icon: androidx.compose.ui.graphics.vector
 
 @Composable
 private fun VosiAmbientBackground() {
-    val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "dashboard-ambient")
-    val ambient by drift.animateFloat(
+    // Compose port of the desktop dashboard's deep-ocean motion background:
+    // slow drifting cyan/blue light fields, soft floating orbs and a moving haze.
+    val motion = androidx.compose.animation.core.rememberInfiniteTransition(label = "vosi-desktop-motion")
+    val drift by motion.animateFloat(
         initialValue = -1f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(9000), repeatMode = RepeatMode.Reverse),
         label = "ambient-drift"
     )
-    val haze by drift.animateFloat(
-        initialValue = 0.55f, targetValue = 1f,
+    val haze by motion.animateFloat(
+        initialValue = 0.60f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(6000), repeatMode = RepeatMode.Reverse),
         label = "haze-shift"
     )
+    val orbOne by motion.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(7000), repeatMode = RepeatMode.Reverse),
+        label = "orb-one"
+    )
+    val orbTwo by motion.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(8000), repeatMode = RepeatMode.Reverse),
+        label = "orb-two"
+    )
+    val orbThree by motion.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(10000), repeatMode = RepeatMode.Reverse),
+        label = "orb-three"
+    )
+
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(
@@ -306,38 +324,66 @@ private fun VosiAmbientBackground() {
             )
         )
     ) {
+        // Main ambient field: equivalent to the desktop ::before radial-gradient layer.
         Box(
-            Modifier.align(Alignment.TopStart).offset(x = (-115).dp, y = (-105).dp)
-                .size(390.dp).graphicsLayer {
-                    translationX = ambient * 42.dp.toPx()
-                    translationY = ambient * 30.dp.toPx()
-                    alpha = 0.55f + ((ambient + 1f) * 0.12f)
+            Modifier.fillMaxSize().graphicsLayer {
+                translationX = drift * 22.dp.toPx()
+                translationY = -drift * 14.dp.toPx()
+                scaleX = 1.08f + ((drift + 1f) * 0.07f)
+                scaleY = 1.08f + ((drift + 1f) * 0.07f)
+                alpha = 0.78f + ((drift + 1f) * 0.11f)
+            }.background(
+                Brush.radialGradient(
+                    0f to Color(0x4438BDF8),
+                    0.38f to Color(0x2238BDF8),
+                    0.72f to Color(0x113B82F6),
+                    1f to Color.Transparent
+                )
+            )
+        )
+        // Three independently floating blurred light fields mirror the desktop orbs.
+        Box(
+            Modifier.align(Alignment.TopStart).offset(x = (-145).dp, y = (-125).dp)
+                .size(width = 500.dp, height = 430.dp)
+                .graphicsLayer {
+                    translationX = orbOne * 62.dp.toPx()
+                    translationY = orbOne * 46.dp.toPx()
+                    scaleX = 1f + orbOne * 0.18f
+                    scaleY = 1f + orbOne * 0.18f
+                    alpha = 0.58f + orbOne * 0.34f
                 }
                 .background(Brush.radialGradient(listOf(Color(0x5538BDF8), Color(0x2238BDF8), Color.Transparent)))
         )
         Box(
-            Modifier.align(Alignment.TopEnd).offset(x = 145.dp, y = 80.dp)
-                .size(360.dp).graphicsLayer {
-                    translationX = -ambient * 48.dp.toPx()
-                    translationY = ambient * 54.dp.toPx()
-                    alpha = 0.42f + ((ambient + 1f) * 0.18f)
+            Modifier.align(Alignment.TopEnd).offset(x = 165.dp, y = (-10).dp)
+                .size(width = 440.dp, height = 390.dp)
+                .graphicsLayer {
+                    translationX = -orbTwo * 68.dp.toPx()
+                    translationY = orbTwo * 58.dp.toPx()
+                    scaleX = 1.05f + orbTwo * 0.06f
+                    scaleY = 1.05f + orbTwo * 0.06f
+                    alpha = 0.48f + orbTwo * 0.42f
                 }
                 .background(Brush.radialGradient(listOf(Color(0x554F8EF7), Color(0x223B82F6), Color.Transparent)))
         )
         Box(
-            Modifier.align(Alignment.BottomCenter).offset(y = 130.dp)
-                .size(420.dp).graphicsLayer {
-                    translationX = ambient * 38.dp.toPx()
-                    translationY = -ambient * 48.dp.toPx()
-                    alpha = 0.3f + ((ambient + 1f) * 0.16f)
+            Modifier.align(Alignment.BottomCenter).offset(y = 155.dp)
+                .size(width = 500.dp, height = 410.dp)
+                .graphicsLayer {
+                    translationX = orbThree * 64.dp.toPx()
+                    translationY = -orbThree * 72.dp.toPx()
+                    scaleX = 1f + orbThree * 0.28f
+                    scaleY = 1f + orbThree * 0.28f
+                    alpha = 0.34f + orbThree * 0.58f
                 }
-                .background(Brush.radialGradient(listOf(Color(0x4438BDF8), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(Color(0x4438BDF8), Color(0x2214B8A6), Color.Transparent)))
         )
+        // Moving translucent haze, equivalent to the desktop ::after layer.
         Box(
             Modifier.fillMaxSize().graphicsLayer {
                 alpha = haze
-                translationX = ambient * 8.dp.toPx()
-                translationY = -ambient * 5.dp.toPx()
+                translationX = drift * 9.dp.toPx()
+                translationY = -drift * 6.dp.toPx()
             }.background(
                 Brush.verticalGradient(
                     0f to Color(0x11111D32),
@@ -360,86 +406,154 @@ private fun HomeScreen(
 ) {
     var query by remember { mutableStateOf("") }
     var connectorsOpen by remember { mutableStateOf(false) }
+
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 8.dp)
     ) {
+        // Familiar ChatGPT-style top bar; the existing settings drawer remains unchanged.
         Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().height(48.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Menu, "Open settings", tint = Color.White, modifier = Modifier.size(27.dp))
+                Icon(Icons.Outlined.Menu, "Open settings", tint = Color.White, modifier = Modifier.size(25.dp))
             }
-            Surface(
-                color = Color(0x331B3952),
-                shape = RoundedCornerShape(50),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x5538BDF8))
-            ) {
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF68E5C2)))
-                    Spacer(Modifier.width(7.dp))
-                    Text("READY", color = Color(0xFFD2F8EC), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                }
+            Spacer(Modifier.width(5.dp))
+            Column(Modifier.weight(1f)) {
+                Text("VOSI", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                Text("AI companion", color = Color(0xFF9CB2CA), fontSize = 10.sp)
+            }
+            IconButton(onClick = onChat) {
+                Icon(Icons.Outlined.Forum, "Open chat", tint = Color(0xFFD8E7F8), modifier = Modifier.size(22.dp))
+            }
+            IconButton(onClick = onTalk) {
+                Icon(Icons.Outlined.GraphicEq, "Start voice conversation", tint = GlowBlue, modifier = Modifier.size(23.dp))
             }
         }
-        Spacer(Modifier.height(26.dp))
-        Text("Hi, I'm VOSI.", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Text("What would you like to make happen?", color = Color(0xFFB9C8DC), fontSize = 14.sp)
-        Spacer(Modifier.height(30.dp))
+
+        // Spacious greeting area, like ChatGPT's new-chat landing screen.
+        Box(
+            Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    Modifier.size(62.dp).clip(CircleShape)
+                        .background(Brush.radialGradient(listOf(Color(0xFF7DDCF5), Color(0xFF275C91), Color(0xFF10223D)))),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(38.dp))
+                }
+                Spacer(Modifier.height(22.dp))
+                Text(
+                    "Hi, I'm VOSI",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.6).sp
+                )
+                Spacer(Modifier.height(9.dp))
+                Text(
+                    "What can I help you with today?",
+                    color = Color(0xFFB8C9DD),
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        // ChatGPT-like composer anchored to the bottom, with VOSI's connector and voice actions.
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color(0xCC07182B),
-            shape = RoundedCornerShape(24.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x7738BDF8)),
-            shadowElevation = 14.dp
+            color = Color(0xD90A1728),
+            shape = RoundedCornerShape(27.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x554C789D)),
+            shadowElevation = 12.dp
         ) {
-            Row(
-                Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Outlined.Search, null, tint = GlowBlue, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(10.dp))
+            Column(Modifier.padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 8.dp)) {
                 androidx.compose.foundation.text.BasicTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 14.sp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp, max = 112.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        lineHeight = 21.sp
+                    ),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(GlowBlue),
+                    maxLines = 4,
                     decorationBox = { inner ->
                         Box {
-                            if (query.isBlank()) Text("Ask VOSI anything…", color = Color(0xFF879BB4), fontSize = 14.sp)
+                            if (query.isBlank()) {
+                                Text("Message VOSI", color = Color(0xFF91A5BC), fontSize = 15.sp)
+                            }
                             inner()
                         }
                     },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { if (query.isNotBlank()) onSearch(query.trim()) })
+                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = {
+                        if (query.isNotBlank()) {
+                            val message = query.trim()
+                            query = ""
+                            onSearch(message)
+                        }
+                    })
                 )
-                IconButton(onClick = { connectorsOpen = true }) {
-                    Icon(Icons.Outlined.Extension, "Open connectors", tint = Accent, modifier = Modifier.size(23.dp))
-                }
-                IconButton(onClick = { if (query.isNotBlank()) onSearch(query.trim()) }) {
-                    Icon(Icons.Outlined.ArrowForward, "Send to VOSI", tint = GlowBlue)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { connectorsOpen = true }, modifier = Modifier.size(38.dp)) {
+                        Icon(Icons.Outlined.Extension, "Open connectors", tint = Color(0xFFC5D7EA), modifier = Modifier.size(21.dp))
+                    }
+                    IconButton(onClick = onDevices, modifier = Modifier.size(38.dp)) {
+                        Icon(Icons.Outlined.Devices, "Connected devices", tint = Color(0xFFC5D7EA), modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = onTalk, modifier = Modifier.size(38.dp)) {
+                        Icon(Icons.Outlined.GraphicEq, "Voice conversation", tint = GlowBlue, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.width(5.dp))
+                    FilledIconButton(
+                        onClick = {
+                            if (query.isNotBlank()) {
+                                val message = query.trim()
+                                query = ""
+                                onSearch(message)
+                            }
+                        },
+                        enabled = query.isNotBlank(),
+                        modifier = Modifier.size(38.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = if (query.isNotBlank()) Color(0xFFE7F5FF) else Color(0xFF35475B),
+                            contentColor = Color(0xFF071525),
+                            disabledContainerColor = Color(0xFF35475B),
+                            disabledContentColor = Color(0xFF8FA0B3)
+                        )
+                    ) {
+                        Icon(Icons.Outlined.ArrowUpward, "Send message", modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
-        Text("VOICE  •  CHAT  •  TASKS  •  CONNECTED DEVICES", color = Color(0xFF8DA8C4), fontSize = 9.sp, letterSpacing = 1.6.sp)
-        Spacer(Modifier.height(22.dp))
-        TextButton(onClick = onTalk) {
-            Icon(Icons.Outlined.GraphicEq, null, tint = Accent)
-            Spacer(Modifier.width(8.dp))
-            Text("Start a voice conversation", color = Accent, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onDevices) {
-            Icon(Icons.Outlined.Devices, null, tint = GlowBlue)
-            Spacer(Modifier.width(8.dp))
-            Text("Connect your devices", color = Color(0xFFB8DDF2))
+
+        Row(
+            Modifier.fillMaxWidth().padding(top = 7.dp, bottom = 3.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onTasks, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp)) {
+                Icon(Icons.Outlined.TaskAlt, null, tint = Color(0xFF9FB8D0), modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("Tasks", color = Color(0xFFB5C8DB), fontSize = 11.sp)
+            }
+            Text("·", color = Color(0xFF7890A8))
+            TextButton(onClick = onDevices, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp)) {
+                Icon(Icons.Outlined.Devices, null, tint = Color(0xFF9FB8D0), modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("Devices", color = Color(0xFFB5C8DB), fontSize = 11.sp)
+            }
         }
     }
 
@@ -451,7 +565,11 @@ private fun HomeScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Connect services and devices to extend what VOSI can do.", color = Muted, fontSize = 12.sp)
-                    Text("Browser and desktop connections are managed from Connected devices. Account-based connectors will appear here when enabled for your VOSI account.", color = Color(0xFFB8C8DA), fontSize = 12.sp)
+                    Text(
+                        "Browser and desktop connections are managed from Connected devices. Account-based connectors appear here when enabled for your VOSI account.",
+                        color = Color(0xFFB8C8DA),
+                        fontSize = 12.sp
+                    )
                 }
             },
             confirmButton = {
