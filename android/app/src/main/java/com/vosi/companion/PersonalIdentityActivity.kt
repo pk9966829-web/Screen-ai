@@ -72,7 +72,9 @@ class PersonalIdentityActivity : Activity() {
                 }
             }, matchWidth())
         }
-        setContentView(ScrollView(this).apply { isFillViewport = true; addView(root) })
+        val scroll = ScrollView(this).apply { isFillViewport = true; addView(root) }
+        VosiLegacyTheme.apply(root, scroll)
+        setContentView(scroll)
     }
 
     private fun field(hintText: String, value: String): EditText =
