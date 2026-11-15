@@ -98,7 +98,7 @@ def test_runtime_exposes_progress_and_next_step(tmp_path):
 
 def test_planner_never_queues_capabilities_without_an_installed_executor():
     assert "phone.call" not in IMPLEMENTED_EXECUTORS["android"]
-    assert "phone.whatsapp.quick_reply" not in IMPLEMENTED_EXECUTORS["android"]
+    assert "phone.whatsapp.quick_reply" in IMPLEMENTED_EXECUTORS["android"]
     assert "email.send" not in IMPLEMENTED_EXECUTORS["desktop"]
     assert "commerce.order.place" not in IMPLEMENTED_EXECUTORS["browser"]
 
