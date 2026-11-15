@@ -108,6 +108,19 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         fun replyToNotification(key: String, text: String): Boolean =
             activeInstance?.replyToActiveNotification(key, text) == true
 
+        /** Resolve one unambiguous recent sender from local notification previews. */
+        fun latestMessageForSender(context: Context, senderQuery: String): JSONObject? {
+            val query = senderQuery.trim()
+            if (query.isBlank() || query.length > 100) return null
+            val messages = recentMessages(context)
+            messages.firstOrNull { it.optString("sender").equals(query, ignoreCase = true) }?.let {
+                return JSONObject(it.toString())
+            }
+            val matches = messages.filter { it.optString("sender").contains(query, ignoreCase = true) }
+            val senders = matches.map { it.optString("sender") }.distinctBy { it.lowercase() }
+            return if (senders.size == 1) matches.firstOrNull()?.let { JSONObject(it.toString()) } else null
+        }
+
         private fun saveMessage(context: Context, item: JSONObject) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val old = try {
