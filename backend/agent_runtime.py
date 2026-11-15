@@ -79,6 +79,14 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": False,
         "description": "Send a WhatsApp reply through a supported notification action.",
     },
+    "phone.notification.quick_reply": {
+        "platforms": ["android"],
+        "risk": "high",
+        "requires_permission": True,
+        "requires_approval": True,
+        "reversible": False,
+        "description": "Send a message through an active, user-approved app notification reply action when the app exposes Android RemoteInput.",
+    },
     "email.send": {
         "platforms": ["desktop"],
         "risk": "high",
