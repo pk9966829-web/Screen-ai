@@ -20,6 +20,7 @@ on:
       - feature/vosi-verified-retry-execution
       - feature/vosi-account-scoped-screen-state
       - feature/vosi-single-node-production-deploy-v2
+      - feature/vosi-android-dashboard-shell
       - feature/vosi-production-backup-recovery
   pull_request:
     branches:
@@ -42,6 +43,7 @@ on:
       - feature/vosi-companion-core
       - feature/vosi-android-shared-chat
       - feature/vosi-android-background-worker
+      - feature/vosi-android-futuristic-ui
       - feature/vosi-account-scoped-companion
   workflow_dispatch:
 
