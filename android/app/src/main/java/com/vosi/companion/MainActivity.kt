@@ -255,6 +255,7 @@ class MainActivity : Activity() {
             isFillViewport = true
             addView(root)
         }
+        VosiLegacyTheme.apply(root, scroll)
         setContentView(scroll)
         textToSpeech = TextToSpeech(this) { result ->
             if (result == TextToSpeech.SUCCESS) {

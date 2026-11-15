@@ -7,6 +7,11 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -38,23 +44,26 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.concurrent.thread
 
-private val Ink = Color(0xFF090A0D)
-private val Panel = Color(0xFF15171D)
-private val Soft = Color(0xFF20232B)
-private val Accent = Color(0xFFB9A7FF)
-private val Muted = Color(0xFF9A9EAA)
+private val Ink = Color(0xFF080A12)
+private val Panel = Color(0xFF141827)
+private val Soft = Color(0xFF20263A)
+private val Accent = Color(0xFFB69CFF)
+private val GlowBlue = Color(0xFF62D9F5)
+private val Muted = Color(0xFF9BA5BC)
+private val BorderGlow = Color(0x334E5E9B)
 
 class VosiAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         VosiSessionContext.app = applicationContext
-        window.statusBarColor = android.graphics.Color.rgb(9, 10, 13)
-        window.navigationBarColor = android.graphics.Color.rgb(9, 10, 13)
+        window.statusBarColor = android.graphics.Color.rgb(8, 10, 18)
+        window.navigationBarColor = android.graphics.Color.rgb(8, 10, 18)
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = Accent, onPrimary = Ink, background = Ink, surface = Panel,
-                    onBackground = Color.White, onSurface = Color.White, secondary = Color(0xFF9EDBCB)
+                    onBackground = Color.White, onSurface = Color.White, secondary = GlowBlue,
+                    surfaceVariant = Soft, onSurfaceVariant = Muted
                 )
             ) {
                 VosiMobileRoot(
@@ -84,7 +93,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
     Scaffold(
         containerColor = Ink,
         bottomBar = {
-            NavigationBar(containerColor = Panel, contentColor = Color.White) {
+            NavigationBar(containerColor = Color(0xF0121727), contentColor = Color.White, tonalElevation = 0.dp) {
                 VosiTab.entries.forEach { item ->
                     val selected = tab == item
                     NavigationBarItem(
@@ -102,7 +111,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                         label = { Text(item.label, fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Accent, selectedTextColor = Color.White,
-                            indicatorColor = Soft, unselectedIconColor = Muted, unselectedTextColor = Muted
+                            indicatorColor = Color(0xFF34304D), unselectedIconColor = Muted, unselectedTextColor = Muted
                         )
                     )
                 }
@@ -183,70 +192,120 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
 
 @Composable
 private fun HomeScreen(onChat: () -> Unit, onTasks: () -> Unit, onDevices: () -> Unit, onTalk: () -> Unit) {
+    val transition = rememberInfiniteTransition(label = "vosi-orb")
+    val pulse by transition.animateFloat(
+        initialValue = 0.94f, targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(tween(2400), repeatMode = RepeatMode.Reverse),
+        label = "orb-pulse"
+    )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 30.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    Text("VOSI", fontSize = 25.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-                    Text("YOUR AI COMPANION", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("VOSI", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.5.sp)
+                    Text("YOUR AI COMPANION", color = Muted, fontSize = 9.sp, letterSpacing = 2.3.sp)
                 }
-                Box(Modifier.size(42.dp).clip(CircleShape).background(Soft), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Bolt, null, tint = Accent, modifier = Modifier.size(23.dp))
+                Surface(
+                    color = Color(0xFF172536), shape = RoundedCornerShape(50),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x444AC9E9))
+                ) {
+                    Row(Modifier.padding(horizontal = 11.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF68E5C2)))
+                        Spacer(Modifier.width(7.dp))
+                        Text("READY", color = Color(0xFFB8F5E2), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    }
                 }
             }
         }
         item {
             Box(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF252333), Color(0xFF111218))))
-                    .padding(vertical = 30.dp, horizontal = 22.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFF242447), Color(0xFF111A2D), Color(0xFF101521))))
+                    .padding(horizontal = 18.dp, vertical = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier.size(142.dp).clip(CircleShape)
-                            .background(Brush.radialGradient(listOf(Color(0xFFB9A7FF), Color(0xFF554B83), Color(0xFF252333)))),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(Modifier.size(104.dp).clip(CircleShape).background(Color(0xFF171620)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(66.dp))
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(206.dp)) {
+                        Box(
+                            Modifier.size(196.dp).graphicsLayer { scaleX = pulse; scaleY = pulse }
+                                .clip(CircleShape)
+                                .background(Brush.radialGradient(listOf(Color(0x556C5CE7), Color(0x223CC9E8), Color.Transparent)))
+                        )
+                        Box(
+                            Modifier.size(164.dp).clip(CircleShape)
+                                .background(Brush.radialGradient(listOf(Color(0xFFB7A1FF), Color(0xFF6656C8), Color(0xFF243B65), Color(0xFF111827))))
+                        )
+                        Box(
+                            Modifier.size(128.dp).clip(CircleShape)
+                                .background(Brush.radialGradient(listOf(Color(0xFF29365B), Color(0xFF111827))))
+                                .padding(2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Outlined.AllInclusive, null, tint = Color(0xFFE6E0FF), modifier = Modifier.size(78.dp))
                         }
+                        Box(Modifier.size(184.dp).clip(CircleShape).background(Color.Transparent))
                     }
-                    Spacer(Modifier.height(22.dp))
-                    Text("Hey, I'm VOSI.", fontSize = 25.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(12.dp))
+                    Text("A little intelligence. A lot of possibility.", color = Color(0xFFB9C5E0), fontSize = 11.sp, letterSpacing = .25.sp)
+                    Spacer(Modifier.height(9.dp))
+                    Text("Hey, I'm VOSI.", fontSize = 27.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
-                    Text("Your world, connected to one intelligent companion.", color = Muted, fontSize = 13.sp)
+                    Text("What can we make happen today?", color = Muted, fontSize = 13.sp)
                     Spacer(Modifier.height(20.dp))
-                    Button(onClick = onTalk, colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Ink), shape = RoundedCornerShape(18.dp)) {
-                        Icon(Icons.Outlined.Mic, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Talk to VOSI", fontWeight = FontWeight.SemiBold)
+                    Button(
+                        onClick = onTalk,
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Ink),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth().height(54.dp)
+                    ) {
+                        Icon(Icons.Outlined.GraphicEq, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(9.dp))
+                        Text("Start a conversation", fontWeight = FontWeight.Bold)
                     }
+                    Spacer(Modifier.height(9.dp))
+                    Text("VOICE • CHAT • TASKS", color = Color(0xFF8E9BB8), fontSize = 9.sp, letterSpacing = 2.sp)
                 }
             }
         }
         item {
-            Text("WHAT WOULD YOU LIKE TO DO?", color = Muted, fontSize = 11.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionCard("Chat with VOSI", "Ask anything", Icons.Outlined.Forum, Modifier.weight(1f), onChat)
-                ActionCard("Your tasks", "See activity", Icons.Outlined.TaskAlt, Modifier.weight(1f), onTasks)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    Text("Your space", fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text("Jump back into what matters.", color = Muted, fontSize = 12.sp)
+                }
+                Icon(Icons.Outlined.AutoAwesome, null, tint = GlowBlue, modifier = Modifier.size(22.dp))
             }
-            Spacer(Modifier.height(10.dp))
-            ActionCard("Connected devices", "Phone, PC and browser", Icons.Outlined.Devices, Modifier.fillMaxWidth(), onDevices)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                ActionCard("Ask VOSI", "Ideas & answers", Icons.Outlined.Forum, Modifier.weight(1f), onChat)
+                ActionCard("Task center", "Progress & approvals", Icons.Outlined.TaskAlt, Modifier.weight(1f), onTasks)
+            }
+            Spacer(Modifier.height(11.dp))
+            ActionCard("Connected devices", "Your phone, PC and browser", Icons.Outlined.Devices, Modifier.fillMaxWidth(), onDevices)
         }
         item {
-            Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                color = Color(0xFF111D2A), shape = RoundedCornerShape(22.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x3349C8D8)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Shield, null, tint = Color(0xFF9EDBCB), modifier = Modifier.size(23.dp))
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF1D3942)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Shield, null, tint = GlowBlue, modifier = Modifier.size(21.dp))
+                    }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("You stay in control", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text("Sensitive actions ask for your approval.", color = Muted, fontSize = 12.sp)
+                        Text("Your control comes first", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Spacer(Modifier.height(3.dp))
+                        Text("Sensitive actions always wait for your approval.", color = Muted, fontSize = 11.sp)
                     }
                 }
             }
@@ -256,7 +315,7 @@ private fun HomeScreen(onChat: () -> Unit, onTasks: () -> Unit, onDevices: () ->
 
 @Composable
 private fun ActionCard(title: String, detail: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Surface(modifier.clickable(onClick = onClick), color = Panel, shape = RoundedCornerShape(20.dp)) {
+    Surface(modifier.clickable(onClick = onClick), color = Panel, shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGlow)) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = Accent, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(12.dp))
@@ -271,7 +330,7 @@ private fun ActionCard(title: String, detail: String, icon: androidx.compose.ui.
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
     Column(Modifier.padding(bottom = 10.dp)) {
-        Text(title, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+        Text(title, fontSize = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.5).sp)
         Spacer(Modifier.height(5.dp))
         Text(subtitle, color = Muted, fontSize = 13.sp)
     }
@@ -393,7 +452,7 @@ private fun TasksScreen() {
             item { Text("WAITING FOR YOUR APPROVAL", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
             items(approvals.size) { index ->
                 val approval = approvals[index]
-                Surface(color = Panel, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = Panel, shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGlow), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text(approval.optString("goal", "VOSI needs your approval"), fontWeight = FontWeight.SemiBold)
                         Text(approval.optString("title", "Review this action"), color = Muted, fontSize = 12.sp)
@@ -483,7 +542,7 @@ private fun ProfileScreen(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(22.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item { PageHeader("Your VOSI identity", "One account for your connected companion.") }
         item {
-            Surface(color = Panel, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(color = Panel, shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGlow), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.AccountCircle, null, tint = Accent, modifier = Modifier.size(30.dp))

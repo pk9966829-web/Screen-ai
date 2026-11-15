@@ -42,6 +42,7 @@ on:
       - feature/vosi-companion-core
       - feature/vosi-android-shared-chat
       - feature/vosi-android-background-worker
+      - feature/vosi-android-futuristic-ui
       - feature/vosi-account-scoped-companion
   workflow_dispatch:
 
