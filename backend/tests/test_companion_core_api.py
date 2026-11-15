@@ -22,11 +22,17 @@ def test_android_chat_uses_shared_companion_brain(monkeypatch):
     })
     monkeypatch.setattr(api.agent_api.devices, "list_devices", lambda: [])
     monkeypatch.setattr(api, "get_recent_interactions", lambda limit=8: [])
+    active_task = {"task": "Study reminder", "status": "active"}
+    monkeypatch.setattr(api, "get_active_task", lambda: active_task)
     monkeypatch.setattr(api, "get_companion_memories", lambda: [{"id": 1}])
-    monkeypatch.setattr(api, "answer_companion", lambda *args, **kwargs: {
-        "success": True, "understanding": "Hey! I'm here.", "provider": "test",
-        "memory_count": 1, "task_plan": None,
-    })
+    observed = {}
+    def fake_answer(*args, **kwargs):
+        observed["task_state"] = kwargs.get("task_state")
+        return {
+            "success": True, "understanding": "Hey! I'm here.", "provider": "test",
+            "memory_count": 1, "task_plan": None,
+        }
+    monkeypatch.setattr(api, "answer_companion", fake_answer)
     saved = []
     monkeypatch.setattr(api, "save_interaction", lambda *args, **kwargs: saved.append(args))
 
@@ -43,6 +49,7 @@ def test_android_chat_uses_shared_companion_brain(monkeypatch):
     assert body["device_id"] == "android-device-1"
     assert body["interaction_recorded"] is True
     assert len(saved) == 1
+    assert observed["task_state"] == active_task
 
 
 def test_history_is_available_to_paired_desktop(monkeypatch):

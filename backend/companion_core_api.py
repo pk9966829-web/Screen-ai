@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 import agent_api
 from agent_runtime import AgentRuntimeError
 from companion_brain import answer_companion, get_companion_memories
-from database import get_recent_interactions, save_interaction
+from database import get_active_task, get_recent_interactions, save_interaction
 
 router = APIRouter(prefix="/companion", tags=["VOSI Companion Core"])
 
@@ -50,7 +50,7 @@ def companion_chat(
     result = answer_companion(
         message,
         recent_interactions=recent,
-        task_state={},
+        task_state=get_active_task() or {},
         runtime=agent_api.runtime,
         paired_devices=agent_api.devices.list_devices(),
         origin_device_id=device.get("device_id"),
