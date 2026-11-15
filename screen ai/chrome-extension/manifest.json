@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "VOSI Flipkart Bridge",
+  "version": "1.0.0",
+  "description": "Connects VOSI to the active Flipkart search tab to read visible product listings.",
+  "permissions": ["tabs", "alarms"],
+  "host_permissions": [
+    "http://127.0.0.1:8001/*",
+    "https://www.flipkart.com/*"
+  ],
+  "background": { "service_worker": "service-worker.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.flipkart.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

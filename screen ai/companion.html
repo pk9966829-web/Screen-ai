@@ -467,6 +467,7 @@
       answerEl.style.display = 'block';
       answerEl.textContent = payload.answer || 'No answer received.';
       setState(isObserving ? 'observing' : 'idle');
+      if (!payload.answer) showSpeech('I did not receive an answer. Please try again.', 3500);
       showSpeech(payload.success ? 'Here’s what I found' : 'I need a little help with that.', 2600);
       bubbleOpen = true;
       bubble.classList.add('visible');

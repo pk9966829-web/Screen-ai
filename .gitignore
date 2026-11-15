@@ -8,3 +8,4 @@ screen ai/src-tauri/target/
 
 *.pyc
 .env
+backend/gmail_token.json
