@@ -367,6 +367,7 @@ class MainActivity : Activity() {
                     .put("agent.task.request")
                     .put("device.alarm.create")
                     .put("device.volume.set")
+                    .put("device.volume.action")
                 val payload = JSONObject()
                     .put("pairing_code", code)
                     .put("capabilities", capabilities)
