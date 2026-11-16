@@ -391,9 +391,14 @@ class MainActivity : Activity() {
                 DeviceCredentialStore.save(this, credential.toString())
                 getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
                     .edit().putString("device_backend_url", baseUrl).apply()
+                val accountLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(this, credential)
                 runOnUiThread {
                     devicePairingCode.text.clear()
-                    deviceStatus.text = "Phone paired successfully. Its credential is protected by Android Keystore."
+                    deviceStatus.text = if (accountLinkWarning == null) {
+                        "Phone paired successfully. Its credential is protected by Android Keystore."
+                    } else {
+                        "Phone paired, but account linking needs attention: $accountLinkWarning"
+                    }
                     refreshPairedDeviceStatus()
                     pairDeviceButton.isEnabled = true
                     heartbeatPhoneDevice()
