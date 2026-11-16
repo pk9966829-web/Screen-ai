@@ -16,6 +16,7 @@ on:
       - feature/vosi-android-background-worker
       - feature/vosi-task-planner-executor
       - feature/vosi-android-volume-actions
+      - feature/vosi-android-timers
   pull_request:
     branches:
       - main
@@ -32,6 +33,7 @@ on:
       - feature/vosi-android-shared-chat
       - feature/vosi-android-background-worker
       - feature/vosi-task-planner-executor
+      - feature/vosi-android-volume-actions
   workflow_dispatch:
 
 jobs:

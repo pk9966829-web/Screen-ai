@@ -10,6 +10,7 @@ class FakeRuntime:
         return [
             {"name": "device.volume.set", "platforms": ["android", "desktop"]},
             {"name": "device.volume.action", "platforms": ["android", "desktop"]},
+            {"name": "device.timer.create", "platforms": ["android", "desktop"]},
             {"name": "browser.search_products", "platforms": ["browser"]},
             {"name": "device.alarm.create", "platforms": ["android", "desktop"]},
         ]
@@ -144,3 +145,26 @@ def test_android_volume_action_plan_requires_matching_phone_capability():
     result = _safe_task_plan(plan, "Mute my phone", runtime, devices, "phone-1")
     assert result["task_id"] == "task-1"
     assert runtime.created["steps"][0]["capability"] == "device.volume.action"
+
+
+def test_timer_plan_requires_a_bounded_positive_duration():
+    assert _validate_plan_arguments("device.timer.create", {"minutes": 20})
+    assert not _validate_plan_arguments("device.timer.create", {"minutes": 0})
+    assert not _validate_plan_arguments("device.timer.create", {"minutes": 1441})
+    assert not _validate_plan_arguments("device.timer.create", {"minutes": "20"})
+
+def test_android_timer_plan_requires_matching_phone_capability():
+    runtime = FakeRuntime()
+    plan = {
+        "goal": "Set a timer for 20 minutes",
+        "steps": [{
+            "step_id": "step-1", "capability": "device.timer.create",
+            "target_platform": "android", "title": "Start a 20-minute timer",
+            "arguments": {"minutes": 20},
+        }],
+    }
+    devices = [{"device_id": "phone-1", "platform": "android", "status": "paired",
+                "capabilities": ["device.timer.create"]}]
+    result = _safe_task_plan(plan, "Set a timer for 20 minutes", runtime, devices, "phone-1")
+    assert result["task_id"] == "task-1"
+    assert runtime.created["steps"][0]["capability"] == "device.timer.create"

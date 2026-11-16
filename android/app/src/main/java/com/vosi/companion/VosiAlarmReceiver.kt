@@ -37,7 +37,7 @@ class VosiAlarmReceiver : BroadcastReceiver() {
         val notification = builder
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(title)
-            .setContentText("Your scheduled alarm is ringing.")
+            .setContentText(intent.getStringExtra("message") ?: "Your scheduled alarm is ringing.")
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_ALARM)
             .setPriority(Notification.PRIORITY_MAX)
