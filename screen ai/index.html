@@ -471,6 +471,120 @@
             #main-content > .text-center.space-y-2 { margin-bottom:14px; }
             #main-content > .text-center.space-y-2 h2 { font-size:28px!important; }
         }
+
+        /* VOSI grey-dashboard visual refresh: responsive, centered and calm. */
+        :root { color-scheme: dark; }
+        html, body { width:100%; min-width:0; min-height:100%; overflow:hidden; }
+        body.bg-space-base { background:#09090a!important; color:#f1f1f1; }
+        body.bg-space-base::before {
+            background:
+              radial-gradient(ellipse 60% 42% at 14% 18%,rgba(226,226,226,.22),transparent 72%),
+              radial-gradient(ellipse 52% 38% at 86% 22%,rgba(170,170,170,.20),transparent 72%),
+              radial-gradient(ellipse 72% 42% at 50% 100%,rgba(128,128,128,.18),transparent 72%),
+              radial-gradient(ellipse 40% 30% at 50% 55%,rgba(205,205,205,.08),transparent 74%);
+            filter:blur(38px); animation:ambient-drift 22s ease-in-out infinite alternate;
+        }
+        body.bg-space-base::after {
+            background:radial-gradient(ellipse at 50% 45%,transparent 18%,rgba(0,0,0,.55) 100%);
+            animation:haze-shift 26s ease-in-out infinite alternate;
+        }
+        .ambient-orb { mix-blend-mode:screen; opacity:.34; filter:blur(72px); }
+        .orb-1 { background:radial-gradient(circle,rgba(235,235,235,.28),transparent 70%); animation-duration:25s; }
+        .orb-2 { background:radial-gradient(circle,rgba(185,185,185,.22),transparent 72%); animation-duration:29s; }
+        .orb-3 { background:radial-gradient(circle,rgba(145,145,145,.18),transparent 65%); animation-duration:32s; }
+        .vosi-app-shell { width:100%!important; height:100vh!important; height:100dvh!important; min-width:0; padding:0!important; }
+        .vosi-app-shell > header { display:none!important; }
+        .vosi-app-shell > .grid.grid-cols-12 {
+            display:block!important; position:relative; width:100%; height:100%;
+            min-width:0; min-height:0; overflow:hidden;
+        }
+        #app-sidebar {
+            position:fixed!important; z-index:1200!important; inset:0 auto 0 0!important;
+            display:flex!important; width:min(320px,86vw)!important; height:100vh!important; height:100dvh!important;
+            min-height:0!important; overflow-y:auto!important; overscroll-behavior:contain;
+            padding:calc(env(safe-area-inset-top) + 22px) 14px calc(env(safe-area-inset-bottom) + 22px)!important;
+            border:1px solid rgba(255,255,255,.14)!important; border-left:0!important;
+            border-radius:0 22px 22px 0!important; background:rgba(15,15,16,.94)!important;
+            backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px);
+            box-shadow:24px 0 80px rgba(0,0,0,.48)!important;
+            transform:translateX(-105%); transition:transform .32s cubic-bezier(.2,.75,.2,1);
+        }
+        body.vosi-sidebar-expanded #app-sidebar { transform:translateX(0); }
+        body.vosi-sidebar-collapsed #app-sidebar { display:flex!important; }
+        #main-content {
+            display:flex!important; position:relative; width:100%!important; height:100%!important;
+            min-height:0!important; min-width:0!important; overflow-y:auto!important; overflow-x:hidden!important;
+            align-items:center!important; justify-content:center!important;
+            padding:clamp(20px,5vw,64px) clamp(16px,5vw,64px)!important;
+            padding-top:calc(env(safe-area-inset-top) + 28px)!important;
+            padding-bottom:calc(env(safe-area-inset-bottom) + 28px)!important;
+        }
+        #main-content > .text-center.space-y-2 { width:min(100%,720px); margin:0 0 clamp(18px,4vh,34px)!important; }
+        #main-content > .text-center.space-y-2 h2 { color:#f4f4f4!important; font-size:clamp(27px,5vw,42px)!important; font-weight:650!important; letter-spacing:-.04em; }
+        #main-content > .text-center.space-y-2 > p:first-child { color:#c2c2c2!important; }
+        #main-content > .text-center.space-y-2 > p:last-child { display:block!important; color:#a5a5a5!important; }
+        #main-content > .w-full.max-w-2xl { width:min(100%,680px)!important; max-width:680px!important; margin:0!important; }
+        #ai-prompt-form { width:100%; min-width:0; }
+        #user-input {
+            min-width:0; width:100%; min-height:54px; padding-top:16px!important; padding-bottom:16px!important;
+            border:1px solid rgba(235,235,235,.24)!important; border-radius:18px!important;
+            background:rgba(30,30,31,.76)!important; box-shadow:0 14px 45px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.06);
+            color:#fff!important;
+        }
+        #ai-prompt-form .absolute.left-4 { color:#c5c5c5!important; }
+        #ai-prompt-form button[type="submit"] { background:linear-gradient(145deg,#777,#393939)!important; }
+        .vosi-suggestions { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px!important; width:100%; }
+        .vosi-suggestions .quick-action {
+            display:flex; align-items:center; justify-content:flex-start; text-align:left;
+            min-height:66px; min-width:0; padding:13px 15px!important; white-space:normal;
+            border:1px solid rgba(255,255,255,.14)!important; border-radius:16px!important;
+            background:linear-gradient(145deg,rgba(80,80,82,.42),rgba(28,28,30,.76))!important;
+            color:#e8e8e8!important; font-size:clamp(11px,1.4vw,13px)!important;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 10px 28px rgba(0,0,0,.16);
+        }
+        .vosi-suggestions .quick-action:hover { background:rgba(110,110,112,.36)!important; border-color:rgba(255,255,255,.26)!important; }
+        .text-gradient-purple { color:#f2f2f2!important; background:none!important; -webkit-text-fill-color:#f2f2f2!important; }
+        #sidebar-toggle {
+            position:fixed!important; left:14px!important; top:calc(env(safe-area-inset-top) + 14px)!important;
+            z-index:1300!important; width:42px!important; height:42px!important; min-width:42px!important;
+            min-height:42px!important; padding:0!important; justify-content:center!important;
+            border:1px solid rgba(255,255,255,.18)!important; border-radius:50%!important;
+            background:rgba(25,25,26,.68)!important; color:#f0f0f0!important;
+            backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+        }
+        #sidebar-toggle .toggle-label { display:none!important; }
+        #sidebar-toggle .toggle-arrow { font-size:25px; line-height:1; transform:rotate(0deg); transition:transform .25s; }
+        body.vosi-sidebar-expanded #sidebar-toggle { left:min(274px,calc(86vw - 48px))!important; }
+        body.vosi-sidebar-expanded #sidebar-toggle .toggle-arrow { transform:rotate(180deg); }
+        #settings-bottom-toggle {
+            position:fixed; z-index:1100; left:50%; bottom:calc(env(safe-area-inset-bottom) + 12px);
+            transform:translateX(-50%); display:flex; align-items:center; gap:8px;
+            padding:9px 16px; border:1px solid rgba(255,255,255,.17); border-radius:999px;
+            color:#e9e9e9; background:rgba(25,25,26,.78); backdrop-filter:blur(16px);
+            font-size:11px; box-shadow:0 8px 28px rgba(0,0,0,.24);
+        }
+        #settings-bottom-toggle .bottom-arrow { font-size:15px; transition:transform .25s; }
+        body.vosi-sidebar-expanded #settings-bottom-toggle .bottom-arrow { transform:rotate(180deg); }
+        #tab-overlay { max-height:100%; overflow-y:auto; }
+        .tab-card { background:rgba(22,22,23,.84)!important; border-color:rgba(255,255,255,.14)!important; }
+        @media(max-width:620px) {
+            #main-content { padding-left:18px!important; padding-right:18px!important; }
+            #main-content > .text-center.space-y-2 { margin-bottom:18px!important; }
+            #main-content > .text-center.space-y-2 h2 { font-size:clamp(26px,8vw,34px)!important; }
+            #main-content > .w-full.max-w-2xl { margin-top:0!important; }
+            .vosi-suggestions { gap:8px!important; }
+            .vosi-suggestions .quick-action { min-height:62px; padding:11px!important; border-radius:14px!important; }
+            #response-box:not(.hidden) { left:12px!important; right:12px!important; bottom:calc(env(safe-area-inset-bottom) + 62px)!important; width:auto!important; max-height:42dvh!important; }
+        }
+        @media(max-height:650px) {
+            #main-content { justify-content:flex-start!important; padding-top:calc(env(safe-area-inset-top) + 58px)!important; }
+            #main-content > .text-center.space-y-2 { margin-bottom:14px!important; }
+            .vosi-suggestions .quick-action { min-height:52px; }
+        }
+        @media(prefers-reduced-motion:reduce) {
+            body.bg-space-base::before,body.bg-space-base::after,.ambient-orb { animation:none!important; }
+            #app-sidebar,#sidebar-toggle .toggle-arrow,#settings-bottom-toggle .bottom-arrow { transition:none!important; }
+        }
 </style>
 </head>
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans vosi-sidebar-collapsed">
@@ -537,6 +651,8 @@
                         <span class="toggle-arrow" aria-hidden="true">›</span>
                         <span class="toggle-label">Show settings</span>
                     </button>
+    <button id="settings-bottom-toggle" type="button" aria-label="Toggle settings panel"><span>Settings</span><span class="bottom-arrow" aria-hidden="true">⌃</span></button>
+
 
 <div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
@@ -667,43 +783,11 @@
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
                         </div>
                     </form>
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
-                            Explain my screen
-                        </button>
-                        <button class="quick-action" type="button" data-prompt="Summarize my shared screen in three short bullet points.">
-                            Summarize screen
-                        </button>
-                        <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
-                            Guide next step
-                        </button>
-                        <button class="quick-action" type="button" data-action="awareness">
-                            Start screen sharing
-                        </button>
-                        <button class="quick-action" type="button" data-action="task">
-                            Plan a task
-                        </button>
-                        <button class="quick-action" type="button" data-action="letter">
-                            Write a letter
-                        </button>
-                        <button class="quick-action" type="button" data-action="web-research">
-                            Search the web
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="youtube">
-                            Open YouTube
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="wifi-settings">
-                            Wi-Fi settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="windows-settings">
-                            Windows settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="calculator">
-                            Open Calculator
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="file-explorer">
-                            Open File Explorer
-                        </button>
+                    <div class="vosi-suggestions" aria-label="Quick suggestions">
+                        <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">Explain my screen</button>
+                        <button class="quick-action" type="button" data-prompt="Summarize my shared screen in three short bullet points.">Summarize screen</button>
+                        <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">Guide next step</button>
+                        <button class="quick-action" type="button" data-action="awareness">Start screen sharing</button>
                     </div>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
@@ -922,6 +1006,8 @@
         }
 
         function setupInteractivity() {
+            const bottomSettingsToggle = document.getElementById('settings-bottom-toggle');
+            bottomSettingsToggle?.addEventListener('click', () => sidebarToggle?.click());
             const sidebarToggle = document.getElementById('sidebar-toggle');
             const sidebarNav = document.getElementById('main-nav');
             const deviceActionDialog = document.getElementById('device-action-dialog');
