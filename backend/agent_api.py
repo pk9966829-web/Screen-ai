@@ -179,7 +179,7 @@ def request_agent_task(
                 "device.bluetooth.settings.open", "device.wifi.settings.open",
                 "device.pc.shutdown", "device.pc.restart",
             },
-            "android": {"device.alarm.create", "device.volume.set"},
+            "android": {"device.alarm.create", "device.volume.set", "device.volume.action"},
         }
         if capability not in supported_targets.get(target_platform, set()):
             raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
