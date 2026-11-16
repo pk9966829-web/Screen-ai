@@ -104,7 +104,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "description": "Set device volume within the platform's supported limits.",
     },
     "device.volume.action": {
-        "platforms": ["desktop"],
+        "platforms": ["desktop", "android"],
         "risk": "low",
         "requires_permission": True,
         "requires_approval": False,
