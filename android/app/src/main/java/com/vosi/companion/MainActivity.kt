@@ -391,7 +391,7 @@ class MainActivity : Activity() {
                 DeviceCredentialStore.save(this, credential.toString())
                 getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
                     .edit().putString("device_backend_url", baseUrl).apply()
-                val accountLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(this, credential)
+                val accountLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(credential)
                 runOnUiThread {
                     devicePairingCode.text.clear()
                     deviceStatus.text = if (accountLinkWarning == null) {
