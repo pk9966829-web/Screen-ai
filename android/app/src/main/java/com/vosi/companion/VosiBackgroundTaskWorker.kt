@@ -68,7 +68,7 @@ class VosiBackgroundTaskWorker(
         val tasks = JSONObject(body).optJSONArray("tasks") ?: JSONArray()
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
-            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set", "device.volume.action")) continue
+            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set", "device.volume.action", "device.timer.create")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = request(baseUrl, "/agent/tasks/${segment(taskId)}/claim", "POST", token)
             if (claimCode !in 200..299) continue
@@ -79,6 +79,7 @@ class VosiBackgroundTaskWorker(
                 val confirmation = when (step.optString("capability")) {
                     "device.volume.set" -> setPhoneVolume(args)
                     "device.volume.action" -> adjustPhoneVolume(args)
+                    "device.timer.create" -> schedulePhoneTimer(taskId, args)
                     "device.alarm.create" -> schedulePhoneAlarm(taskId, args)
                     else -> throw IllegalArgumentException("This Android capability is not supported in background.")
                 }
@@ -140,6 +141,22 @@ class VosiBackgroundTaskWorker(
             "unmute" -> "Phone media audio unmuted."
             else -> "Phone media volume " + (if (action == "up") "increased" else "decreased") + " to $target of $maxVolume."
         }
+    }
+
+    private fun schedulePhoneTimer(taskId: String, args: JSONObject): String {
+        val minutes = args.optInt("minutes", -1)
+        require(minutes in 1..1440) { "Set a timer between 1 and 1440 minutes." }
+        val triggerAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(minutes.toLong())
+        val intent = Intent(applicationContext, VosiAlarmReceiver::class.java)
+            .putExtra("title", "VOSI timer")
+            .putExtra("message", "Your $minutes-minute timer is finished.")
+        val pending = PendingIntent.getBroadcast(
+            applicationContext, taskId.hashCode() xor 0x54494D45, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val manager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending)
+        return "Phone timer set for $minutes minute(s)."
     }
 
     private fun schedulePhoneAlarm(taskId: String, args: JSONObject): String {
