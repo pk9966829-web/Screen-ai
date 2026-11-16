@@ -70,8 +70,15 @@ private enum class VosiTab(val label: String) { HOME("Home"), CHAT("Chat"), TASK
 
 @Composable
 private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit) {
+    val appContext = LocalContext.current
     var tab by remember { mutableStateOf(VosiTab.HOME) }
-    var backend by remember { mutableStateOf("http://127.0.0.1:8001") }
+    var backend by remember {
+        mutableStateOf(
+            appContext.getSharedPreferences("vosi_companion_settings", 0)
+                .getString("device_backend_url", "http://127.0.0.1:8001")
+                ?: "http://127.0.0.1:8001"
+        )
+    }
     var accountEmail by remember { mutableStateOf(AccountSessionStore.email().orEmpty()) }
     var accountStatus by remember { mutableStateOf("Sign in to connect your VOSI identity across devices.") }
     var accountBusy by remember { mutableStateOf(false) }
@@ -124,18 +131,24 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                     loggedIn, accountEmail, accountStatus, accountBusy, authMode, password,
                     verificationCode, backend, showServerSettings,
                     onEmail = { accountEmail = it }, onPassword = { password = it },
-                    onCode = { verificationCode = it }, onBackend = { backend = it },
+                    onCode = { verificationCode = it },
+                    onBackend = {
+                        backend = it
+                        appContext.getSharedPreferences("vosi_companion_settings", 0)
+                            .edit().putString("device_backend_url", it.trim()).apply()
+                    },
                     onMode = { authMode = it }, onToggleServer = { showServerSettings = !showServerSettings },
                     onProfileSetup = onOpenProfileSetup,
                     onLogout = {
+                        // Clear locally first so a slow network request cannot erase a newer login.
                         val token = AccountSessionStore.load()
-                        if (token != null) thread {
-                            try { identityRequest(backend, "/identity/logout", "POST", token, JSONObject()) }
-                            catch (_: Exception) { /* Clear the local session even if the server is offline. */ }
-                            finally { AccountSessionStore.clear() }
-                        }
+                        AccountSessionStore.clear()
                         loggedIn = false
                         accountStatus = "You are signed out."
+                        if (token != null) thread {
+                            try { identityRequest(backend, "/identity/logout", "POST", token, JSONObject()) }
+                            catch (_: Exception) { /* Local sign-out remains effective while offline. */ }
+                        }
                     },
                     onSubmit = {
                         if (accountBusy) return@ProfileScreen
