@@ -1,6 +1,5 @@
 package com.vosi.companion
 
-import android.content.Context
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -11,21 +10,22 @@ import java.net.URLEncoder
  * Device credentials and account sessions remain separate and are never sent in the same header.
  */
 object VosiAccountDeviceLink {
-    fun linkIfSignedIn(context: Context, credential: JSONObject): String? {
+    fun linkIfSignedIn(credential: JSONObject): String? {
         val accountToken = AccountSessionStore.load() ?: return null
-        val backend = credential.optString("backend_url").trimEnd('/')
-        val deviceId = credential.optString("device_id")
-        val deviceToken = credential.optString("device_token")
-        require(backend.startsWith("https://") || backend.startsWith("http://")) {
-            "The paired VOSI backend URL is invalid."
-        }
-        require(deviceId.isNotBlank() && deviceToken.isNotBlank()) {
-            "The paired device credential is incomplete. Pair this phone again."
-        }
-        val encodedId = URLEncoder.encode(deviceId, Charsets.UTF_8.name())
-        val connection = URL("$backend/identity/devices/link?device_id=$encodedId")
-            .openConnection() as HttpURLConnection
-        try {
+        return try {
+            val backend = credential.optString("backend_url").trimEnd('/')
+            val deviceId = credential.optString("device_id")
+            val deviceToken = credential.optString("device_token")
+            require(backend.startsWith("https://") || backend.startsWith("http://")) {
+                "The paired VOSI backend URL is invalid."
+            }
+            require(deviceId.isNotBlank() && deviceToken.isNotBlank()) {
+                "The paired device credential is incomplete. Pair this phone again."
+            }
+            val encodedId = URLEncoder.encode(deviceId, Charsets.UTF_8.name())
+            val connection = URL("$backend/identity/devices/link?device_id=$encodedId")
+                .openConnection() as HttpURLConnection
+            try {
             connection.requestMethod = "POST"
             connection.connectTimeout = 10000
             connection.readTimeout = 15000
@@ -39,9 +39,12 @@ object VosiAccountDeviceLink {
             if (code !in 200..299 || !response.optBoolean("success")) {
                 return response.optString("detail", "Could not link this phone to your VOSI account (HTTP $code).")
             }
-            return null
-        } finally {
-            connection.disconnect()
+            null
+            } finally {
+                connection.disconnect()
+            }
+        } catch (error: Exception) {
+            error.message ?: "Could not link this phone to your VOSI account."
         }
     }
 }
