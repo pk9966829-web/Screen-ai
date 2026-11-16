@@ -25,7 +25,7 @@ MAX_MEMORIES = 50
 # Only capabilities with a concrete adapter are eligible for automatic planning.
 # Capability metadata alone is not proof that a platform can execute an action.
 IMPLEMENTED_EXECUTORS = {
-    "android": {"device.alarm.create", "device.volume.set"},
+    "android": {"device.alarm.create", "device.volume.set", "device.volume.action"},
     "desktop": {
         "device.alarm.create", "device.volume.set", "device.volume.action",
         "device.timer.create", "device.bluetooth.settings.open",
