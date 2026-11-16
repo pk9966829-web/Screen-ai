@@ -172,10 +172,17 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                                 val message = result.optString("message",
                                     if (mode == "Sign in") "Signed in successfully." else "Request completed.")
                                 val token = result.optString("access_token")
-                                if (token.isNotBlank()) AccountSessionStore.save(token, email)
+                                var deviceLinkWarning: String? = null
+                                if (token.isNotBlank()) {
+                                    AccountSessionStore.save(token, email)
+                                    val pairedDevice = DeviceCredentialStore.load(appContext)
+                                    if (pairedDevice != null) {
+                                        deviceLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(appContext, pairedDevice)
+                                    }
+                                }
                                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                                     if (token.isNotBlank()) loggedIn = true
-                                    accountStatus = message
+                                    accountStatus = if (deviceLinkWarning == null) message else "$message $deviceLinkWarning"
                                     if (mode == "Create account") authMode = "Verify email"
                                     if (mode == "Verify email") authMode = "Sign in"
                                     accountBusy = false
