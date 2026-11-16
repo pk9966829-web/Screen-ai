@@ -9,6 +9,7 @@ class FakeRuntime:
     def list_capabilities(self):
         return [
             {"name": "device.volume.set", "platforms": ["android", "desktop"]},
+            {"name": "device.volume.action", "platforms": ["android", "desktop"]},
             {"name": "browser.search_products", "platforms": ["browser"]},
             {"name": "device.alarm.create", "platforms": ["android", "desktop"]},
         ]
@@ -120,3 +121,26 @@ def test_failed_step_error_is_visible_and_does_not_suggest_later_steps(tmp_path)
     assert failed["state"] == "failed"
     assert failed["error"] == "Android denied the volume change."
     assert failed["next_step"] is None
+
+
+def test_volume_actions_accept_only_supported_commands():
+    assert "device.volume.action" in IMPLEMENTED_EXECUTORS["android"]
+    for action in ("up", "down", "mute", "unmute"):
+        assert _validate_plan_arguments("device.volume.action", {"action": action})
+    assert not _validate_plan_arguments("device.volume.action", {"action": "max"})
+
+def test_android_volume_action_plan_requires_matching_phone_capability():
+    runtime = FakeRuntime()
+    plan = {
+        "goal": "Mute my phone",
+        "steps": [{
+            "step_id": "step-1", "capability": "device.volume.action",
+            "target_platform": "android", "title": "Mute phone media audio",
+            "arguments": {"action": "mute"},
+        }],
+    }
+    devices = [{"device_id": "phone-1", "platform": "android", "status": "paired",
+                "capabilities": ["device.volume.action"]}]
+    result = _safe_task_plan(plan, "Mute my phone", runtime, devices, "phone-1")
+    assert result["task_id"] == "task-1"
+    assert runtime.created["steps"][0]["capability"] == "device.volume.action"
