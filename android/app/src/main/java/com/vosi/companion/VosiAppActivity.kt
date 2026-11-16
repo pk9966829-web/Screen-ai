@@ -320,7 +320,7 @@ private fun VosiAmbientBackground() {
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(
-                listOf(Color(0xFF08284A), Color(0xFF041B33), Color(0xFF021225), Color(0xFF010814))
+                listOf(Color(0xFF45494E), Color(0xFF30343A), Color(0xFF202429), Color(0xFF14171B))
             )
         )
     ) {
@@ -334,8 +334,8 @@ private fun VosiAmbientBackground() {
                 alpha = 0.78f + ((drift + 1f) * 0.11f)
             }.background(
                 Brush.radialGradient(
-                    0f to Color(0x4438BDF8),
-                    0.38f to Color(0x2238BDF8),
+                    0f to Color(0x44E0E4E8),
+                    0.38f to Color(0x22D5D9DE),
                     0.72f to Color(0x113B82F6),
                     1f to Color.Transparent
                 )
@@ -352,7 +352,7 @@ private fun VosiAmbientBackground() {
                     scaleY = 1f + orbOne * 0.18f
                     alpha = 0.58f + orbOne * 0.34f
                 }
-                .background(Brush.radialGradient(listOf(Color(0x5538BDF8), Color(0x2238BDF8), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(Color(0x55DDE1E5), Color(0x22D5D9DE), Color.Transparent)))
         )
         Box(
             Modifier.align(Alignment.TopEnd).offset(x = 165.dp, y = (-10).dp)
@@ -364,7 +364,7 @@ private fun VosiAmbientBackground() {
                     scaleY = 1.05f + orbTwo * 0.06f
                     alpha = 0.48f + orbTwo * 0.42f
                 }
-                .background(Brush.radialGradient(listOf(Color(0x554F8EF7), Color(0x223B82F6), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(Color(0x55C5CBD1), Color(0x22AEB4BB), Color.Transparent)))
         )
         Box(
             Modifier.align(Alignment.BottomCenter).offset(y = 155.dp)
@@ -376,7 +376,7 @@ private fun VosiAmbientBackground() {
                     scaleY = 1f + orbThree * 0.28f
                     alpha = 0.34f + orbThree * 0.58f
                 }
-                .background(Brush.radialGradient(listOf(Color(0x4438BDF8), Color(0x2214B8A6), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(Color(0x44E0E4E8), Color(0x229CA4AB), Color.Transparent)))
         )
         // Moving translucent haze, equivalent to the desktop ::after layer.
         Box(
@@ -409,150 +409,171 @@ private fun HomeScreen(
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
-        // Familiar ChatGPT-style top bar; the existing settings drawer remains unchanged.
+        // Compact header keeps settings tucked away until the user opens them.
         Row(
-            Modifier.fillMaxWidth().height(48.dp),
+            Modifier.fillMaxWidth().height(44.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Menu, "Open settings", tint = Color.White, modifier = Modifier.size(25.dp))
+            IconButton(onClick = onOpenSettings, modifier = Modifier.size(42.dp)) {
+                Icon(Icons.Outlined.Menu, "Open settings", tint = Color.White, modifier = Modifier.size(24.dp))
             }
-            Spacer(Modifier.width(5.dp))
+            Spacer(Modifier.width(7.dp))
             Column(Modifier.weight(1f)) {
                 Text("VOSI", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                Text("AI companion", color = Color(0xFF9CB2CA), fontSize = 10.sp)
+                Text("AI companion", color = Color(0xFFD0D3D8), fontSize = 10.sp)
             }
-            IconButton(onClick = onChat) {
-                Icon(Icons.Outlined.Forum, "Open chat", tint = Color(0xFFD8E7F8), modifier = Modifier.size(22.dp))
-            }
-            IconButton(onClick = onTalk) {
-                Icon(Icons.Outlined.GraphicEq, "Start voice conversation", tint = GlowBlue, modifier = Modifier.size(23.dp))
+            IconButton(onClick = onTalk, modifier = Modifier.size(42.dp)) {
+                Icon(Icons.Outlined.GraphicEq, "Talk to VOSI", tint = Color.White, modifier = Modifier.size(23.dp))
             }
         }
 
-        // Spacious greeting area, like ChatGPT's new-chat landing screen.
-        Box(
+        // The search composer and four quick actions stay together in the centre,
+        // with flexible space so the layout adapts to short and tall phone screens.
+        Column(
             Modifier.weight(1f).fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
-                    Modifier.size(62.dp).clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Color(0xFF7DDCF5), Color(0xFF275C91), Color(0xFF10223D)))),
+                    Modifier.size(54.dp).clip(CircleShape)
+                        .background(Brush.radialGradient(listOf(Color(0xFFE4E7EA), Color(0xFF777F88), Color(0xFF343A40)))),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(38.dp))
+                    Icon(Icons.Outlined.AllInclusive, null, tint = Color(0xFF171A1E), modifier = Modifier.size(34.dp))
                 }
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     "Hi, I'm VOSI",
                     color = Color.White,
-                    fontSize = 30.sp,
+                    fontSize = 27.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = (-0.6).sp
                 )
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(5.dp))
                 Text(
                     "What can I help you with today?",
-                    color = Color(0xFFB8C9DD),
-                    fontSize = 14.sp
+                    color = Color(0xFFD0D3D8),
+                    fontSize = 13.sp
                 )
             }
-        }
 
-        // ChatGPT-like composer anchored to the bottom, with VOSI's connector and voice actions.
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xD90A1728),
-            shape = RoundedCornerShape(27.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x554C789D)),
-            shadowElevation = 12.dp
-        ) {
-            Column(Modifier.padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 8.dp)) {
-                androidx.compose.foundation.text.BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp, max = 112.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp
-                    ),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(GlowBlue),
-                    maxLines = 4,
-                    decorationBox = { inner ->
-                        Box {
-                            if (query.isBlank()) {
-                                Text("Message VOSI", color = Color(0xFF91A5BC), fontSize = 15.sp)
+            Spacer(Modifier.height(20.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xE51B1F24),
+                shape = RoundedCornerShape(25.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x667D858E)),
+                shadowElevation = 10.dp
+            ) {
+                Column(Modifier.padding(start = 15.dp, end = 9.dp, top = 12.dp, bottom = 8.dp)) {
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp, max = 104.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            lineHeight = 21.sp
+                        ),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                        maxLines = 4,
+                        decorationBox = { inner ->
+                            Box {
+                                if (query.isBlank()) {
+                                    Text("Ask VOSI anything…", color = Color(0xFFB9BEC5), fontSize = 15.sp)
+                                }
+                                inner()
                             }
-                            inner()
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = {
-                        if (query.isNotBlank()) {
-                            val message = query.trim()
-                            query = ""
-                            onSearch(message)
-                        }
-                    })
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { connectorsOpen = true }, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.Extension, "Open connectors", tint = Color(0xFFC5D7EA), modifier = Modifier.size(21.dp))
-                    }
-                    IconButton(onClick = onDevices, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.Devices, "Connected devices", tint = Color(0xFFC5D7EA), modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onTalk, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.GraphicEq, "Voice conversation", tint = GlowBlue, modifier = Modifier.size(22.dp))
-                    }
-                    Spacer(Modifier.width(5.dp))
-                    FilledIconButton(
-                        onClick = {
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
                             if (query.isNotBlank()) {
                                 val message = query.trim()
                                 query = ""
                                 onSearch(message)
                             }
-                        },
-                        enabled = query.isNotBlank(),
-                        modifier = Modifier.size(38.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (query.isNotBlank()) Color(0xFFE7F5FF) else Color(0xFF35475B),
-                            contentColor = Color(0xFF071525),
-                            disabledContainerColor = Color(0xFF35475B),
-                            disabledContentColor = Color(0xFF8FA0B3)
-                        )
-                    ) {
-                        Icon(Icons.Outlined.ArrowUpward, "Send message", modifier = Modifier.size(20.dp))
+                        })
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { connectorsOpen = true }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Outlined.Extension, "Open connectors", tint = Color(0xFFD5D9DE), modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = onDevices, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Outlined.Devices, "Connected devices", tint = Color(0xFFD5D9DE), modifier = Modifier.size(19.dp))
+                        }
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = onTalk, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Outlined.Mic, "Voice input", tint = Color.White, modifier = Modifier.size(21.dp))
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        FilledIconButton(
+                            onClick = {
+                                if (query.isNotBlank()) {
+                                    val message = query.trim()
+                                    query = ""
+                                    onSearch(message)
+                                }
+                            },
+                            enabled = query.isNotBlank(),
+                            modifier = Modifier.size(36.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = Color(0xFFE5E7EA),
+                                contentColor = Color(0xFF171A1E),
+                                disabledContainerColor = Color(0xFF444A51),
+                                disabledContentColor = Color(0xFF9EA4AB)
+                            )
+                        ) {
+                            Icon(Icons.Outlined.ArrowUpward, "Send message", modifier = Modifier.size(19.dp))
+                        }
                     }
                 }
             }
-        }
 
-        Row(
-            Modifier.fillMaxWidth().padding(top = 7.dp, bottom = 3.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onTasks, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp)) {
-                Icon(Icons.Outlined.TaskAlt, null, tint = Color(0xFF9FB8D0), modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(5.dp))
-                Text("Tasks", color = Color(0xFFB5C8DB), fontSize = 11.sp)
-            }
-            Text("·", color = Color(0xFF7890A8))
-            TextButton(onClick = onDevices, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp)) {
-                Icon(Icons.Outlined.Devices, null, tint = Color(0xFF9FB8D0), modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(5.dp))
-                Text("Devices", color = Color(0xFFB5C8DB), fontSize = 11.sp)
+            Spacer(Modifier.height(13.dp))
+
+            Column(
+                Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    ActionCard(
+                        "Explain my screen",
+                        "Understand what you're viewing",
+                        Icons.Outlined.Visibility,
+                        Modifier.weight(1f).heightIn(min = 68.dp)
+                    ) { onSearch("Explain my screen") }
+                    ActionCard(
+                        "Summarize screen",
+                        "Get the key points",
+                        Icons.Outlined.Subject,
+                        Modifier.weight(1f).heightIn(min = 68.dp)
+                    ) { onSearch("Summarize screen") }
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    ActionCard(
+                        "Guide next step",
+                        "Know what to do next",
+                        Icons.Outlined.Lightbulb,
+                        Modifier.weight(1f).heightIn(min = 68.dp)
+                    ) { onSearch("Guide next step") }
+                    ActionCard(
+                        "Start screen sharing",
+                        "Let VOSI observe your screen",
+                        Icons.Outlined.ScreenShare,
+                        Modifier.weight(1f).heightIn(min = 68.dp)
+                    ) { onSearch("Start screen sharing") }
+                }
             }
         }
     }
@@ -560,25 +581,25 @@ private fun HomeScreen(
     if (connectorsOpen) {
         AlertDialog(
             onDismissRequest = { connectorsOpen = false },
-            containerColor = Color(0xFF0A1B2D),
+            containerColor = Color(0xFF252A30),
             title = { Text("VOSI connectors", color = Color.White) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Connect services and devices to extend what VOSI can do.", color = Muted, fontSize = 12.sp)
+                    Text("Connect services and devices to extend what VOSI can do.", color = Color(0xFFD0D3D8), fontSize = 12.sp)
                     Text(
                         "Browser and desktop connections are managed from Connected devices. Account-based connectors appear here when enabled for your VOSI account.",
-                        color = Color(0xFFB8C8DA),
+                        color = Color(0xFFB8BEC6),
                         fontSize = 12.sp
                     )
                 }
             },
             confirmButton = {
                 TextButton(onClick = { connectorsOpen = false; onDevices() }) {
-                    Text("Connected devices", color = GlowBlue)
+                    Text("Connected devices", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { connectorsOpen = false }) { Text("Close", color = Accent) }
+                TextButton(onClick = { connectorsOpen = false }) { Text("Close", color = Color(0xFFD5D9DE)) }
             }
         )
     }
@@ -586,13 +607,21 @@ private fun HomeScreen(
 
 @Composable
 private fun ActionCard(title: String, detail: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Surface(modifier.clickable(onClick = onClick), color = Panel, shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGlow)) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Accent, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text(detail, fontSize = 11.sp, color = Muted)
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        color = Color(0xCC272C32),
+        shape = RoundedCornerShape(17.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x557D858E))
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, tint = Color(0xFFE1E4E8), modifier = Modifier.size(21.dp))
+            Spacer(Modifier.width(9.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2)
+                Text(detail, fontSize = 10.sp, color = Color(0xFFBEC3CA), maxLines = 2, lineHeight = 13.sp)
             }
         }
     }
