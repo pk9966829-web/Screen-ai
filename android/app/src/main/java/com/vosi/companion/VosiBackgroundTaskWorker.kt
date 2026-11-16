@@ -68,7 +68,7 @@ class VosiBackgroundTaskWorker(
         val tasks = JSONObject(body).optJSONArray("tasks") ?: JSONArray()
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
-            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set")) continue
+            if (task.optString("capability") !in setOf("device.alarm.create", "device.volume.set", "device.volume.action")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = request(baseUrl, "/agent/tasks/${segment(taskId)}/claim", "POST", token)
             if (claimCode !in 200..299) continue
@@ -78,6 +78,7 @@ class VosiBackgroundTaskWorker(
                 val args = step.optJSONObject("arguments") ?: JSONObject()
                 val confirmation = when (step.optString("capability")) {
                     "device.volume.set" -> setPhoneVolume(args)
+                    "device.volume.action" -> adjustPhoneVolume(args)
                     "device.alarm.create" -> schedulePhoneAlarm(taskId, args)
                     else -> throw IllegalArgumentException("This Android capability is not supported in background.")
                 }
@@ -107,6 +108,38 @@ class VosiBackgroundTaskWorker(
             "Android did not apply the requested volume."
         }
         return "Phone media volume set to $percent%."
+    }
+
+    private fun adjustPhoneVolume(args: JSONObject): String {
+        val action = args.optString("action")
+        require(action in setOf("up", "down", "mute", "unmute")) {
+            "Choose volume up, down, mute, or unmute."
+        }
+        val audio = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        require(maxVolume > 0) { "Android did not report a usable media-volume range." }
+        val current = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val preferences = applicationContext.getSharedPreferences("vosi_volume", Context.MODE_PRIVATE)
+        val target = when (action) {
+            "up" -> (current + 1).coerceAtMost(maxVolume)
+            "down" -> (current - 1).coerceAtLeast(0)
+            "mute" -> {
+                if (current > 0) preferences.edit().putInt("last_media_volume", current).apply()
+                0
+            }
+            "unmute" -> preferences.getInt("last_media_volume", (maxVolume / 2).coerceAtLeast(1))
+                .coerceIn(1, maxVolume)
+            else -> current
+        }
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+        check(audio.getStreamVolume(AudioManager.STREAM_MUSIC) == target) {
+            "Android did not apply the requested volume action."
+        }
+        return when (action) {
+            "mute" -> "Phone media audio muted."
+            "unmute" -> "Phone media audio unmuted."
+            else -> "Phone media volume " + (if (action == "up") "increased" else "decreased") + " to $target of $maxVolume."
+        }
     }
 
     private fun schedulePhoneAlarm(taskId: String, args: JSONObject): String {
