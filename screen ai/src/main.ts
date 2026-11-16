@@ -31,8 +31,6 @@ const mascot =
   document.getElementById("mascot");
 
 
-const mascotInner =
-  document.getElementById("mascotInner");
 
 
 const askInput =
@@ -863,7 +861,7 @@ bellBtn?.addEventListener(
 
 function minimizeApp() {
 
-  app.classList.add(
+  app!.classList.add(
     "minimized"
   );
 
@@ -876,12 +874,12 @@ function minimizeApp() {
 
 function restoreApp() {
 
-  app.classList.remove(
+  app!.classList.remove(
     "minimized"
   );
 
 
-  app.classList.remove(
+  app!.classList.remove(
     "closed"
   );
 
@@ -894,7 +892,7 @@ function restoreApp() {
 
 function maximizeApp() {
 
-  app.classList.toggle(
+  app!.classList.toggle(
     "maximized"
   );
 }
@@ -902,7 +900,7 @@ function maximizeApp() {
 
 function closeApp() {
 
-  app.classList.add(
+  app!.classList.add(
     "closed"
   );
 

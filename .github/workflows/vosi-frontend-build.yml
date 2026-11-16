@@ -1,0 +1,31 @@
+name: VOSI frontend build
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "screen ai/**"
+      - ".github/workflows/vosi-frontend-build.yml"
+  push:
+    branches: [feature/vosi-grey-mobile-redesign]
+    paths:
+      - "screen ai/**"
+      - ".github/workflows/vosi-frontend-build.yml"
+
+jobs:
+  frontend-build:
+    name: frontend-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: screen ai
+        run: npm install
+      - name: Type-check and build VOSI frontend
+        working-directory: screen ai
+        run: npm run build
