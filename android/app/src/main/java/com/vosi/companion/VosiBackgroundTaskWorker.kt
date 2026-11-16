@@ -144,19 +144,20 @@ class VosiBackgroundTaskWorker(
     }
 
     private fun schedulePhoneTimer(taskId: String, args: JSONObject): String {
-        val minutes = args.optInt("minutes", -1)
-        require(minutes in 1..1440) { "Set a timer between 1 and 1440 minutes." }
-        val triggerAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(minutes.toLong())
+        val seconds = args.optLong("seconds", -1L).takeIf { it > 0L }
+            ?: TimeUnit.MINUTES.toSeconds(args.optLong("minutes", -1L))
+        require(seconds in 1..86400) { "Set a phone timer between 1 second and 24 hours." }
+        val triggerAt = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(seconds)
         val intent = Intent(applicationContext, VosiAlarmReceiver::class.java)
             .putExtra("title", "VOSI timer")
-            .putExtra("message", "Your $minutes-minute timer is finished.")
+            .putExtra("message", "Your timer for $seconds second(s) is finished.")
         val pending = PendingIntent.getBroadcast(
             applicationContext, taskId.hashCode() xor 0x54494D45, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val manager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending)
-        return "Phone timer set for $minutes minute(s)."
+        return "Phone timer set for $seconds second(s)."
     }
 
     private fun schedulePhoneAlarm(taskId: String, args: JSONObject): String {

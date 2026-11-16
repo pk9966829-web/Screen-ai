@@ -391,9 +391,14 @@ class MainActivity : Activity() {
                 DeviceCredentialStore.save(this, credential.toString())
                 getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
                     .edit().putString("device_backend_url", baseUrl).apply()
+                val accountLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(credential)
                 runOnUiThread {
                     devicePairingCode.text.clear()
-                    deviceStatus.text = "Phone paired successfully. Its credential is protected by Android Keystore."
+                    deviceStatus.text = if (accountLinkWarning == null) {
+                        "Phone paired successfully. Its credential is protected by Android Keystore."
+                    } else {
+                        "Phone paired, but account linking needs attention: $accountLinkWarning"
+                    }
                     refreshPairedDeviceStatus()
                     pairDeviceButton.isEnabled = true
                     heartbeatPhoneDevice()
@@ -596,13 +601,14 @@ class MainActivity : Activity() {
                 }
                 desktopVolume != null -> {
                     val action = desktopVolume.groupValues[1].lowercase()
-                    goal = "Adjust Windows PC volume: $action"
+                    val target = if (normalized.contains("phone") || normalized.contains("mobile")) "android" else "desktop"
+                    goal = if (target == "android") "Adjust Android phone volume: $action" else "Adjust Windows PC volume: $action"
                     steps.put(
                         JSONObject()
-                            .put("step_id", "adjust-pc-volume")
+                            .put("step_id", "adjust-device-volume")
                             .put("capability", "device.volume.action")
-                            .put("target_platform", "desktop")
-                            .put("title", "Adjust Windows PC volume")
+                            .put("target_platform", target)
+                            .put("title", if (target == "android") "Adjust this phone's media volume" else "Adjust Windows PC volume")
                             .put("arguments", JSONObject().put("action", action))
                     )
                 }
@@ -619,13 +625,14 @@ class MainActivity : Activity() {
                         deviceStatus.text = "Choose a PC timer between 1 second and 24 hours."
                         return
                     }
-                    goal = "Start a Windows timer for $query"
+                    val target = if (Regex("""\b(pc|computer|windows|desktop)\b""", RegexOption.IGNORE_CASE).containsMatchIn(query)) "desktop" else "android"
+                    goal = if (target == "android") "Start a phone timer for $query" else "Start a Windows timer for $query"
                     steps.put(
                         JSONObject()
-                            .put("step_id", "start-pc-timer")
+                            .put("step_id", "start-device-timer")
                             .put("capability", "device.timer.create")
-                            .put("target_platform", "desktop")
-                            .put("title", "Start a timer on the Windows PC")
+                            .put("target_platform", target)
+                            .put("title", if (target == "android") "Start a timer on this Android phone" else "Start a timer on the Windows PC")
                             .put("arguments", JSONObject().put("seconds", seconds))
                     )
                 }
@@ -754,7 +761,7 @@ class MainActivity : Activity() {
         for (index in 0 until minOf(tasks.length(), 3)) {
             val task = tasks.optJSONObject(index) ?: continue
             val capability = task.optString("capability")
-            if (capability !in setOf("device.alarm.create", "device.volume.set")) continue
+            if (capability !in setOf("device.alarm.create", "device.volume.set", "device.volume.action", "device.timer.create")) continue
             val taskId = task.optString("task_id")
             val (claimCode, claimBody) = requestDeviceApi(
                 baseUrl,
@@ -779,6 +786,41 @@ class MainActivity : Activity() {
                         val actual = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
                         if (actual != target) throw IllegalStateException("Android did not apply the requested volume.")
                         confirmation = "Phone media volume set to $percent%."
+                    }
+                    "device.volume.action" -> {
+                        val action = args.optString("action")
+                        if (action !in setOf("up", "down", "mute", "unmute")) throw IllegalArgumentException("Choose volume up, down, mute, or unmute.")
+                        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                        val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                        val current = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        val prefs = getSharedPreferences("vosi_volume", MODE_PRIVATE)
+                        val target = when (action) {
+                            "up" -> (current + 1).coerceAtMost(maxVolume)
+                            "down" -> (current - 1).coerceAtLeast(0)
+                            "mute" -> {
+                                if (current > 0) prefs.edit().putInt("last_media_volume", current).apply()
+                                0
+                            }
+                            else -> prefs.getInt("last_media_volume", (maxVolume / 2).coerceAtLeast(1)).coerceIn(1, maxVolume)
+                        }
+                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+                        if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) != target) throw IllegalStateException("Android did not apply the requested volume action.")
+                        confirmation = "Phone media volume $action completed."
+                    }
+                    "device.timer.create" -> {
+                        val seconds = args.optLong("seconds", -1L)
+                        if (seconds !in 1..86400) throw IllegalArgumentException("Choose a phone timer between 1 second and 24 hours.")
+                        val timerIntent = Intent(this, VosiAlarmReceiver::class.java)
+                            .putExtra("title", "VOSI timer")
+                            .putExtra("message", "Your timer for $seconds second(s) is finished.")
+                        val timerPending = PendingIntent.getBroadcast(
+                            this, taskId.hashCode() xor 0x54494D45, timerIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        val manager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                            System.currentTimeMillis() + seconds * 1000L, timerPending)
+                        confirmation = "Phone timer set for $seconds second(s)."
                     }
                     "device.alarm.create" -> {
                         val hour = args.optInt("hour", -1)
@@ -1041,6 +1083,12 @@ class MainActivity : Activity() {
             status.text = "Enable WhatsApp notification access before syncing."
             return
         }
+        val syncBackend = try {
+            backendBaseUrl()
+        } catch (error: Exception) {
+            status.text = error.message ?: "Enter a valid VOSI backend URL before syncing."
+            return
+        }
 
         getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
             .edit()
@@ -1060,7 +1108,7 @@ class MainActivity : Activity() {
                 val payload = JSONObject().put("messages", messageArray)
 
                 connection = (URL(
-                    "http://127.0.0.1:8001/companion/whatsapp/sync"
+                    "$syncBackend/companion/whatsapp/sync"
                 ).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = 10000
