@@ -1046,6 +1046,12 @@ class MainActivity : Activity() {
             status.text = "Enable WhatsApp notification access before syncing."
             return
         }
+        val syncBackend = try {
+            backendBaseUrl()
+        } catch (error: Exception) {
+            status.text = error.message ?: "Enter a valid VOSI backend URL before syncing."
+            return
+        }
 
         getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
             .edit()
@@ -1065,7 +1071,7 @@ class MainActivity : Activity() {
                 val payload = JSONObject().put("messages", messageArray)
 
                 connection = (URL(
-                    "http://127.0.0.1:8001/companion/whatsapp/sync"
+                    "$syncBackend/companion/whatsapp/sync"
                 ).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = 10000
