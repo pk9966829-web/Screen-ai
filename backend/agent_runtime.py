@@ -112,12 +112,12 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "description": "Adjust Windows volume up, down, mute, or unmute.",
     },
     "device.timer.create": {
-        "platforms": ["desktop"],
+        "platforms": ["desktop", "android"],
         "risk": "low",
         "requires_permission": True,
         "requires_approval": False,
         "reversible": True,
-        "description": "Start a one-time Windows timer.",
+        "description": "Start a one-time timer on the paired device.",
     },
     "device.bluetooth.settings.open": {
         "platforms": ["desktop"], "risk": "low", "requires_permission": True,
