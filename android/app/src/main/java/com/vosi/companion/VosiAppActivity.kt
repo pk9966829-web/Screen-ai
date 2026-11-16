@@ -177,7 +177,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                                     AccountSessionStore.save(token, email)
                                     val pairedDevice = DeviceCredentialStore.load(appContext)
                                     if (pairedDevice != null) {
-                                        deviceLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(appContext, pairedDevice)
+                                        deviceLinkWarning = VosiAccountDeviceLink.linkIfSignedIn(pairedDevice)
                                     }
                                 }
                                 android.os.Handler(android.os.Looper.getMainLooper()).post {
