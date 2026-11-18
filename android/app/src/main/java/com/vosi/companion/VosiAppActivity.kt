@@ -88,7 +88,13 @@ private enum class VosiTab(val label: String) { HOME("Home"), CHAT("Chat"), TASK
 @Composable
 private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit) {
     var tab by remember { mutableStateOf(VosiTab.HOME) }
-    var backend by remember { mutableStateOf("http://127.0.0.1:8001") }
+    var backend by remember {
+        mutableStateOf(
+            VosiSessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                ?.getString("device_backend_url", "http://127.0.0.1:8001")
+                ?: "http://127.0.0.1:8001"
+        )
+    }
     var accountEmail by remember { mutableStateOf(AccountSessionStore.email().orEmpty()) }
     var accountStatus by remember { mutableStateOf("Sign in to connect your VOSI identity across devices.") }
     var accountBusy by remember { mutableStateOf(false) }
@@ -128,9 +134,39 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                         loggedIn, accountEmail, accountStatus, accountBusy, authMode, password,
                         verificationCode, backend, showServerSettings,
                         onEmail = { accountEmail = it }, onPassword = { password = it },
-                        onCode = { verificationCode = it }, onBackend = { backend = it },
+                        onCode = { verificationCode = it }, onBackend = {
+                            backend = it
+                            VosiSessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                                ?.edit()?.putString("device_backend_url", it.trim().trimEnd('/'))?.apply()
+                        },
                         onMode = { authMode = it }, onToggleServer = { showServerSettings = !showServerSettings },
                         onProfileSetup = onOpenProfileSetup,
+                        onTestBackend = {
+                            if (accountBusy) return@ProfileScreen
+                            val base = backend.trim().trimEnd('/')
+                            accountBusy = true
+                            accountStatus = "Checking VOSI backend…"
+                            thread {
+                                try {
+                                    val probe = identityRequest(base, "/openapi.json", "GET", null, JSONObject())
+                                    val paths = probe.optJSONObject("paths")
+                                    if (paths == null || !paths.has("/ask") || !paths.has("/identity/login")) {
+                                        throw IllegalStateException("A server responded, but it doesn't look like the expected VOSI backend.")
+                                    }
+                                    VosiSessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                                        ?.edit()?.putString("device_backend_url", base)?.apply()
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        accountStatus = "Backend connected. VOSI API is reachable at $base"
+                                        accountBusy = false
+                                    }
+                                } catch (error: Exception) {
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        accountStatus = "Backend connection failed: " + (error.message ?: "Check the URL and server.")
+                                        accountBusy = false
+                                    }
+                                }
+                            }
+                        },
                         onLogout = {
                             val token = AccountSessionStore.load()
                             if (token != null) thread {
@@ -779,7 +815,7 @@ private fun ProfileScreen(
     code: String, backend: String, showServer: Boolean,
     onEmail: (String) -> Unit, onPassword: (String) -> Unit, onCode: (String) -> Unit,
     onBackend: (String) -> Unit, onMode: (String) -> Unit, onToggleServer: () -> Unit,
-    onProfileSetup: () -> Unit, onLogout: () -> Unit, onSubmit: () -> Unit
+    onProfileSetup: () -> Unit, onTestBackend: () -> Unit, onLogout: () -> Unit, onSubmit: () -> Unit
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(22.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item { PageHeader("Your VOSI identity", "One account for your connected companion.") }
@@ -835,7 +871,10 @@ private fun ProfileScreen(
             TextButton(onClick = onToggleServer) { Text(if (showServer) "Hide server settings" else "Advanced: server settings") }
             if (showServer) {
                 OutlinedTextField(value = backend, onValueChange = onBackend, label = { Text("VOSI backend URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Text("Use your deployed HTTPS API URL, or localhost/ADB reverse for development. Account registration requires backend SMTP and identity secrets to be configured.", color = Muted, fontSize = 11.sp)
+                Button(onClick = onTestBackend, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
+                    Text(if (busy) "Checking backend…" else "Test backend connection")
+                }
+                Text("For USB development, keep http://127.0.0.1:8001 and run adb reverse tcp:8001 tcp:8001. For Wi-Fi, enter your computer LAN IP and run the backend with --host 0.0.0.0. Account registration also requires SMTP and identity secrets.", color = Muted, fontSize = 11.sp)
             }
         }
         item { Text("VOSI never asks for merchant passwords, OTPs, UPI PINs or card security codes.", color = Muted, fontSize = 11.sp) }
