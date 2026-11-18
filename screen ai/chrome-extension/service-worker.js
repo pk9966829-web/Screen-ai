@@ -82,6 +82,23 @@ async function postAgentTaskResult(device, taskId, stepId, payload) {
 }
 
 async function executeGeneralBrowserStep(device, task, step) {
+  if (step.capability === "browser.search_web") {
+    const query = String(step.arguments?.query || "").trim().slice(0, 500);
+    if (!query) throw new Error("Research query is empty.");
+    const response = await fetch(API + "/research/search", {
+      method: "POST", headers: { ...authHeaders(device), "Content-Type": "application/json" },
+      body: JSON.stringify({ query, count: 5 }), cache: "no-store"
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) throw new Error(data.detail || "VOSI web research is unavailable.");
+    const results = Array.isArray(data.results) ? data.results.slice(0, 10) : [];
+    await postAgentTaskResult(device, task.task_id, step.step_id, {
+      success: results.length > 0, verified: results.length > 0,
+      receipt: results.length ? { capability: "browser.search_web", provider: data.provider, query: data.query, result_count: results.length, results, citations: results.map(item => item.url), confirmation: "Found " + results.length + " public web sources." } : {},
+      error: results.length ? null : "The search provider returned no usable public sources."
+    });
+    return;
+  }
   if (step.capability === "browser.open_tab") {
     const raw = String(step.arguments?.url || "").trim();
     let parsed;
@@ -136,7 +153,7 @@ async function executeAvailableAgentTasks() {
   if (!response.ok) return;
   const data = await response.json();
   for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
-    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page"].includes(task.capability)) continue;
+    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web"].includes(task.capability)) continue;
     const claimResponse = await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
       method: "POST",
       headers: authHeaders(device),
