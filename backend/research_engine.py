@@ -1,6 +1,6 @@
 """Source-backed public-web research for VOSI.
 
-Search uses the Brave Search API when configured. Page reading is restricted to
+Search uses Tavily when configured, with Brave Search retained as a fallback. Page reading is restricted to
 public HTTPS URLs and rejects private/local network destinations and unsafe redirects.
 Website text is untrusted evidence, never executable instructions.
 """
@@ -162,34 +162,55 @@ def read_public_page(url: str) -> dict[str, Any]:
         session.close()
 
 
-def search_public_web(query: str, count: int = 5) -> dict[str, Any]:
-    query = (query or "").strip()
-    if not query or len(query) > 500:
-        raise ValueError("Research query must contain 1 to 500 characters.")
-    api_key = os.getenv("BRAVE_SEARCH_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("Web search is not configured. Set BRAVE_SEARCH_API_KEY to enable source-backed internet research.")
-    response = requests.get(
-        "https://api.search.brave.com/res/v1/web/search",
-        params={"q": query, "count": max(1, min(int(count), MAX_RESULTS)), "safesearch": "moderate"},
-        headers={"X-Subscription-Token": api_key, "Accept": "application/json", "User-Agent": USER_AGENT},
-        timeout=TIMEOUT,
-    )
-    response.raise_for_status()
-    payload = response.json()
+def _normalize_search_results(query: str, items: list[dict[str, Any]], provider: str) -> dict[str, Any]:
     results = []
-    for item in (payload.get("web") or {}).get("results", [])[:MAX_RESULTS]:
+    for item in items[:MAX_RESULTS]:
         url = item.get("url")
         if not isinstance(url, str) or not url.startswith("https://"):
             continue
         results.append({
             "title": str(item.get("title") or "")[:300],
             "url": url[:2048],
-            "description": str(item.get("description") or "")[:1000],
-            "published": item.get("age") or item.get("page_age"),
+            "description": str(item.get("content") or item.get("description") or "")[:1000],
+            "published": item.get("published_date") or item.get("age") or item.get("page_age"),
+            "score": item.get("score"),
             "source": urlsplit(url).hostname,
         })
-    return {"query": query, "results": results, "result_count": len(results), "provider": "Brave Search", "citations": [item["url"] for item in results]}
+    return {"query": query, "results": results, "result_count": len(results), "provider": provider, "citations": [item["url"] for item in results]}
+
+
+def search_public_web(query: str, count: int = 5) -> dict[str, Any]:
+    query = (query or "").strip()
+    if not query or len(query) > 500:
+        raise ValueError("Research query must contain 1 to 500 characters.")
+    count = max(1, min(int(count), MAX_RESULTS))
+
+    # Prefer Tavily when configured; retain Brave as a compatible fallback.
+    tavily_key = os.getenv("TAVILY_API_KEY", "").strip()
+    brave_key = os.getenv("BRAVE_SEARCH_API_KEY", "").strip()
+    if tavily_key:
+        response = requests.post(
+            "https://api.tavily.com/search",
+            json={"query": query, "search_depth": "basic", "max_results": count, "include_answer": False, "include_raw_content": False},
+            headers={"Authorization": f"Bearer {tavily_key}", "Content-Type": "application/json", "Accept": "application/json", "User-Agent": USER_AGENT},
+            timeout=TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return _normalize_search_results(query, payload.get("results") or [], "Tavily")
+
+    if brave_key:
+        response = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": query, "count": count, "safesearch": "moderate"},
+            headers={"X-Subscription-Token": brave_key, "Accept": "application/json", "User-Agent": USER_AGENT},
+            timeout=TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return _normalize_search_results(query, (payload.get("web") or {}).get("results", []), "Brave Search")
+
+    raise RuntimeError("Web search is not configured. Set TAVILY_API_KEY or BRAVE_SEARCH_API_KEY to enable source-backed internet research.")
 
 
 class ResearchSearchRequest(BaseModel):
