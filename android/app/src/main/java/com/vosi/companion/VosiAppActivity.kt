@@ -1,7 +1,10 @@
 package com.vosi.companion
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
+import android.widget.Toast
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -13,6 +16,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,11 +51,11 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.concurrent.thread
 
-private val Ink = Color(0xFF080A12)
-private val Panel = Color(0xFF141827)
-private val Soft = Color(0xFF20263A)
-private val Accent = Color(0xFFB69CFF)
-private val GlowBlue = Color(0xFF62D9F5)
+private val Ink = Color(0xFF0B0B0F)
+private val Panel = Color(0xFF151219)
+private val Soft = Color(0xFF211A25)
+private val Accent = Color(0xFFFF3FB4)
+private val GlowBlue = Color(0xFFB44CFF)
 private val Muted = Color(0xFF9BA5BC)
 private val BorderGlow = Color(0x334E5E9B)
 
@@ -58,8 +63,8 @@ class VosiAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         VosiSessionContext.app = applicationContext
-        window.statusBarColor = android.graphics.Color.rgb(8, 10, 18)
-        window.navigationBarColor = android.graphics.Color.rgb(8, 10, 18)
+        window.statusBarColor = android.graphics.Color.rgb(11, 11, 15)
+        window.navigationBarColor = android.graphics.Color.rgb(11, 11, 15)
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
@@ -92,79 +97,18 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
     var loggedIn by remember { mutableStateOf(AccountSessionStore.load() != null) }
     var showServerSettings by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
-    var navigationOpen by remember { mutableStateOf(false) }
+    var settingsSection by remember { mutableStateOf<VosiSettingSection?>(null) }
+    var settingsSearch by remember { mutableStateOf("") }
     var chatDraft by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Box(Modifier.fillMaxSize()) {
         VosiAmbientBackground()
-        Scaffold(
-            containerColor = Color.Transparent,
-            bottomBar = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = navigationOpen,
-                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                    ) {
-                        NavigationBar(
-                            containerColor = Color(0xE6081425),
-                            contentColor = Color.White,
-                            tonalElevation = 0.dp
-                        ) {
-                            VosiTab.entries.forEach { item ->
-                                val selected = tab == item
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = { tab = item; navigationOpen = false },
-                                    icon = {
-                                        when (item) {
-                                            VosiTab.HOME -> Icon(Icons.Outlined.Home, null)
-                                            VosiTab.CHAT -> Icon(Icons.Outlined.Forum, null)
-                                            VosiTab.TASKS -> Icon(Icons.Outlined.TaskAlt, null)
-                                            VosiTab.DEVICES -> Icon(Icons.Outlined.Devices, null)
-                                            VosiTab.PROFILE -> Icon(Icons.Outlined.Person, null)
-                                        }
-                                    },
-                                    label = { Text(item.label, fontSize = 10.sp) },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = GlowBlue, selectedTextColor = Color.White,
-                                        indicatorColor = Color(0x3338BDF8),
-                                        unselectedIconColor = Muted, unselectedTextColor = Muted
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    Surface(
-                        color = Color(0xE6081425),
-                        modifier = Modifier.fillMaxWidth(),
-                        shadowElevation = 8.dp
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().height(42.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = { navigationOpen = !navigationOpen }) {
-                                Icon(
-                                    if (navigationOpen) Icons.Outlined.KeyboardArrowDown else Icons.Outlined.KeyboardArrowUp,
-                                    contentDescription = if (navigationOpen) "Hide navigation" else "Show navigation",
-                                    tint = Accent,
-                                    modifier = Modifier.size(30.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        ) { padding ->
+        Scaffold(containerColor = Color.Transparent) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (tab) {
                     VosiTab.HOME -> HomeScreen(
-                        onChat = { tab = VosiTab.CHAT },
                         onSearch = { query -> chatDraft = query; tab = VosiTab.CHAT },
-                        onTasks = { tab = VosiTab.TASKS },
-                        onDevices = { tab = VosiTab.DEVICES },
                         onTalk = onOpenCompanion,
                         onOpenSettings = { settingsOpen = true }
                     )
@@ -231,41 +175,66 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
             }
         }
 
-        androidx.compose.animation.AnimatedVisibility(
-            visible = settingsOpen,
-            modifier = Modifier.align(Alignment.CenterStart),
-            enter = androidx.compose.animation.slideInHorizontally(initialOffsetX = { -it }) + androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.slideOutHorizontally(targetOffsetX = { -it }) + androidx.compose.animation.fadeOut()
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxHeight().width(286.dp),
-                color = Color(0xF0081425),
-                shape = RoundedCornerShape(topEnd = 26.dp, bottomEnd = 26.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x5538BDF8)),
-                shadowElevation = 20.dp
-            ) {
-                Column(
-                    Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Column {
-                            Text("VOSI", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                            Text("SETTINGS & SHORTCUTS", color = GlowBlue, fontSize = 9.sp, letterSpacing = 1.5.sp)
-                        }
-                        IconButton(onClick = { settingsOpen = false }) {
-                            Icon(Icons.Outlined.ArrowBack, "Close settings", tint = Accent)
-                        }
+        if (settingsOpen) {
+            VosiSettingsDrawer(
+                search = settingsSearch,
+                onSearch = { settingsSearch = it },
+                onSelect = { section -> settingsSection = section; settingsOpen = false },
+                onNavigate = { destination ->
+                    tab = when (destination) {
+                        "chat" -> VosiTab.CHAT
+                        "tasks" -> VosiTab.TASKS
+                        "devices" -> VosiTab.DEVICES
+                        else -> VosiTab.HOME
                     }
-                    HorizontalDivider(color = Color(0x334E7498))
-                    DrawerEntry("Account & profile", Icons.Outlined.Person) { tab = VosiTab.PROFILE; settingsOpen = false }
-                    DrawerEntry("Server connection", Icons.Outlined.Cloud) { tab = VosiTab.PROFILE; showServerSettings = true; settingsOpen = false }
-                    DrawerEntry("Connected devices", Icons.Outlined.Devices) { tab = VosiTab.DEVICES; settingsOpen = false }
-                    DrawerEntry("Tasks & approvals", Icons.Outlined.TaskAlt) { tab = VosiTab.TASKS; settingsOpen = false }
-                    Spacer(Modifier.weight(1f))
-                    Text("Your control comes first. Sensitive actions still require your approval.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                    settingsOpen = false
+                },
+                onClose = { settingsOpen = false }
+            )
+        }
+
+        val selectedSettings = settingsSection
+        if (selectedSettings != null) {
+            VosiSettingsDetailScreen(
+                section = selectedSettings,
+                onBack = { settingsSection = null; settingsOpen = true },
+                onAction = { action ->
+                    when (action) {
+                        "profile" -> { settingsSection = null; tab = VosiTab.PROFILE }
+                        "backend" -> { settingsSection = null; showServerSettings = true; tab = VosiTab.PROFILE }
+                        "chat" -> { settingsSection = null; tab = VosiTab.CHAT }
+                        "tasks" -> { settingsSection = null; tab = VosiTab.TASKS }
+                        "devices" -> { settingsSection = null; tab = VosiTab.DEVICES }
+                        "companion" -> onOpenCompanion()
+                        "notifications" -> try {
+                            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Open Android Settings to manage VOSI notifications.", Toast.LENGTH_SHORT).show()
+                        }
+                        "notification-access" -> try {
+                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Notification access settings are unavailable on this device.", Toast.LENGTH_SHORT).show()
+                        }
+                        "app-settings" -> try {
+                            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Could not open Android app settings.", Toast.LENGTH_SHORT).show()
+                        }
+                        "language-info" -> try {
+                            context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "VOSI currently follows your Android system language.", Toast.LENGTH_SHORT).show()
+                        }
+                        "appearance-info" -> Toast.makeText(context, "VOSI is using its signature dark appearance.", Toast.LENGTH_SHORT).show()
+                        "model-info" -> Toast.makeText(context, "AI model and provider routing are managed by the connected VOSI backend.", Toast.LENGTH_LONG).show()
+                        "connector-info" -> Toast.makeText(context, "This connector is not connected. OAuth authorization must be enabled by the VOSI backend first.", Toast.LENGTH_LONG).show()
+                        "screen-info" -> Toast.makeText(context, "Android screen observation is not enabled in this build yet. No screen is being captured.", Toast.LENGTH_LONG).show()
+                        "about-info" -> Toast.makeText(context, "VOSI support and documentation links are not configured in this build yet.", Toast.LENGTH_LONG).show()
+                    }
                 }
-            }
+            )
         }
     }
 }
@@ -288,233 +257,179 @@ private fun DrawerEntry(label: String, icon: androidx.compose.ui.graphics.vector
 
 @Composable
 private fun VosiAmbientBackground() {
-    // Compose port of the desktop dashboard's deep-ocean motion background:
-    // slow drifting cyan/blue light fields, soft floating orbs and a moving haze.
-    val motion = androidx.compose.animation.core.rememberInfiniteTransition(label = "vosi-desktop-motion")
-    val drift by motion.animateFloat(
-        initialValue = -1f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(9000), repeatMode = RepeatMode.Reverse),
-        label = "ambient-drift"
-    )
-    val haze by motion.animateFloat(
-        initialValue = 0.60f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(6000), repeatMode = RepeatMode.Reverse),
-        label = "haze-shift"
-    )
-    val orbOne by motion.animateFloat(
+    // Native Compose recreation of the supplied Android HTML's pink/purple blurred blobs.
+    // The shorter cycles make the ambient motion visible without becoming distracting.
+    val motion = rememberInfiniteTransition(label = "vosi-html-ambient")
+    val pinkDrift by motion.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(7000), repeatMode = RepeatMode.Reverse),
-        label = "orb-one"
+        animationSpec = infiniteRepeatable(tween(4200), repeatMode = RepeatMode.Reverse),
+        label = "pink-blob-drift"
     )
-    val orbTwo by motion.animateFloat(
+    val purpleDrift by motion.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(8000), repeatMode = RepeatMode.Reverse),
-        label = "orb-two"
+        animationSpec = infiniteRepeatable(tween(5200), repeatMode = RepeatMode.Reverse),
+        label = "purple-blob-drift"
     )
-    val orbThree by motion.animateFloat(
+    val lightDrift by motion.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(10000), repeatMode = RepeatMode.Reverse),
-        label = "orb-three"
+        animationSpec = infiniteRepeatable(tween(3400), repeatMode = RepeatMode.Reverse),
+        label = "light-pink-blob-drift"
     )
 
-    Box(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                listOf(Color(0xFF08284A), Color(0xFF041B33), Color(0xFF021225), Color(0xFF010814))
-            )
-        )
-    ) {
-        // Main ambient field: equivalent to the desktop ::before radial-gradient layer.
+    Box(Modifier.fillMaxSize().background(Color(0xFF0B0B0F))) {
         Box(
-            Modifier.fillMaxSize().graphicsLayer {
-                translationX = drift * 22.dp.toPx()
-                translationY = -drift * 14.dp.toPx()
-                scaleX = 1.08f + ((drift + 1f) * 0.07f)
-                scaleY = 1.08f + ((drift + 1f) * 0.07f)
-                alpha = 0.78f + ((drift + 1f) * 0.11f)
-            }.background(
-                Brush.radialGradient(
-                    0f to Color(0x4438BDF8),
-                    0.38f to Color(0x2238BDF8),
-                    0.72f to Color(0x113B82F6),
-                    1f to Color.Transparent
+            Modifier.align(Alignment.TopStart).offset(x = (-150).dp, y = (-190).dp)
+                .size(430.dp)
+                .graphicsLayer {
+                    translationX = pinkDrift * 74.dp.toPx()
+                    translationY = pinkDrift * 40.dp.toPx()
+                    scaleX = 1f + pinkDrift * 0.18f
+                    scaleY = 1f + pinkDrift * 0.18f
+                }
+                .background(
+                    Brush.radialGradient(
+                        0f to Color(0xCCFF2F9E),
+                        0.42f to Color(0x77FF2F9E),
+                        0.78f to Color(0x22FF2F9E),
+                        1f to Color.Transparent
+                    )
                 )
-            )
         )
-        // Three independently floating blurred light fields mirror the desktop orbs.
         Box(
-            Modifier.align(Alignment.TopStart).offset(x = (-145).dp, y = (-125).dp)
-                .size(width = 500.dp, height = 430.dp)
+            Modifier.align(Alignment.TopEnd).offset(x = 135.dp, y = (-160).dp)
+                .size(390.dp)
                 .graphicsLayer {
-                    translationX = orbOne * 62.dp.toPx()
-                    translationY = orbOne * 46.dp.toPx()
-                    scaleX = 1f + orbOne * 0.18f
-                    scaleY = 1f + orbOne * 0.18f
-                    alpha = 0.58f + orbOne * 0.34f
+                    translationX = -purpleDrift * 64.dp.toPx()
+                    translationY = purpleDrift * 30.dp.toPx()
+                    scaleX = 1f - purpleDrift * 0.10f
+                    scaleY = 1f - purpleDrift * 0.10f
                 }
-                .background(Brush.radialGradient(listOf(Color(0x5538BDF8), Color(0x2238BDF8), Color.Transparent)))
-        )
-        Box(
-            Modifier.align(Alignment.TopEnd).offset(x = 165.dp, y = (-10).dp)
-                .size(width = 440.dp, height = 390.dp)
-                .graphicsLayer {
-                    translationX = -orbTwo * 68.dp.toPx()
-                    translationY = orbTwo * 58.dp.toPx()
-                    scaleX = 1.05f + orbTwo * 0.06f
-                    scaleY = 1.05f + orbTwo * 0.06f
-                    alpha = 0.48f + orbTwo * 0.42f
-                }
-                .background(Brush.radialGradient(listOf(Color(0x554F8EF7), Color(0x223B82F6), Color.Transparent)))
-        )
-        Box(
-            Modifier.align(Alignment.BottomCenter).offset(y = 155.dp)
-                .size(width = 500.dp, height = 410.dp)
-                .graphicsLayer {
-                    translationX = orbThree * 64.dp.toPx()
-                    translationY = -orbThree * 72.dp.toPx()
-                    scaleX = 1f + orbThree * 0.28f
-                    scaleY = 1f + orbThree * 0.28f
-                    alpha = 0.34f + orbThree * 0.58f
-                }
-                .background(Brush.radialGradient(listOf(Color(0x4438BDF8), Color(0x2214B8A6), Color.Transparent)))
-        )
-        // Moving translucent haze, equivalent to the desktop ::after layer.
-        Box(
-            Modifier.fillMaxSize().graphicsLayer {
-                alpha = haze
-                translationX = drift * 9.dp.toPx()
-                translationY = -drift * 6.dp.toPx()
-            }.background(
-                Brush.verticalGradient(
-                    0f to Color(0x11111D32),
-                    0.48f to Color.Transparent,
-                    1f to Color(0x66000510)
+                .background(
+                    Brush.radialGradient(
+                        0f to Color(0xCCA44BFF),
+                        0.44f to Color(0x77A44BFF),
+                        0.8f to Color(0x22A44BFF),
+                        1f to Color.Transparent
+                    )
                 )
-            )
+        )
+        Box(
+            Modifier.align(Alignment.TopCenter).offset(x = 8.dp, y = (-75).dp)
+                .size(245.dp)
+                .graphicsLayer {
+                    translationX = lightDrift * 26.dp.toPx()
+                    translationY = -lightDrift * 22.dp.toPx()
+                    scaleX = 1f + lightDrift * 0.22f
+                    scaleY = 1f + lightDrift * 0.22f
+                    alpha = 0.78f
+                }
+                .background(
+                    Brush.radialGradient(
+                        0f to Color(0xBBFF77C8),
+                        0.48f to Color(0x66FF77C8),
+                        1f to Color.Transparent
+                    )
+                )
+        )
+        // Fade the glow into the same near-black base used by the HTML prototype.
+        Box(
+            Modifier.fillMaxWidth().height(390.dp).align(Alignment.TopCenter)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.42f to Color(0x220B0B0F),
+                        0.78f to Color(0xCC0B0B0F),
+                        1f to Color(0xFF0B0B0F)
+                    )
+                )
         )
     }
 }
 
 @Composable
 private fun HomeScreen(
-    onChat: () -> Unit,
     onSearch: (String) -> Unit,
-    onTasks: () -> Unit,
-    onDevices: () -> Unit,
     onTalk: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var connectorsOpen by remember { mutableStateOf(false) }
 
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 8.dp)
-    ) {
-        // Familiar ChatGPT-style top bar; the existing settings drawer remains unchanged.
-        Row(
-            Modifier.fillMaxWidth().height(48.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 13.dp, top = 10.dp)
+                .size(44.dp)
+                .background(Color(0x99191420), RoundedCornerShape(15.dp))
         ) {
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Menu, "Open settings", tint = Color.White, modifier = Modifier.size(25.dp))
-            }
-            Spacer(Modifier.width(5.dp))
-            Column(Modifier.weight(1f)) {
-                Text("VOSI", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                Text("AI companion", color = Color(0xFF9CB2CA), fontSize = 10.sp)
-            }
-            IconButton(onClick = onChat) {
-                Icon(Icons.Outlined.Forum, "Open chat", tint = Color(0xFFD8E7F8), modifier = Modifier.size(22.dp))
-            }
-            IconButton(onClick = onTalk) {
-                Icon(Icons.Outlined.GraphicEq, "Start voice conversation", tint = GlowBlue, modifier = Modifier.size(23.dp))
-            }
+            Icon(Icons.Outlined.Menu, "Open navigation and settings", tint = Color.White, modifier = Modifier.size(23.dp))
         }
 
-        // Spacious greeting area, like ChatGPT's new-chat landing screen.
-        Box(
-            Modifier.weight(1f).fillMaxWidth(),
-            contentAlignment = Alignment.Center
+        Column(
+            Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = 21.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    Modifier.size(62.dp).clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Color(0xFF7DDCF5), Color(0xFF275C91), Color(0xFF10223D)))),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(38.dp))
-                }
-                Spacer(Modifier.height(22.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Hi, I'm ", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp)
                 Text(
-                    "Hi, I'm VOSI",
-                    color = Color.White,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.6).sp
-                )
-                Spacer(Modifier.height(9.dp))
-                Text(
-                    "What can I help you with today?",
-                    color = Color(0xFFB8C9DD),
-                    fontSize = 14.sp
+                    "VOSI",
+                    style = androidx.compose.ui.text.TextStyle(
+                        brush = Brush.horizontalGradient(listOf(Color(0xFFFF3FB4), Color(0xFFB44CFF))),
+                        fontSize = 31.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.7).sp
+                    )
                 )
             }
-        }
-
-        // ChatGPT-like composer anchored to the bottom, with VOSI's connector and voice actions.
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xD90A1728),
-            shape = RoundedCornerShape(27.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x554C789D)),
-            shadowElevation = 12.dp
-        ) {
-            Column(Modifier.padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 8.dp)) {
-                androidx.compose.foundation.text.BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp, max = 112.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp
-                    ),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(GlowBlue),
-                    maxLines = 4,
-                    decorationBox = { inner ->
-                        Box {
-                            if (query.isBlank()) {
-                                Text("Message VOSI", color = Color(0xFF91A5BC), fontSize = 15.sp)
-                            }
-                            inner()
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = {
-                        if (query.isNotBlank()) {
-                            val message = query.trim()
-                            query = ""
-                            onSearch(message)
-                        }
-                    })
-                )
-                Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(48.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xE6131118),
+                shape = RoundedCornerShape(28.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    Brush.linearGradient(listOf(Color(0xFFFF3FB4), Color(0xFFB44CFF)))
+                ),
+                shadowElevation = 13.dp
+            ) {
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier.padding(start = 8.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { connectorsOpen = true }, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.Extension, "Open connectors", tint = Color(0xFFC5D7EA), modifier = Modifier.size(21.dp))
+                    IconButton(onClick = { connectorsOpen = true }, modifier = Modifier.size(42.dp)) {
+                        CubeConnectorMark()
                     }
-                    IconButton(onClick = onDevices, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.Devices, "Connected devices", tint = Color(0xFFC5D7EA), modifier = Modifier.size(20.dp))
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 15.sp
+                        ),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFF65BE)),
+                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            if (query.isNotBlank()) {
+                                val message = query.trim()
+                                query = ""
+                                onSearch(message)
+                            }
+                        }),
+                        decorationBox = { inner ->
+                            Box {
+                                if (query.isBlank()) {
+                                    Text("Ask VOSI anything…", color = Color(0xFF8A8798), fontSize = 15.sp)
+                                }
+                                inner()
+                            }
+                        }
+                    )
+                    IconButton(onClick = onTalk, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.Mic, "Voice input", tint = Color(0xFFE9D9EE), modifier = Modifier.size(22.dp))
                     }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onTalk, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Outlined.GraphicEq, "Voice conversation", tint = GlowBlue, modifier = Modifier.size(22.dp))
-                    }
-                    Spacer(Modifier.width(5.dp))
                     FilledIconButton(
                         onClick = {
                             if (query.isNotBlank()) {
@@ -526,33 +441,15 @@ private fun HomeScreen(
                         enabled = query.isNotBlank(),
                         modifier = Modifier.size(38.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (query.isNotBlank()) Color(0xFFE7F5FF) else Color(0xFF35475B),
-                            contentColor = Color(0xFF071525),
-                            disabledContainerColor = Color(0xFF35475B),
-                            disabledContentColor = Color(0xFF8FA0B3)
+                            containerColor = Color(0xFFFF4EAE),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color(0xFF332532),
+                            disabledContentColor = Color(0xFF756A78)
                         )
                     ) {
-                        Icon(Icons.Outlined.ArrowUpward, "Send message", modifier = Modifier.size(20.dp))
+                        Icon(Icons.Outlined.ArrowUpward, "Send to VOSI", modifier = Modifier.size(19.dp))
                     }
                 }
-            }
-        }
-
-        Row(
-            Modifier.fillMaxWidth().padding(top = 7.dp, bottom = 3.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onTasks, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp)) {
-                Icon(Icons.Outlined.TaskAlt, null, tint = Color(0xFF9FB8D0), modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(5.dp))
-                Text("Tasks", color = Color(0xFFB5C8DB), fontSize = 11.sp)
-            }
-            Text("·", color = Color(0xFF7890A8))
-            TextButton(onClick = onDevices, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp)) {
-                Icon(Icons.Outlined.Devices, null, tint = Color(0xFF9FB8D0), modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(5.dp))
-                Text("Devices", color = Color(0xFFB5C8DB), fontSize = 11.sp)
             }
         }
     }
@@ -560,27 +457,65 @@ private fun HomeScreen(
     if (connectorsOpen) {
         AlertDialog(
             onDismissRequest = { connectorsOpen = false },
-            containerColor = Color(0xFF0A1B2D),
-            title = { Text("VOSI connectors", color = Color.White) },
+            containerColor = Color(0xFF151119),
+            title = { Text("VOSI Connectors", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Connect services and devices to extend what VOSI can do.", color = Muted, fontSize = 12.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Connect services to let VOSI work across your apps.", color = Muted, fontSize = 12.sp)
+                    listOf(
+                        "Gmail" to "Email",
+                        "Google services" to "Calendar, Drive and Contacts",
+                        "Browser integration" to "Browser pages and search",
+                        "Chrome extension" to "Desktop browser companion",
+                        "Third-party apps" to "Authorized integrations"
+                    ).forEach { (name, detail) ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text(detail, color = Muted, fontSize = 10.sp)
+                            }
+                            Text("Not connected", color = Color(0xFFE8A0C5), fontSize = 10.sp)
+                        }
+                    }
                     Text(
-                        "Browser and desktop connections are managed from Connected devices. Account-based connectors appear here when enabled for your VOSI account.",
-                        color = Color(0xFFB8C8DA),
-                        fontSize = 12.sp
+                        "No connector will be shown as connected until its real OAuth or pairing flow succeeds.",
+                        color = Color(0xFF9C91A0),
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { connectorsOpen = false; onDevices() }) {
-                    Text("Connected devices", color = GlowBlue)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { connectorsOpen = false }) { Text("Close", color = Accent) }
+                TextButton(onClick = { connectorsOpen = false }) { Text("Close", color = Color(0xFFFF70C5)) }
             }
         )
+    }
+}
+
+@Composable
+private fun CubeConnectorMark() {
+    androidx.compose.foundation.Canvas(Modifier.size(23.dp)) {
+        val w = size.width
+        val h = size.height
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.9.dp.toPx())
+        val outline = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.5f, h * 0.08f)
+            lineTo(w * 0.9f, h * 0.29f)
+            lineTo(w * 0.9f, h * 0.71f)
+            lineTo(w * 0.5f, h * 0.93f)
+            lineTo(w * 0.1f, h * 0.71f)
+            lineTo(w * 0.1f, h * 0.29f)
+            close()
+        }
+        drawPath(outline, Color(0xFFFF70C5), style = stroke)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.5f, h * 0.08f), Offset(w * 0.5f, h * 0.5f), strokeWidth = stroke.width)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.1f, h * 0.29f), Offset(w * 0.5f, h * 0.5f), strokeWidth = stroke.width)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.9f, h * 0.29f), Offset(w * 0.5f, h * 0.5f), strokeWidth = stroke.width)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.5f, h * 0.5f), Offset(w * 0.5f, h * 0.93f), strokeWidth = stroke.width)
     }
 }
 
