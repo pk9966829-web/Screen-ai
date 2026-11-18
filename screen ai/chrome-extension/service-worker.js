@@ -162,7 +162,7 @@ async function executeAvailableAgentTasks() {
     if (!claimResponse.ok) continue;
     const claim = await claimResponse.json();
     const step = claim.step;
-    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page"].includes(step.capability)) continue;
+    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web"].includes(step.capability)) continue;
     if (step.capability !== "browser.search_products") {
       try {
         await executeGeneralBrowserStep(device, task, step);
