@@ -102,7 +102,7 @@ class _PageText(HTMLParser):
     def handle_data(self, data):
         if self.skip:
             return
-        clean = re.sub(r"\\s+", " ", data).strip()
+        clean = re.sub(r"\s+", " ", data).strip()
         if clean:
             if self.in_title:
                 self.title += clean + " "
@@ -143,8 +143,8 @@ def read_public_page(url: str) -> dict[str, Any]:
             chunks.append(chunk)
         parser = _PageText()
         parser.feed(b"".join(chunks).decode(response.encoding or "utf-8", errors="replace"))
-        text = re.sub(r"[ \\t]+", " ", " ".join(parser.parts))
-        text = re.sub(r"\\n\\s*\\n+", "\\n", text).strip()[:MAX_TEXT_CHARS]
+        text = re.sub(r"[ \t]+", " ", " ".join(parser.parts))
+        text = re.sub(r"\n\s*\n+", "\n", text).strip()[:MAX_TEXT_CHARS]
         if not text:
             raise ValueError("No readable text was found on this page.")
         return {
