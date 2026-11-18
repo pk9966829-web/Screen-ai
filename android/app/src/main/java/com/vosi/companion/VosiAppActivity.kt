@@ -175,6 +175,20 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
             }
         }
 
+        if (tab != VosiTab.HOME && settingsSection == null && !settingsOpen) {
+            Surface(
+                modifier = Modifier.align(Alignment.CenterStart).width(27.dp).height(58.dp)
+                    .clickable { settingsOpen = true },
+                color = Color(0xCC211722),
+                shape = RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x55FF55B7))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.ChevronRight, "Open VOSI navigation", tint = Color(0xFFFF70C5), modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
         if (settingsOpen) {
             VosiSettingsDrawer(
                 search = settingsSearch,
