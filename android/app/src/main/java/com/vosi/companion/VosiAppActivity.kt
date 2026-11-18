@@ -368,6 +368,7 @@ private fun HomeScreen(
 ) {
     var query by remember { mutableStateOf("") }
     var connectorsOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Box(Modifier.fillMaxSize()) {
         IconButton(
@@ -442,7 +443,7 @@ private fun HomeScreen(
                         }
                     )
                     IconButton(onClick = onTalk, modifier = Modifier.size(40.dp)) {
-                        Icon(Icons.Outlined.Mic, "Voice input", tint = Color(0xFFE9D9EE), modifier = Modifier.size(22.dp))
+                        Icon(Icons.Outlined.Mic, "Open VOSI voice workspace", tint = Color(0xFFE9D9EE), modifier = Modifier.size(22.dp))
                     }
                     FilledIconButton(
                         onClick = {
@@ -484,7 +485,15 @@ private fun HomeScreen(
                         "Third-party apps" to "Authorized integrations"
                     ).forEach { (name, detail) ->
                         Row(
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    Toast.makeText(
+                                        context,
+                                        "$name is not connected yet. Its OAuth or browser-pairing flow must be configured before it can be enabled.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                .padding(vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -492,7 +501,11 @@ private fun HomeScreen(
                                 Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 Text(detail, color = Muted, fontSize = 10.sp)
                             }
-                            Text("Not connected", color = Color(0xFFE8A0C5), fontSize = 10.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Not connected", color = Color(0xFFE8A0C5), fontSize = 10.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Icon(Icons.Outlined.ChevronRight, null, tint = Muted, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                     Text(
