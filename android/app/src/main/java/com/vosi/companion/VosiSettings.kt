@@ -155,7 +155,8 @@ internal fun VosiSettingsDrawer(
                 Spacer(Modifier.height(14.dp))
                 Text("QUICK ACCESS", color = Color(0xFF9A91A1), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
                 Spacer(Modifier.height(7.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    DrawerQuickAction("Home", Icons.Outlined.Home, Modifier.weight(1f)) { onNavigate("home") }
                     DrawerQuickAction("Chat", Icons.Outlined.Forum, Modifier.weight(1f)) { onNavigate("chat") }
                     DrawerQuickAction("Tasks", Icons.Outlined.TaskAlt, Modifier.weight(1f)) { onNavigate("tasks") }
                     DrawerQuickAction("Devices", Icons.Outlined.Devices, Modifier.weight(1f)) { onNavigate("devices") }
