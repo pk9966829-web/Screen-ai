@@ -369,7 +369,7 @@ private fun HomeScreen(
     var query by remember { mutableStateOf("") }
     var connectorsOpen by remember { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+    Box(Modifier.fillMaxSize()) {
         IconButton(
             onClick = onOpenSettings,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 13.dp, top = 10.dp)
