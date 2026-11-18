@@ -36,7 +36,8 @@ from agent_runtime import AgentRuntimeError
 from voice_api import router as voice_router
 from cloud_worker import router as cloud_worker_router
 import identity_api
-from identity_api import router as identity_router\nfrom research_engine import router as research_router
+from identity_api import router as identity_router
+from research_engine import router as research_router
 app.include_router(agent_router)
 app.include_router(voice_router)
 app.include_router(cloud_worker_router)
