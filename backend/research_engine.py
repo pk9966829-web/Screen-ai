@@ -32,7 +32,16 @@ def _authorize(authorization: str | None) -> None:
     scheme, _, supplied = (authorization or "").partition(" ")
     if not expected:
         raise HTTPException(status_code=503, detail="Research API is disabled until VOSI_AGENT_TOKEN is configured.")
-    if scheme.lower() != "bearer" or not supplied or not hmac.compare_digest(supplied.strip(), expected):
+    if scheme.lower() != "bearer" or not supplied:
+        raise HTTPException(status_code=401, detail="Invalid VOSI research token.")
+    if expected and hmac.compare_digest(supplied.strip(), expected):
+        return
+    # Paired browser/Android/desktop devices may use their own scoped device token.
+    try:
+        from agent_api import devices
+        devices.authenticate(supplied.strip())
+        return
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid VOSI research token.")
 
 
