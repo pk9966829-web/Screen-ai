@@ -30,8 +30,6 @@ def _authorize(authorization: str | None) -> None:
     import hmac
     expected = os.getenv("VOSI_AGENT_TOKEN", "").strip()
     scheme, _, supplied = (authorization or "").partition(" ")
-    if not expected:
-        raise HTTPException(status_code=503, detail="Research API is disabled until VOSI_AGENT_TOKEN is configured.")
     if scheme.lower() != "bearer" or not supplied:
         raise HTTPException(status_code=401, detail="Invalid VOSI research token.")
     if expected and hmac.compare_digest(supplied.strip(), expected):
