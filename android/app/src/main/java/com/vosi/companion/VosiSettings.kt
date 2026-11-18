@@ -108,7 +108,7 @@ internal fun VosiSettingsDrawer(
     onClose: () -> Unit
 ) {
     Box(
-        Modifier.fillMaxSize().background(Color(0x99000000)),
+        Modifier.fillMaxSize().background(Color(0x99000000)).clickable(onClick = onClose),
         contentAlignment = Alignment.CenterStart
     ) {
         Surface(
@@ -173,6 +173,16 @@ internal fun VosiSettingsDrawer(
                     verticalArrangement = Arrangement.spacedBy(7.dp),
                     contentPadding = PaddingValues(bottom = 12.dp)
                 ) {
+                    if (filtered.isEmpty()) {
+                        item {
+                            Text(
+                                "No settings match “$search”. Try another keyword.",
+                                color = Color(0xFF9A91A1),
+                                fontSize = 12.sp,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 22.dp)
+                            )
+                        }
+                    }
                     items(filtered, key = { it.key }) { section ->
                         Surface(
                             modifier = Modifier.fillMaxWidth().clickable { onSelect(section) },
