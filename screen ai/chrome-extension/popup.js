@@ -1,6 +1,6 @@
 const API = "http://127.0.0.1:8001";
 const DEVICE_KEY = "vosiPairedDevice";
-const CAPABILITIES = ["browser.search_products", "browser.open_tab", "browser.read_visible_page"];
+const CAPABILITIES = ["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web"];
 
 const pairSection = document.getElementById("pairSection");
 const deviceCard = document.getElementById("deviceCard");
