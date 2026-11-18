@@ -9,6 +9,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -101,6 +102,14 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
     var settingsSearch by remember { mutableStateOf("") }
     var chatDraft by remember { mutableStateOf("") }
     val context = LocalContext.current
+
+    BackHandler(enabled = settingsSection != null || settingsOpen || tab != VosiTab.HOME) {
+        when {
+            settingsSection != null -> { settingsSection = null; settingsOpen = true }
+            settingsOpen -> settingsOpen = false
+            tab != VosiTab.HOME -> tab = VosiTab.HOME
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         VosiAmbientBackground()
