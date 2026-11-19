@@ -35,14 +35,14 @@ internal data class VosiSettingSection(
 
 internal val VosiSettingSections = listOf(
     VosiSettingSection("general", "General", "Account, language, appearance and app behaviour", Icons.Outlined.Settings, listOf(
-        VosiSettingOption("Account & profile", "Manage your VOSI identity and personal details", "Manage", "profile"),
+        VosiSettingOption("Account & profile", "Manage your CHERRY AI identity and personal details", "Manage", "profile"),
         VosiSettingOption("Language", "The app currently follows your Android system language", "System", "language-info"),
-        VosiSettingOption("Appearance", "VOSI keeps its signature dark visual style", "Dark", "appearance-info"),
-        VosiSettingOption("Notifications", "Manage VOSI notification permission", "Manage", "notifications"),
-        VosiSettingOption("Startup behaviour", "VOSI opens on the minimal Home screen", "Home")
+        VosiSettingOption("Appearance", "CHERRY AI keeps its signature dark visual style", "Dark", "appearance-info"),
+        VosiSettingOption("Notifications", "Manage CHERRY AI notification permission", "Manage", "notifications"),
+        VosiSettingOption("Startup behaviour", "CHERRY AI opens on the minimal Home screen", "Home")
     )),
     VosiSettingSection("ai", "AI & Intelligence", "Providers, models, backend and response behaviour", Icons.Outlined.Memory, listOf(
-        VosiSettingOption("Backend connection", "Configure the VOSI API address and account connection", "Manage", "backend"),
+        VosiSettingOption("Backend connection", "Configure the CHERRY AI API address and account connection", "Manage", "backend"),
         VosiSettingOption("Provider management", "Provider credentials and routing are controlled by the backend", "Backend", "backend"),
         VosiSettingOption("Default AI model", "The connected backend selects the active model", "Backend managed", "backend"),
         VosiSettingOption("Response style", "Response behaviour is currently controlled by the connected model", "Balanced", "model-info"),
@@ -56,28 +56,28 @@ internal val VosiSettingSections = listOf(
         VosiSettingOption("Observation history", "No screen frames are stored by this settings screen", "No sessions")
     )),
     VosiSettingSection("voice", "Voice & Communication", "Speech input, voice output and microphone", Icons.Outlined.Mic, listOf(
-        VosiSettingOption("Voice workspace", "Open VOSI's native voice and phone tools", "Open", "companion"),
-        VosiSettingOption("Microphone permission", "Review microphone access granted to VOSI", "Manage", "app-settings"),
+        VosiSettingOption("Voice workspace", "Open CHERRY AI's native voice and phone tools", "Open", "companion"),
+        VosiSettingOption("Microphone permission", "Review microphone access granted to CHERRY AI", "Manage", "app-settings"),
         VosiSettingOption("Speech output", "Android text-to-speech is available in the companion workspace", "Available", "companion"),
         VosiSettingOption("Spoken browser recommendations", "Configure spoken recommendations in the companion workspace", "Configure", "companion"),
         VosiSettingOption("Wake-word activation", "Always-on wake-word listening is not enabled in this build", "Not enabled")
     )),
     VosiSettingSection("device", "Device Control", "Pairing, connected devices and device permissions", Icons.Outlined.Devices, listOf(
-        VosiSettingOption("Pair this phone", "Enter a secure one-time VOSI pairing code", "Open pairing", "companion"),
+        VosiSettingOption("Pair this phone", "Enter a secure one-time CHERRY AI pairing code", "Open pairing", "companion"),
         VosiSettingOption("Connection status", "Check the paired device and backend heartbeat", "Check", "companion"),
         VosiSettingOption("Device commands", "Open the command workspace on this phone", "Open", "companion"),
         VosiSettingOption("Notification access", "Manage access to notification previews", "Manage", "notification-access"),
         VosiSettingOption("Connected devices", "Review phone, desktop and browser connection status", "View", "devices")
     )),
     VosiSettingSection("connectors", "Connectors & Integrations", "Gmail, Google, browser and third-party services", Icons.Outlined.Extension, listOf(
-        VosiSettingOption("Gmail", "Email access requires an enabled VOSI OAuth connection", "Not connected", "connector-info"),
+        VosiSettingOption("Gmail", "Email access requires an enabled CHERRY AI OAuth connection", "Not connected", "connector-info"),
         VosiSettingOption("Google services", "Calendar, Drive and Contacts require OAuth authorization", "Not connected", "connector-info"),
-        VosiSettingOption("Browser integration", "Browser context requires a paired VOSI browser companion", "Not connected", "connector-info"),
-        VosiSettingOption("Chrome extension", "Pair the VOSI extension before using browser actions", "Not connected", "connector-info"),
+        VosiSettingOption("Browser integration", "Browser context requires a paired CHERRY AI browser companion", "Not connected", "connector-info"),
+        VosiSettingOption("Chrome extension", "Pair the CHERRY AI extension before using browser actions", "Not connected", "connector-info"),
         VosiSettingOption("Third-party apps", "External integrations require backend authorization", "Not connected", "connector-info")
     )),
     VosiSettingSection("agents", "Automation & Agents", "AI assistants, task execution and approvals", Icons.Outlined.SmartToy, listOf(
-        VosiSettingOption("Chat assistant", "Open the shared VOSI conversation", "Open", "chat"),
+        VosiSettingOption("Chat assistant", "Open the shared CHERRY AI conversation", "Open", "chat"),
         VosiSettingOption("Voice assistant", "Open the native voice workspace", "Open", "companion"),
         VosiSettingOption("Screen observer", "Android screen-observation service is not enabled yet", "Not enabled", "screen-info"),
         VosiSettingOption("Automation agent", "Review tasks and execution progress", "View tasks", "tasks"),
@@ -87,14 +87,14 @@ internal val VosiSettingSections = listOf(
         VosiSettingOption("Device credentials", "Paired-device credentials are encrypted with Android Keystore", "Protected"),
         VosiSettingOption("App permissions", "Review microphone, notification and other app permissions", "Manage", "app-settings"),
         VosiSettingOption("Notification access", "Manage notification-listener permission", "Manage", "notification-access"),
-        VosiSettingOption("Account security", "Review your VOSI account session", "Manage", "profile"),
+        VosiSettingOption("Account security", "Review your CHERRY AI account session", "Manage", "profile"),
         VosiSettingOption("Local notification previews", "Open the companion workspace to review or clear saved previews", "Open", "companion")
     )),
-    VosiSettingSection("about", "About VOSI", "Version, system information and support", Icons.Outlined.Info, listOf(
-        VosiSettingOption("Application version", "Installed VOSI Android application version", "0.2.0"),
+    VosiSettingSection("about", "About CHERRY AI", "Version, system information and support", Icons.Outlined.Info, listOf(
+        VosiSettingOption("Application version", "Installed CHERRY AI Android application version", "0.2.0"),
         VosiSettingOption("Platform", "Native Android application built with Jetpack Compose", "Android"),
         VosiSettingOption("Build information", "Build and package details are available in Android app info", "View", "app-settings"),
-        VosiSettingOption("Documentation", "VOSI documentation is not configured in this build", "Unavailable", "about-info"),
+        VosiSettingOption("Documentation", "CHERRY AI documentation is not configured in this build", "Unavailable", "about-info"),
         VosiSettingOption("Support & feedback", "Support contact is not configured in this build", "Unavailable", "about-info")
     ))
 )
@@ -128,7 +128,7 @@ internal fun VosiSettingsDrawer(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("VOSI AI", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
+                        Text("CHERRY AI AI", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
                         Text("NAVIGATION & SETTINGS", color = Color(0xFFFF70C5), fontSize = 9.sp, letterSpacing = 1.2.sp)
                     }
                     IconButton(onClick = onClose) {
