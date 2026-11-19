@@ -43,11 +43,11 @@
     if (sent) return;
     sent = true;
     const message = taskId
-      ? { type: "VOSI_AGENT_BROWSER_RESULTS", taskId, stepId, products }
-      : { type: "VOSI_BROWSER_RESULTS", requestId, products };
+      ? { type: "CHERRY AI_AGENT_BROWSER_RESULTS", taskId, stepId, products }
+      : { type: "CHERRY AI_BROWSER_RESULTS", requestId, products };
     chrome.runtime.sendMessage(message, response => {
       if (chrome.runtime.lastError || !response?.success) {
-        console.warn("VOSI could not accept Flipkart results:", response?.error || chrome.runtime.lastError?.message);
+        console.warn("CHERRY AI could not accept Flipkart results:", response?.error || chrome.runtime.lastError?.message);
       }
     });
   }, 1500);
