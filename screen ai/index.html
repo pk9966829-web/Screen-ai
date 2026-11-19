@@ -435,6 +435,41 @@
         #sidebar-settings .task-state { font-size:9px; padding:3px 7px; }
         #sidebar-settings .side-note { padding:0 8px; color:#838383; font-size:10px; line-height:1.45; }
         #setting-save-status { min-height:14px; padding:0 8px; color:#8ee6bd; font-size:10px; }
+        #main-content > .w-full.max-w-2xl { position:relative; }
+        .connector-button {
+            display:grid; place-items:center; width:34px; height:34px; flex:0 0 34px;
+            border:1px solid rgba(255,255,255,.18); border-radius:50%;
+            color:#e8e8e8; background:rgba(255,255,255,.075);
+            transition:background .18s ease,border-color .18s ease,transform .18s ease;
+        }
+        .connector-button:hover,.connector-button[aria-expanded="true"] {
+            color:#fff; background:rgba(255,255,255,.16);
+            border-color:rgba(255,255,255,.42); transform:translateY(-1px);
+        }
+        .connector-cube { width:19px; height:19px; display:block; }
+        .connector-panel {
+            position:absolute; z-index:120; top:60px; right:8px;
+            width:min(300px,calc(100vw - 40px)); padding:14px;
+            border:1px solid rgba(255,255,255,.17); border-radius:16px;
+            background:rgba(18,18,20,.97); color:#f4f4f4;
+            box-shadow:0 18px 55px rgba(0,0,0,.55); backdrop-filter:blur(18px);
+        }
+        #connector-panel[hidden] { display:none!important; }
+        .connector-panel-title { color:#fff; font-size:13px; font-weight:750; }
+        .connector-panel-note { margin:5px 0 12px; color:#a3a3a3; font-size:10px; line-height:1.5; }
+        .connector-link {
+            display:flex; align-items:center; gap:10px; padding:10px;
+            border:1px solid rgba(255,255,255,.10); border-radius:11px;
+            color:#eee; background:rgba(255,255,255,.045); text-decoration:none;
+        }
+        .connector-link:hover { background:rgba(255,255,255,.09); }
+        .connector-app-mark {
+            display:grid; place-items:center; width:28px; height:28px; flex:0 0 28px;
+            border-radius:9px; background:#fff; color:#4285f4; font-size:15px; font-weight:800;
+        }
+        .connector-link strong { display:block; font-size:11px; }
+        .connector-link small { display:block; margin-top:2px; color:#9ca3af; font-size:9px; }
+        .connector-link-arrow { margin-left:auto; color:#aaa; font-size:13px; }
         .quick-action { padding:9px 12px; border:1px solid rgba(255,255,255,.12); border-radius:999px; color:#dedede; background:rgba(255,255,255,.055); font-size:11px; transition:background .2s,border-color .2s,transform .2s; }
         .quick-action:hover { background:rgba(255,255,255,.11); border-color:rgba(125,190,255,.3); transform:translateY(-1px); }
         .preset-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:0 8px; }
@@ -671,7 +706,7 @@
                         </div>
                     </form>
                     <div id="connector-panel" class="connector-panel" hidden role="dialog" aria-label="App connectors"><div class="connector-panel-title">Connect apps</div><p class="connector-panel-note">Choose an app to open its sign-in page. App access is not connected until you complete its authorization.</p><a class="connector-link" href="https://mail.google.com/" target="_blank" rel="noopener noreferrer"><span class="connector-app-mark">G</span><span><strong>Gmail</strong><small>Open Gmail to sign in</small></span><span class="connector-link-arrow">↗</span></a></div>
-                    <div class="flex flex-wrap justify-center gap-2">
+                    <div class="flex flex-wrap justify-center gap-2" aria-label="Quick suggestions">
                         <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
                             Explain my screen
                         </button>
@@ -680,33 +715,6 @@
                         </button>
                         <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
                             Guide next step
-                        </button>
-                        <button class="quick-action" type="button" data-action="awareness">
-                            Start screen sharing
-                        </button>
-                        <button class="quick-action" type="button" data-action="task">
-                            Plan a task
-                        </button>
-                        <button class="quick-action" type="button" data-action="letter">
-                            Write a letter
-                        </button>
-                        <button class="quick-action" type="button" data-action="web-research">
-                            Search the web
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="youtube">
-                            Open YouTube
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="wifi-settings">
-                            Wi-Fi settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="windows-settings">
-                            Windows settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="calculator">
-                            Open Calculator
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="file-explorer">
-                            Open File Explorer
                         </button>
                     </div>
                 </div>
