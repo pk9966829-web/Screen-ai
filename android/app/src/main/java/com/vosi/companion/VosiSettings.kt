@@ -56,6 +56,7 @@ internal val VosiSettingSections = listOf(
         VosiSettingOption("Observation history", "No screen frames are stored by this settings screen", "No sessions")
     )),
     VosiSettingSection("voice", "Voice & Communication", "Speech input, voice output and microphone", Icons.Outlined.Mic, listOf(
+        VosiSettingOption("Call Assistant", "Configure busy mode, caller-handling preferences and AI greeting", "Configure", "call-assistant"),
         VosiSettingOption("Voice workspace", "Open VOSI's native voice and phone tools", "Open", "companion"),
         VosiSettingOption("Microphone permission", "Review microphone access granted to VOSI", "Manage", "app-settings"),
         VosiSettingOption("Speech output", "Android text-to-speech is available in the companion workspace", "Available", "companion"),
