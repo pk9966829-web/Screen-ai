@@ -145,7 +145,11 @@ async function executeBrowserInteraction(device, task, step) {
 }
 
 async function executeGeneralBrowserStep(device, task, step) {
-  if (step.capability === "browser.interact") {\n    await executeBrowserInteraction(device, task, step);\n    return;\n  }\n  if (step.capability === "browser.search_web") {
+  if (step.capability === "browser.interact") {
+    await executeBrowserInteraction(device, task, step);
+    return;
+  }
+  if (step.capability === "browser.search_web") {
     const query = String(step.arguments?.query || "").trim().slice(0, 500);
     if (!query) throw new Error("Research query is empty.");
     const response = await fetch(API + "/research/search", {
