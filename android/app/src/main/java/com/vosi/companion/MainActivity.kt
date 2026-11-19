@@ -70,7 +70,7 @@ class MainActivity : Activity() {
             gravity = Gravity.TOP
         }
         val heading = TextView(this).apply {
-            text = "VOSI Companion"
+            text = "CHERRY AI Companion"
             textSize = 26f
         }
         val subtitle = TextView(this).apply {
@@ -106,12 +106,12 @@ class MainActivity : Activity() {
         root.addView(subtitle)
 
         root.addView(TextView(this).apply {
-            text = "CONNECT THIS PHONE TO VOSI"
+            text = "CONNECT THIS PHONE TO CHERRY AI"
             textSize = 13f
             setPadding(0, 8, 0, 4)
         })
         deviceBackendUrl = EditText(this).apply {
-            hint = "VOSI backend URL (USB ADB reverse: http://127.0.0.1:8001)"
+            hint = "CHERRY AI backend URL (USB ADB reverse: http://127.0.0.1:8001)"
             isSingleLine = true
             setText(
                 getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
@@ -119,12 +119,12 @@ class MainActivity : Activity() {
             )
         }
         devicePairingCode = EditText(this).apply {
-            hint = "One-time VOSI phone pairing code"
+            hint = "One-time CHERRY AI phone pairing code"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             isSingleLine = true
         }
         pairDeviceButton = Button(this).apply {
-            text = "Pair this phone with VOSI"
+            text = "Pair this phone with CHERRY AI"
             setOnClickListener { pairPhoneDevice() }
         }
         deviceStatus = TextView(this).apply {
@@ -132,19 +132,19 @@ class MainActivity : Activity() {
             setPadding(0, 8, 0, 8)
         }
         deviceCommandInput = EditText(this).apply {
-            hint = "Tell VOSI: set an alarm for 5 PM on my PC, or search body spray on Flipkart"
+            hint = "Tell CHERRY AI: set an alarm for 5 PM on my PC, or search body spray on Flipkart"
             minLines = 2
         }
         sendDeviceCommandButton = Button(this).apply {
-            text = "Send command to my VOSI devices"
+            text = "Send command to my CHERRY AI devices"
             setOnClickListener { sendDeviceTaskRequest() }
         }
         voiceConversationButton = Button(this).apply {
-            text = "Talk to VOSI"
+            text = "Talk to CHERRY AI"
             setOnClickListener { startVoiceConversation() }
         }
         heartbeatDeviceButton = Button(this).apply {
-            text = "Check VOSI connection"
+            text = "Check CHERRY AI connection"
             setOnClickListener { heartbeatPhoneDevice() }
         }
         disconnectDeviceButton = Button(this).apply {
@@ -168,7 +168,7 @@ class MainActivity : Activity() {
                 getSharedPreferences("vosi_companion_settings", MODE_PRIVATE)
                     .edit().putBoolean("spoken_browser_results", enabled).apply()
                 deviceStatus.text = if (enabled) {
-                    "Spoken browser recommendations enabled. VOSI speaks only while this app is open."
+                    "Spoken browser recommendations enabled. CHERRY AI speaks only while this app is open."
                 } else {
                     "Spoken browser recommendations disabled."
                 }
@@ -191,7 +191,7 @@ class MainActivity : Activity() {
             setPadding(0, 24, 0, 4)
         })
         root.addView(TextView(this).apply {
-            text = "VOSI reads WhatsApp notification previews. They stay on this phone unless you tap Sync with Desktop VOSI. It does not access WhatsApp's private chat database."
+            text = "CHERRY AI reads WhatsApp notification previews. They stay on this phone unless you tap Sync with Desktop CHERRY AI. It does not access WhatsApp's private chat database."
             textSize = 13f
             setPadding(0, 4, 0, 8)
         })
@@ -216,7 +216,7 @@ class MainActivity : Activity() {
         root.addView(companionToken, matchWidth())
 
         syncButton = Button(this).apply {
-            text = "Sync WhatsApp with Desktop VOSI"
+            text = "Sync WhatsApp with Desktop CHERRY AI"
             setOnClickListener { syncWhatsAppWithDesktop() }
         }
         root.addView(syncButton, matchWidth())
@@ -303,7 +303,7 @@ class MainActivity : Activity() {
     private fun refreshPairedDeviceStatus() {
         val credential = DeviceCredentialStore.load(this)
         deviceStatus.text = if (credential == null) {
-            "Phone is not paired with VOSI yet."
+            "Phone is not paired with CHERRY AI yet."
         } else {
             "Paired: ${credential.optString("label", "Android phone")}  •  Device ID: ${credential.optString("device_id")}"
         }
@@ -350,7 +350,7 @@ class MainActivity : Activity() {
     private fun pairPhoneDevice() {
         val code = devicePairingCode.text.toString().trim()
         if (code.length < 20) {
-            deviceStatus.text = "Paste the one-time pairing code generated by VOSI."
+            deviceStatus.text = "Paste the one-time pairing code generated by CHERRY AI."
             return
         }
         val baseUrl = try {
@@ -378,7 +378,7 @@ class MainActivity : Activity() {
                 )
                 val response = JSONObject(responseText)
                 if (responseCode !in 200..299 || !response.optBoolean("success")) {
-                    throw IllegalStateException(response.optString("detail", "Pairing failed. Generate a new code in VOSI."))
+                    throw IllegalStateException(response.optString("detail", "Pairing failed. Generate a new code in CHERRY AI."))
                 }
                 val device = response.getJSONObject("device")
                 val credential = JSONObject()
@@ -412,7 +412,7 @@ class MainActivity : Activity() {
 
     private fun startVoiceConversation() {
         if (DeviceCredentialStore.load(this) == null) {
-            deviceStatus.text = "Pair this phone with VOSI before starting a voice conversation."
+            deviceStatus.text = "Pair this phone with CHERRY AI before starting a voice conversation."
             return
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -423,7 +423,7 @@ class MainActivity : Activity() {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to VOSI")
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to CHERRY AI")
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
             startActivityForResult(intent, voiceRequest)
@@ -437,7 +437,7 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != voiceRequest) return
         if (resultCode != RESULT_OK) {
-            deviceStatus.text = "Voice input was cancelled. Tap Talk to VOSI when you're ready."
+            deviceStatus.text = "Voice input was cancelled. Tap Talk to CHERRY AI when you're ready."
             return
         }
         val transcript = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
@@ -453,12 +453,12 @@ class MainActivity : Activity() {
     private fun sendVoiceTurn(transcript: String) {
         val credential = DeviceCredentialStore.load(this)
         if (credential == null) {
-            deviceStatus.text = "Your phone is no longer paired with VOSI."
+            deviceStatus.text = "Your phone is no longer paired with CHERRY AI."
             return
         }
         val accountToken = AccountSessionStore.load()
         voiceConversationButton.isEnabled = false
-        deviceStatus.text = "VOSI is thinking…"
+        deviceStatus.text = "CHERRY AI is thinking…"
         thread {
             try {
                 val payload = JSONObject().put("transcript", transcript)
@@ -474,11 +474,11 @@ class MainActivity : Activity() {
                 val response = JSONObject(body)
                 if (code !in 200..299 || !response.optBoolean("success")) {
                     throw IllegalStateException(response.optString("detail",
-                        response.optString("response", "VOSI could not answer this voice turn.")))
+                        response.optString("response", "CHERRY AI could not answer this voice turn.")))
                 }
                 val answer = response.optString("response", "I'm here.")
                 runOnUiThread {
-                    deviceStatus.text = "You: $transcript\nVOSI: $answer"
+                    deviceStatus.text = "You: $transcript\nCHERRY AI: $answer"
                     voiceConversationButton.isEnabled = true
                     if (activityResumed && textToSpeechReady) {
                         textToSpeech?.speak(answer, TextToSpeech.QUEUE_FLUSH, null,
@@ -497,12 +497,12 @@ class MainActivity : Activity() {
     private fun sendDeviceTaskRequest() {
         val query = deviceCommandInput.text.toString().trim()
         if (query.isBlank()) {
-            deviceStatus.text = "Type a command for your paired VOSI devices first."
+            deviceStatus.text = "Type a command for your paired CHERRY AI devices first."
             return
         }
         val credential = DeviceCredentialStore.load(this)
         if (credential == null) {
-            deviceStatus.text = "Pair this phone with VOSI first."
+            deviceStatus.text = "Pair this phone with CHERRY AI first."
             return
         }
 
@@ -525,7 +525,7 @@ class MainActivity : Activity() {
                 return
             }
             val target = if (normalized.contains("phone") || normalized.contains("mobile")) "android" else "desktop"
-            goal = "Set a VOSI alarm for $query"
+            goal = "Set a CHERRY AI alarm for $query"
             steps.put(
                 JSONObject()
                     .put("step_id", "set-device-alarm")
@@ -654,7 +654,7 @@ class MainActivity : Activity() {
                 searchMatch != null -> {
                     val productQuery = searchMatch.groupValues[1].trim().take(200)
                     if (productQuery.isBlank()) {
-                        deviceStatus.text = "Tell VOSI what product to search for."
+                        deviceStatus.text = "Tell CHERRY AI what product to search for."
                         return
                     }
                     goal = "Search Flipkart for $productQuery"
@@ -675,7 +675,7 @@ class MainActivity : Activity() {
         }
 
         sendDeviceCommandButton.isEnabled = false
-        deviceStatus.text = "Sending your command to VOSI…"
+        deviceStatus.text = "Sending your command to CHERRY AI…"
         thread {
             try {
                 val baseUrl = credential.getString("backend_url")
@@ -693,12 +693,12 @@ class MainActivity : Activity() {
                 )
                 val response = JSONObject(body)
                 if (code !in 200..299 || !response.optBoolean("success")) {
-                    throw IllegalStateException(response.optString("detail", "VOSI could not accept this command."))
+                    throw IllegalStateException(response.optString("detail", "CHERRY AI could not accept this command."))
                 }
                 val task = response.getJSONObject("task")
                 runOnUiThread {
                     deviceCommandInput.text.clear()
-                    deviceStatus.text = "Command queued for VOSI • Task " + task.optString("task_id").take(8) + ". Waiting for the target device to execute and confirm it."
+                    deviceStatus.text = "Command queued for CHERRY AI • Task " + task.optString("task_id").take(8) + ". Waiting for the target device to execute and confirm it."
                     sendDeviceCommandButton.isEnabled = true
                 }
             } catch (error: Exception) {
@@ -713,7 +713,7 @@ class MainActivity : Activity() {
     private fun heartbeatPhoneDevice() {
         val credential = DeviceCredentialStore.load(this)
         if (credential == null) {
-            deviceStatus.text = "Pair this phone with VOSI first."
+            deviceStatus.text = "Pair this phone with CHERRY AI first."
             return
         }
         heartbeatDeviceButton.isEnabled = false
@@ -735,15 +735,15 @@ class MainActivity : Activity() {
                 }
                 runOnUiThread {
                     if (code in 200..299 && response.optBoolean("success")) {
-                        deviceStatus.text = "VOSI connected • phone task executor active."
+                        deviceStatus.text = "CHERRY AI connected • phone task executor active."
                     } else {
-                        deviceStatus.text = response.optString("detail", "VOSI connection failed (HTTP $code).")
+                        deviceStatus.text = response.optString("detail", "CHERRY AI connection failed (HTTP $code).")
                     }
                     heartbeatDeviceButton.isEnabled = true
                 }
             } catch (error: Exception) {
                 runOnUiThread {
-                    deviceStatus.text = "VOSI is unreachable: ${error.message ?: "check backend URL and USB forwarding"}"
+                    deviceStatus.text = "CHERRY AI is unreachable: ${error.message ?: "check backend URL and USB forwarding"}"
                     heartbeatDeviceButton.isEnabled = true
                 }
             }
@@ -795,7 +795,7 @@ class MainActivity : Activity() {
                             if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
                         }
                         val alarmIntent = Intent(this, VosiAlarmReceiver::class.java)
-                            .putExtra("title", "VOSI alarm")
+                            .putExtra("title", "CHERRY AI alarm")
                         val pending = PendingIntent.getBroadcast(
                             this,
                             taskId.hashCode(),
@@ -821,7 +821,7 @@ class MainActivity : Activity() {
                     token = token,
                     body = result
                 )
-                if (resultCode !in 200..299) throw IllegalStateException("VOSI could not save the Android execution receipt (HTTP $resultCode).")
+                if (resultCode !in 200..299) throw IllegalStateException("CHERRY AI could not save the Android execution receipt (HTTP $resultCode).")
             } catch (error: Exception) {
                 val failed = JSONObject()
                     .put("success", false)
@@ -875,7 +875,7 @@ class MainActivity : Activity() {
             val ratingText = shownRating?.let { ", rated $it out of 5" } ?: ""
             "${index + 1}. $name, $shownPrice$ratingText"
         }
-        return "VOSI found ${products.size} visible products on Flipkart. " +
+        return "CHERRY AI found ${products.size} visible products on Flipkart. " +
             "These options are ranked using the ratings, review counts, and prices visible on the page. " +
             lines.joinToString(". ", postfix = ".")
     }
@@ -899,7 +899,7 @@ class MainActivity : Activity() {
             if (state !in setOf("completed", "failed", "cancelled")) continue
             val taskId = task.optString("task_id")
             if (preferences.getString(taskId, null) == state) continue
-            val goal = task.optString("goal", "VOSI task")
+            val goal = task.optString("goal", "CHERRY AI task")
             val stepArray = task.optJSONArray("steps") ?: JSONArray()
             var detail = if (state == "completed") "Task completed successfully." else "Task $state."
             for (stepIndex in 0 until stepArray.length()) {
@@ -922,7 +922,7 @@ class MainActivity : Activity() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(channelId, "VOSI task updates", NotificationManager.IMPORTANCE_DEFAULT)
+                NotificationChannel(channelId, "CHERRY AI task updates", NotificationManager.IMPORTANCE_DEFAULT)
             )
         }
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -933,7 +933,7 @@ class MainActivity : Activity() {
         }
         val notification = builder
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(if (state == "completed") "VOSI task completed" else "VOSI task $state")
+            .setContentTitle(if (state == "completed") "CHERRY AI task completed" else "CHERRY AI task $state")
             .setContentText("$title • $detail")
             .setStyle(Notification.BigTextStyle().bigText("$title\n$detail"))
             .setAutoCancel(true)
@@ -941,7 +941,7 @@ class MainActivity : Activity() {
         try {
             manager.notify(taskId.hashCode(), notification)
         } catch (_: SecurityException) {
-            runOnUiThread { deviceStatus.text = "VOSI task $state: $title — $detail" }
+            runOnUiThread { deviceStatus.text = "CHERRY AI task $state: $title — $detail" }
         }
     }
 
@@ -974,7 +974,7 @@ class MainActivity : Activity() {
                 }
                 DeviceCredentialStore.clear(this)
                 runOnUiThread {
-                    deviceStatus.text = "Phone disconnected and its VOSI credential revoked."
+                    deviceStatus.text = "Phone disconnected and its CHERRY AI credential revoked."
                     refreshPairedDeviceStatus()
                     disconnectDeviceButton.isEnabled = true
                 }
@@ -994,7 +994,7 @@ class MainActivity : Activity() {
         try {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         } catch (_: Exception) {
-            status.text = "Open Android Settings > Notifications > Device & app notifications, then enable VOSI Companion."
+            status.text = "Open Android Settings > Notifications > Device & app notifications, then enable CHERRY AI Companion."
         }
     }
 
@@ -1051,7 +1051,7 @@ class MainActivity : Activity() {
             .apply()
 
         syncButton.isEnabled = false
-        status.text = "Connecting to desktop VOSI..."
+        status.text = "Connecting to desktop CHERRY AI..."
 
         thread {
             var connection: HttpURLConnection? = null
@@ -1089,18 +1089,18 @@ class MainActivity : Activity() {
                     if (responseCode in 200..299) {
                         val result = JSONObject(responseText)
                         status.text =
-                            "Sync successful! ${result.optInt("received")} WhatsApp previews sent to desktop VOSI."
+                            "Sync successful! ${result.optInt("received")} WhatsApp previews sent to desktop CHERRY AI."
                     } else if (responseCode == 401) {
                         status.text = "Sync rejected. Check the desktop pairing token."
                     } else {
-                        status.text = "Sync failed (HTTP $responseCode). Check that the VOSI backend is running."
+                        status.text = "Sync failed (HTTP $responseCode). Check that the CHERRY AI backend is running."
                     }
                     syncButton.isEnabled = true
                 }
             } catch (error: Exception) {
                 runOnUiThread {
                     status.text =
-                        "Could not connect to desktop VOSI. Check USB connection and ADB forwarding. ${error.message ?: ""}"
+                        "Could not connect to desktop CHERRY AI. Check USB connection and ADB forwarding. ${error.message ?: ""}"
                     syncButton.isEnabled = true
                 }
             } finally {
@@ -1199,7 +1199,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("Confirm phone call")
-            .setMessage("VOSI is about to call $number. Continue?")
+            .setMessage("CHERRY AI is about to call $number. Continue?")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Call") { _, _ -> placeCall(number) }
             .show()
@@ -1233,10 +1233,10 @@ class MainActivity : Activity() {
                 if (granted) "Call permission granted. Tap Call this number again to confirm."
                 else "Call permission denied. Calling is disabled until you grant it."
             voicePermission -> if (granted) startVoiceConversation() else deviceStatus.text =
-                "Microphone permission denied. Tap Talk to VOSI after allowing microphone access."
+                "Microphone permission denied. Tap Talk to CHERRY AI after allowing microphone access."
             102 -> deviceStatus.text =
-                if (granted) "VOSI task and alarm notifications enabled."
-                else "Notifications are disabled. VOSI can still execute tasks, but Android may hide completion alerts."
+                if (granted) "CHERRY AI task and alarm notifications enabled."
+                else "Notifications are disabled. CHERRY AI can still execute tasks, but Android may hide completion alerts."
         }
     }
 }
