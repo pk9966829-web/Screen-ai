@@ -32,15 +32,15 @@ class PersonalIdentityActivity : Activity() {
             setPadding(28, 32, 28, 28)
         }
         root.addView(TextView(this).apply {
-            text = if (saved == null) "Meet your VOSI" else "Your VOSI identity"
+            text = if (saved == null) "Meet your CHERRY AI" else "Your CHERRY AI identity"
             textSize = 28f
         })
         root.addView(TextView(this).apply {
-            text = "Set up your preferences once. You can skip anything and change these details later. VOSI never needs your passwords, OTPs, UPI PINs or CVVs."
+            text = "Set up your preferences once. You can skip anything and change these details later. CHERRY AI never needs your passwords, OTPs, UPI PINs or CVVs."
             textSize = 15f
             setPadding(0, 12, 0, 20)
         })
-        name = field("What should VOSI call you?", saved?.optString("display_name", "").orEmpty())
+        name = field("What should CHERRY AI call you?", saved?.optString("display_name", "").orEmpty())
         language = field("Preferred language (e.g. English)", saved?.optString("language", "English") ?: "English")
         country = field("Country (e.g. India)", saved?.optString("country", "India") ?: "India")
         currency = field("Currency (e.g. INR)", saved?.optString("currency", "INR") ?: "INR")
@@ -55,7 +55,7 @@ class PersonalIdentityActivity : Activity() {
         }
         root.addView(status)
         root.addView(Button(this).apply {
-            text = "Save preferences and open VOSI"
+            text = "Save preferences and open CHERRY AI"
             setOnClickListener { saveAndContinue() }
         }, matchWidth())
         if (saved != null) {
@@ -73,7 +73,7 @@ class PersonalIdentityActivity : Activity() {
             }, matchWidth())
         }
         val scroll = ScrollView(this).apply { isFillViewport = true; addView(root) }
-        VosiLegacyTheme.apply(root, scroll)
+        CHERRY AILegacyTheme.apply(root, scroll)
         setContentView(scroll)
     }
 
