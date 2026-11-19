@@ -36,6 +36,7 @@ internal fun CallAssistantSettingsScreen(onBack: () -> Unit) {
     var summaries by remember { mutableStateOf(prefs.getBoolean("summaries", true)) }
     var personalAnswers by remember { mutableStateOf(prefs.getBoolean("personal_answers", false)) }
     var greeting by remember { mutableStateOf(prefs.getString("greeting", "Hi, I'm VOSI, your AI assistant. You're unavailable right now. How can I help?") ?: "") }
+    var callLanguage by remember { mutableStateOf(prefs.getString("call_language", "auto") ?: "auto") }
     val screeningRoleAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
     val roleManager = if (screeningRoleAvailable) context.getSystemService(RoleManager::class.java) else null
     var hasScreeningRole by remember { mutableStateOf(roleManager?.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) == true) }
@@ -93,6 +94,27 @@ internal fun CallAssistantSettingsScreen(onBack: () -> Unit) {
                 item { CallPreferenceRow("Save call summaries", "Call summaries are not active until a supported audio or carrier integration exists.", summaries) { summaries = it } }
                 item { CallPreferenceRow("Answer using personal details", "Approved profile-answering is not active yet (off by default).", personalAnswers) { personalAnswers = it } }
                 item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Call language", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Automatic detects Hindi or Kannada from the caller's script; English is the fallback. Choose a fixed language if you prefer.", color = Color(0xFF9B93A2), fontSize = 10.sp, lineHeight = 14.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            listOf("auto" to "Auto", "en" to "English", "hi" to "हिन्दी", "kn" to "ಕನ್ನಡ").forEach { (code, label) ->
+                                FilterChip(
+                                    selected = callLanguage == code,
+                                    onClick = { callLanguage = code },
+                                    label = { Text(label, fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF7D2865),
+                                        selectedLabelColor = Color.White,
+                                        labelColor = Color(0xFFD1C8D4)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("AI greeting (future answering)", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         OutlinedTextField(value = greeting, onValueChange = { greeting = it }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, placeholder = { Text("Greeting spoken to callers") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Color(0xFFFF70C5), unfocusedBorderColor = Color(0x33FFFFFF), cursorColor = Color(0xFFFF70C5)))
@@ -103,6 +125,7 @@ internal fun CallAssistantSettingsScreen(onBack: () -> Unit) {
                 prefs.edit().putBoolean("busy_mode", busyMode).putBoolean("auto_answer", autoAnswer)
                     .putBoolean("unknown_callers", unknownCallers).putBoolean("urgent_alerts", urgentAlerts)
                     .putBoolean("summaries", summaries).putBoolean("personal_answers", personalAnswers)
+                    .putString("call_language", callLanguage)
                     .putString("greeting", greeting.trim()).apply()
             }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB92A87)), shape = RoundedCornerShape(14.dp)) {
                 Text("Save call preferences", color = Color.White)
