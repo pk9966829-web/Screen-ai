@@ -31,6 +31,22 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": True,
         "description": "Read visible content from the active, user-authorized page.",
     },
+    "browser.search_web": {
+        "platforms": ["browser"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Search public web sources and return source URLs for research.",
+    },
+    "browser.inspect_page": {
+        "platforms": ["browser"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Inspect a user-authorized webpage structure and visible text without reading form values or interacting.",
+    },
     "browser.search_products": {
         "platforms": ["browser"],
         "risk": "low",
@@ -157,7 +173,7 @@ def _now() -> str:
 CLAIM_LEASE_SECONDS = 300
 
 # Only idempotent, low-risk operations may opt into one bounded retry.
-RETRYABLE_CAPABILITIES = {"device.volume.set", "browser.search_products", "browser.read_visible_page"}
+RETRYABLE_CAPABILITIES = {"device.volume.set", "browser.search_products", "browser.read_visible_page", "browser.search_web", "browser.inspect_page"}
 
 
 def _claim_timestamp_is_stale(claimed_at: str | None) -> bool:
