@@ -157,7 +157,7 @@ def _now() -> str:
 CLAIM_LEASE_SECONDS = 300
 
 # Only idempotent, low-risk operations may opt into one bounded retry.
-RETRYABLE_CAPABILITIES = {"device.volume.set", "browser.search_products", "browser.read_visible_page", "browser.search_web"}
+RETRYABLE_CAPABILITIES = {"device.volume.set", "browser.search_products", "browser.read_visible_page", "browser.search_web", "browser.inspect_page"}
 
 
 def _claim_timestamp_is_stale(claimed_at: str | None) -> bool:
