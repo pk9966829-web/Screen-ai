@@ -414,11 +414,10 @@
         body.vosi-sidebar-expanded #sidebar-toggle .toggle-arrow { transform:rotate(180deg); }
         body.vosi-sidebar-collapsed .vosi-app-shell > .grid.grid-cols-12 { grid-template-columns:minmax(0,1fr)!important; }
         body.vosi-sidebar-collapsed #main-content { grid-column:1!important; }
-        #main-nav[hidden] { display:flex!important; }
+        #main-nav[hidden] { display:none !important; }
         #main-nav { flex-direction:column; gap:3px; }
         #main-nav .nav-item { color:#c9c9c9!important; background:transparent!important; border-color:transparent!important; box-shadow:none!important; }
         #main-nav .nav-item.active { color:#fff!important; background:rgba(255,255,255,.09)!important; border-color:rgba(255,255,255,.08)!important; }
-        #main-nav .nav-item[data-tab="settings"] { display:none!important; }
         #sidebar-brand { padding:0 8px!important; }
         #sidebar-brand .relative { width:34px!important; height:34px!important; box-shadow:none!important; }
         #sidebar-settings { display:flex; flex-direction:column; gap:15px; }
@@ -582,6 +581,9 @@
                         <a href="#" data-tab="tasks" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
                             <i data-lucide="check-square" class="w-4 h-4"></i><span>Tasks</span>
                         </a>
+                        <a href="#" data-tab="connectors" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
+                            <i data-lucide="plug" class="w-4 h-4"></i><span>Connectors</span>
+                        </a>
                         <a href="#" data-tab="settings" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
                             <i data-lucide="settings" class="w-4 h-4"></i><span>Settings</span>
                         </a>
@@ -710,6 +712,15 @@
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your CHERRY AI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local CHERRY AI mode</div></div><span class="task-state">READY</span></div></div>
                     <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>CHERRY AI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
                     <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>CHERRY AI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask CHERRY AI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local CHERRY AI backend.</p></div>
+                    <div id="tab-page-connectors" class="tab-card" style="display:none">
+                        <h2>Connectors</h2>
+                        <p>Review the external services CHERRY AI may connect to. A status is shown only when this web frontend can verify it; these entries are not presented as connected.</p>
+                        <div class="tab-row"><div><div class="tab-label">Gmail</div><div class="tab-value">Email search, reading, and drafting</div></div><span class="task-state">SETUP REQUIRED</span></div>
+                        <div class="tab-row"><div><div class="tab-label">Google Calendar</div><div class="tab-value">Calendar events and scheduling</div></div><span class="task-state">SETUP REQUIRED</span></div>
+                        <div class="tab-row"><div><div class="tab-label">GitHub</div><div class="tab-value">Repositories, issues, and pull requests</div></div><span class="task-state">SETUP REQUIRED</span></div>
+                        <div class="tab-row"><div><div class="tab-label">Web Search (Tavily)</div><div class="tab-value">Backend web research provider</div></div><span class="task-state">VERIFY BACKEND</span></div>
+                        <p class="mt-4">Connection and OAuth management are not yet implemented in this web screen. No account is connected by displaying this directory.</p>
+                    </div>
                     <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>CHERRY AI preferences are available in the left sidebar.</p></div>
                 </div>
             </main>
@@ -924,6 +935,22 @@
         function setupInteractivity() {
             const sidebarToggle = document.getElementById('sidebar-toggle');
             const sidebarNav = document.getElementById('main-nav');
+            const setSidebarExpanded = expanded => {
+                if (sidebarNav) sidebarNav.hidden = !expanded;
+                if (sidebarToggle) {
+                    sidebarToggle.setAttribute('aria-expanded', String(expanded));
+                    sidebarToggle.setAttribute('aria-label', expanded ? 'Hide sidebar' : 'Show sidebar');
+                    const label = sidebarToggle.querySelector('.toggle-label');
+                    if (label) label.textContent = expanded ? 'Hide sidebar' : 'Show sidebar';
+                }
+                document.body.classList.toggle('vosi-sidebar-expanded', expanded);
+                document.body.classList.toggle('vosi-sidebar-collapsed', !expanded);
+                document.getElementById('app-sidebar')?.setAttribute('aria-hidden', String(!expanded));
+            };
+            sidebarToggle?.addEventListener('click', () => {
+                setSidebarExpanded(sidebarToggle.getAttribute('aria-expanded') !== 'true');
+            });
+            setSidebarExpanded(document.body.classList.contains('vosi-sidebar-expanded'));
             const deviceActionDialog = document.getElementById('device-action-dialog');
             const deviceActionDescription = document.getElementById('device-action-description');
             const letterDialog = document.getElementById('letter-dialog');
@@ -1234,20 +1261,10 @@
                 closeDeviceActionDialog();
                 if (action) void launchDeviceTarget(action.target, action.query);
             });
-            sidebarToggle?.addEventListener('click', () => {
-                const expanded = sidebarToggle.getAttribute('aria-expanded') !== 'true';
-                if (sidebarNav) sidebarNav.hidden = !expanded;
-                sidebarToggle.setAttribute('aria-expanded', String(expanded));
-                sidebarToggle.setAttribute('aria-label', expanded ? 'Hide settings' : 'Show settings');
-                const label = sidebarToggle.querySelector('.toggle-label');
-                if (label) label.textContent = expanded ? 'Hide settings' : 'Show settings';
-                document.body.classList.toggle('vosi-sidebar-expanded', expanded);
-                document.body.classList.toggle('vosi-sidebar-collapsed', !expanded);
-            });
             const navItems = document.querySelectorAll('.nav-item');
             const main = document.querySelector('main');
             const overlay = document.getElementById('tab-overlay');
-            const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), settings: document.getElementById('tab-page-settings') };
+            const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), connectors: document.getElementById('tab-page-connectors'), settings: document.getElementById('tab-page-settings') };
             async function refreshWorkflow() {
                 const title = document.getElementById('task-page-title');
                 const state = document.getElementById('task-page-state');
