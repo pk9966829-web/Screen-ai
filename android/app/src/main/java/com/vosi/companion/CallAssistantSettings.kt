@@ -1,6 +1,8 @@
 package com.vosi.companion
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Build
@@ -37,11 +39,13 @@ internal fun CallAssistantSettingsScreen(onBack: () -> Unit) {
     val screeningRoleAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
     val roleManager = if (screeningRoleAvailable) context.getSystemService(RoleManager::class.java) else null
     var hasScreeningRole by remember { mutableStateOf(roleManager?.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) == true) }
+    var hasContactsAccess by remember { mutableStateOf(context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) }
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, roleManager) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasScreeningRole = roleManager?.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) == true
+                hasContactsAccess = context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -63,6 +67,12 @@ internal fun CallAssistantSettingsScreen(onBack: () -> Unit) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Native call screening", color = Color(0xFFFF80C9), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     Text("VOSI can use Android's supported screening service to silence unknown incoming callers when Busy mode is enabled. It does not answer calls or listen to call audio.", color = Color(0xFFD1C8D4), fontSize = 11.sp, lineHeight = 16.sp)
+                    if (!hasContactsAccess) {
+                        Button(onClick = { activity?.requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), 4503) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF47304A))) {
+                            Text("Allow contact verification")
+                        }
+                        Text("Without contact permission, VOSI fails safe and will not silence calls.", color = Color(0xFFB8ADB9), fontSize = 10.sp)
+                    }
                     if (screeningRoleAvailable && !hasScreeningRole) {
                         Button(onClick = {
                             val intent = roleManager?.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
