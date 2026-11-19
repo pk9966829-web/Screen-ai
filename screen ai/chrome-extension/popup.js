@@ -35,7 +35,7 @@ function showDevice(device) {
 async function pairChrome() {
   const pairingCode = codeInput.value.trim();
   if (pairingCode.length < 20) {
-    setStatus("Paste the complete pairing code from VOSI.", true);
+    setStatus("Paste the complete pairing code from CHERRY AI.", true);
     return;
   }
   pairButton.disabled = true;
@@ -48,7 +48,7 @@ async function pairChrome() {
     });
     const data = await response.json();
     if (!response.ok || !data.success || !data.device?.device_token) {
-      throw new Error(data.detail || data.error || "Pairing failed. Generate a fresh code in VOSI.");
+      throw new Error(data.detail || data.error || "Pairing failed. Generate a fresh code in CHERRY AI.");
     }
     const paired = data.device;
     const stored = {
@@ -62,10 +62,10 @@ async function pairChrome() {
     await chrome.storage.local.set({ [DEVICE_KEY]: stored });
     codeInput.value = "";
     showDevice(stored);
-    setStatus("Chrome is paired. VOSI can now authenticate this browser bridge.");
-    chrome.runtime.sendMessage({ type: "VOSI_DEVICE_UPDATED" }).catch(() => {});
+    setStatus("Chrome is paired. CHERRY AI can now authenticate this browser bridge.");
+    chrome.runtime.sendMessage({ type: "CHERRY AI_DEVICE_UPDATED" }).catch(() => {});
   } catch (error) {
-    setStatus(error.message || "Could not reach VOSI. Check that the backend is running.", true);
+    setStatus(error.message || "Could not reach CHERRY AI. Check that the backend is running.", true);
   } finally {
     pairButton.disabled = false;
   }
@@ -75,7 +75,7 @@ async function checkConnection() {
   const device = await getDevice();
   if (!device) return;
   heartbeatButton.disabled = true;
-  setStatus("Checking the VOSI connection…");
+  setStatus("Checking the CHERRY AI connection…");
   try {
     const response = await fetch(API + "/agent/devices/" + encodeURIComponent(device.deviceId) + "/heartbeat", {
       method: "POST",
@@ -83,9 +83,9 @@ async function checkConnection() {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "This device credential was rejected.");
-    setStatus("Connected to VOSI. Last heartbeat: " + data.device.last_seen_at);
+    setStatus("Connected to CHERRY AI. Last heartbeat: " + data.device.last_seen_at);
   } catch (error) {
-    setStatus(error.message || "VOSI backend is unavailable.", true);
+    setStatus(error.message || "CHERRY AI backend is unavailable.", true);
   } finally {
     heartbeatButton.disabled = false;
   }
@@ -113,8 +113,8 @@ function enableCurrentSite() {
   // Request permission immediately from the click gesture; do not await other APIs first.
   const permissionRequest = chrome.permissions.request({ origins: [currentSiteOrigin + "/*"] });
   permissionRequest.then(granted => {
-    if (!granted) throw new Error("Chrome permission was not granted. VOSI cannot read this website.");
-    setStatus("Permission granted for " + currentSiteOrigin + ". VOSI can now read visible page text when you ask.");
+    if (!granted) throw new Error("Chrome permission was not granted. CHERRY AI cannot read this website.");
+    setStatus("Permission granted for " + currentSiteOrigin + ". CHERRY AI can now read visible page text when you ask.");
   }).catch(error => {
     setStatus(error.message || "Could not enable this website.", true);
   }).finally(() => {
@@ -138,7 +138,7 @@ async function disconnectChrome() {
     showDevice(null);
     setStatus("Chrome disconnected and its server credential revoked.");
   } catch (error) {
-    setStatus(error.message || "Could not reach VOSI to revoke this device.", true);
+    setStatus(error.message || "Could not reach CHERRY AI to revoke this device.", true);
   } finally {
     disconnectButton.disabled = false;
   }

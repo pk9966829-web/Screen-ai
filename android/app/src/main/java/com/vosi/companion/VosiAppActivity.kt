@@ -1,11 +1,15 @@
 package com.vosi.companion
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
+import android.widget.Toast
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -13,6 +17,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,20 +52,20 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.concurrent.thread
 
-private val Ink = Color(0xFF080A12)
-private val Panel = Color(0xFF141827)
-private val Soft = Color(0xFF20263A)
-private val Accent = Color(0xFFB69CFF)
-private val GlowBlue = Color(0xFF62D9F5)
+private val Ink = Color(0xFF0B0B0F)
+private val Panel = Color(0xFF151219)
+private val Soft = Color(0xFF211A25)
+private val Accent = Color(0xFFFF3FB4)
+private val GlowBlue = Color(0xFFB44CFF)
 private val Muted = Color(0xFF9BA5BC)
 private val BorderGlow = Color(0x334E5E9B)
 
-class VosiAppActivity : ComponentActivity() {
+class CHERRY AIAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        VosiSessionContext.app = applicationContext
-        window.statusBarColor = android.graphics.Color.rgb(8, 10, 18)
-        window.navigationBarColor = android.graphics.Color.rgb(8, 10, 18)
+        CHERRY AISessionContext.app = applicationContext
+        window.statusBarColor = android.graphics.Color.rgb(11, 11, 15)
+        window.navigationBarColor = android.graphics.Color.rgb(11, 11, 15)
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
@@ -68,7 +74,7 @@ class VosiAppActivity : ComponentActivity() {
                     surfaceVariant = Soft, onSurfaceVariant = Muted
                 )
             ) {
-                VosiMobileRoot(
+                CHERRY AIMobileRoot(
                     onOpenCompanion = { startActivity(Intent(this, MainActivity::class.java)) },
                     onOpenProfileSetup = { startActivity(Intent(this, PersonalIdentityActivity::class.java)) }
                 )
@@ -77,14 +83,20 @@ class VosiAppActivity : ComponentActivity() {
     }
 }
 
-private enum class VosiTab(val label: String) { HOME("Home"), CHAT("Chat"), TASKS("Tasks"), DEVICES("Devices"), PROFILE("Profile") }
+private enum class CHERRY AITab(val label: String) { HOME("Home"), CHAT("Chat"), TASKS("Tasks"), DEVICES("Devices"), PROFILE("Profile") }
 
 @Composable
-private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit) {
-    var tab by remember { mutableStateOf(VosiTab.HOME) }
-    var backend by remember { mutableStateOf("http://127.0.0.1:8001") }
+private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit) {
+    var tab by remember { mutableStateOf(CHERRY AITab.HOME) }
+    var backend by remember {
+        mutableStateOf(
+            CHERRY AISessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                ?.getString("device_backend_url", "http://127.0.0.1:8001")
+                ?: "http://127.0.0.1:8001"
+        )
+    }
     var accountEmail by remember { mutableStateOf(AccountSessionStore.email().orEmpty()) }
-    var accountStatus by remember { mutableStateOf("Sign in to connect your VOSI identity across devices.") }
+    var accountStatus by remember { mutableStateOf("Sign in to connect your CHERRY AI identity across devices.") }
     var accountBusy by remember { mutableStateOf(false) }
     var authMode by remember { mutableStateOf("Sign in") }
     var password by remember { mutableStateOf("") }
@@ -92,92 +104,69 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
     var loggedIn by remember { mutableStateOf(AccountSessionStore.load() != null) }
     var showServerSettings by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
-    var navigationOpen by remember { mutableStateOf(false) }
+    var settingsSection by remember { mutableStateOf<CHERRY AISettingSection?>(null) }
+    var settingsSearch by remember { mutableStateOf("") }
     var chatDraft by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    BackHandler(enabled = settingsSection != null || settingsOpen || tab != CHERRY AITab.HOME) {
+        when {
+            settingsSection != null -> { settingsSection = null; settingsOpen = true }
+            settingsOpen -> settingsOpen = false
+            tab != CHERRY AITab.HOME -> tab = CHERRY AITab.HOME
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
-        VosiAmbientBackground()
-        Scaffold(
-            containerColor = Color.Transparent,
-            bottomBar = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = navigationOpen,
-                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                    ) {
-                        NavigationBar(
-                            containerColor = Color(0xE6081425),
-                            contentColor = Color.White,
-                            tonalElevation = 0.dp
-                        ) {
-                            VosiTab.entries.forEach { item ->
-                                val selected = tab == item
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = { tab = item; navigationOpen = false },
-                                    icon = {
-                                        when (item) {
-                                            VosiTab.HOME -> Icon(Icons.Outlined.Home, null)
-                                            VosiTab.CHAT -> Icon(Icons.Outlined.Forum, null)
-                                            VosiTab.TASKS -> Icon(Icons.Outlined.TaskAlt, null)
-                                            VosiTab.DEVICES -> Icon(Icons.Outlined.Devices, null)
-                                            VosiTab.PROFILE -> Icon(Icons.Outlined.Person, null)
-                                        }
-                                    },
-                                    label = { Text(item.label, fontSize = 10.sp) },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = GlowBlue, selectedTextColor = Color.White,
-                                        indicatorColor = Color(0x3338BDF8),
-                                        unselectedIconColor = Muted, unselectedTextColor = Muted
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    Surface(
-                        color = Color(0xE6081425),
-                        modifier = Modifier.fillMaxWidth(),
-                        shadowElevation = 8.dp
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().height(42.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = { navigationOpen = !navigationOpen }) {
-                                Icon(
-                                    if (navigationOpen) Icons.Outlined.KeyboardArrowDown else Icons.Outlined.KeyboardArrowUp,
-                                    contentDescription = if (navigationOpen) "Hide navigation" else "Show navigation",
-                                    tint = Accent,
-                                    modifier = Modifier.size(30.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        ) { padding ->
+        CHERRY AIAmbientBackground()
+        Scaffold(containerColor = Color.Transparent) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (tab) {
-                    VosiTab.HOME -> HomeScreen(
-                        onChat = { tab = VosiTab.CHAT },
-                        onSearch = { query -> chatDraft = query; tab = VosiTab.CHAT },
-                        onTasks = { tab = VosiTab.TASKS },
-                        onDevices = { tab = VosiTab.DEVICES },
+                    CHERRY AITab.HOME -> HomeScreen(
+                        onSearch = { query -> chatDraft = query; tab = CHERRY AITab.CHAT },
                         onTalk = onOpenCompanion,
                         onOpenSettings = { settingsOpen = true }
                     )
-                    VosiTab.CHAT -> SharedCompanionChatScreen(initialDraft = chatDraft)
-                    VosiTab.TASKS -> TasksScreen()
-                    VosiTab.DEVICES -> DevicesScreen(onOpenCompanion)
-                    VosiTab.PROFILE -> ProfileScreen(
+                    CHERRY AITab.CHAT -> SharedCompanionChatScreen(initialDraft = chatDraft)
+                    CHERRY AITab.TASKS -> TasksScreen()
+                    CHERRY AITab.DEVICES -> DevicesScreen(onOpenCompanion)
+                    CHERRY AITab.PROFILE -> ProfileScreen(
                         loggedIn, accountEmail, accountStatus, accountBusy, authMode, password,
                         verificationCode, backend, showServerSettings,
                         onEmail = { accountEmail = it }, onPassword = { password = it },
-                        onCode = { verificationCode = it }, onBackend = { backend = it },
+                        onCode = { verificationCode = it }, onBackend = {
+                            backend = it
+                            CHERRY AISessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                                ?.edit()?.putString("device_backend_url", it.trim().trimEnd('/'))?.apply()
+                        },
                         onMode = { authMode = it }, onToggleServer = { showServerSettings = !showServerSettings },
                         onProfileSetup = onOpenProfileSetup,
+                        onTestBackend = {
+                            if (accountBusy) return@ProfileScreen
+                            val base = backend.trim().trimEnd('/')
+                            accountBusy = true
+                            accountStatus = "Checking CHERRY AI backend…"
+                            thread {
+                                try {
+                                    val probe = identityRequest(base, "/openapi.json", "GET", null, JSONObject())
+                                    val paths = probe.optJSONObject("paths")
+                                    if (paths == null || !paths.has("/ask") || !paths.has("/identity/login")) {
+                                        throw IllegalStateException("A server responded, but it doesn't look like the expected CHERRY AI backend.")
+                                    }
+                                    CHERRY AISessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                                        ?.edit()?.putString("device_backend_url", base)?.apply()
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        accountStatus = "Backend connected. CHERRY AI API is reachable at $base"
+                                        accountBusy = false
+                                    }
+                                } catch (error: Exception) {
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        accountStatus = "Backend connection failed: " + (error.message ?: "Check the URL and server.")
+                                        accountBusy = false
+                                    }
+                                }
+                            }
+                        },
                         onLogout = {
                             val token = AccountSessionStore.load()
                             if (token != null) thread {
@@ -191,7 +180,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                         onSubmit = {
                             if (accountBusy) return@ProfileScreen
                             accountBusy = true
-                            accountStatus = "Connecting securely to VOSI…"
+                            accountStatus = "Connecting securely to CHERRY AI…"
                             val email = accountEmail.trim()
                             val pass = password
                             val code = verificationCode.trim()
@@ -220,7 +209,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                                     }
                                 } catch (e: Exception) {
                                     android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                        accountStatus = e.message ?: "Could not connect to VOSI."
+                                        accountStatus = e.message ?: "Could not connect to CHERRY AI."
                                         accountBusy = false
                                     }
                                 }
@@ -231,41 +220,80 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
             }
         }
 
-        androidx.compose.animation.AnimatedVisibility(
-            visible = settingsOpen,
-            modifier = Modifier.align(Alignment.CenterStart),
-            enter = androidx.compose.animation.slideInHorizontally(initialOffsetX = { -it }) + androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.slideOutHorizontally(targetOffsetX = { -it }) + androidx.compose.animation.fadeOut()
-        ) {
+        if (tab != CHERRY AITab.HOME && settingsSection == null && !settingsOpen) {
             Surface(
-                modifier = Modifier.fillMaxHeight().width(286.dp),
-                color = Color(0xF0081425),
-                shape = RoundedCornerShape(topEnd = 26.dp, bottomEnd = 26.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x5538BDF8)),
-                shadowElevation = 20.dp
+                modifier = Modifier.align(Alignment.CenterStart).width(27.dp).height(58.dp)
+                    .clickable { settingsOpen = true },
+                color = Color(0xCC211722),
+                shape = RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x55FF55B7))
             ) {
-                Column(
-                    Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Column {
-                            Text("VOSI", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                            Text("SETTINGS & SHORTCUTS", color = GlowBlue, fontSize = 9.sp, letterSpacing = 1.5.sp)
-                        }
-                        IconButton(onClick = { settingsOpen = false }) {
-                            Icon(Icons.Outlined.ArrowBack, "Close settings", tint = Accent)
-                        }
-                    }
-                    HorizontalDivider(color = Color(0x334E7498))
-                    DrawerEntry("Account & profile", Icons.Outlined.Person) { tab = VosiTab.PROFILE; settingsOpen = false }
-                    DrawerEntry("Server connection", Icons.Outlined.Cloud) { tab = VosiTab.PROFILE; showServerSettings = true; settingsOpen = false }
-                    DrawerEntry("Connected devices", Icons.Outlined.Devices) { tab = VosiTab.DEVICES; settingsOpen = false }
-                    DrawerEntry("Tasks & approvals", Icons.Outlined.TaskAlt) { tab = VosiTab.TASKS; settingsOpen = false }
-                    Spacer(Modifier.weight(1f))
-                    Text("Your control comes first. Sensitive actions still require your approval.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.ChevronRight, "Open CHERRY AI navigation", tint = Color(0xFFFF70C5), modifier = Modifier.size(20.dp))
                 }
             }
+        }
+
+        if (settingsOpen) {
+            CHERRY AISettingsDrawer(
+                search = settingsSearch,
+                onSearch = { settingsSearch = it },
+                onSelect = { section -> settingsSection = section; settingsOpen = false },
+                onNavigate = { destination ->
+                    tab = when (destination) {
+                        "chat" -> CHERRY AITab.CHAT
+                        "tasks" -> CHERRY AITab.TASKS
+                        "devices" -> CHERRY AITab.DEVICES
+                        else -> CHERRY AITab.HOME
+                    }
+                    settingsOpen = false
+                },
+                onClose = { settingsOpen = false }
+            )
+        }
+
+        val selectedSettings = settingsSection
+        if (selectedSettings != null) {
+            CHERRY AISettingsDetailScreen(
+                section = selectedSettings,
+                onBack = { settingsSection = null; settingsOpen = true },
+                onAction = { action ->
+                    when (action) {
+                        "profile" -> { settingsSection = null; tab = CHERRY AITab.PROFILE }
+                        "backend" -> { settingsSection = null; showServerSettings = true; tab = CHERRY AITab.PROFILE }
+                        "chat" -> { settingsSection = null; tab = CHERRY AITab.CHAT }
+                        "tasks" -> { settingsSection = null; tab = CHERRY AITab.TASKS }
+                        "devices" -> { settingsSection = null; tab = CHERRY AITab.DEVICES }
+                        "companion" -> onOpenCompanion()
+                        "notifications" -> try {
+                            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Open Android Settings to manage CHERRY AI notifications.", Toast.LENGTH_SHORT).show()
+                        }
+                        "notification-access" -> try {
+                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Notification access settings are unavailable on this device.", Toast.LENGTH_SHORT).show()
+                        }
+                        "app-settings" -> try {
+                            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Could not open Android app settings.", Toast.LENGTH_SHORT).show()
+                        }
+                        "language-info" -> try {
+                            context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "CHERRY AI currently follows your Android system language.", Toast.LENGTH_SHORT).show()
+                        }
+                        "appearance-info" -> Toast.makeText(context, "CHERRY AI is using its signature dark appearance.", Toast.LENGTH_SHORT).show()
+                        "model-info" -> Toast.makeText(context, "AI model and provider routing are managed by the connected CHERRY AI backend.", Toast.LENGTH_LONG).show()
+                        "connector-info" -> Toast.makeText(context, "This connector is not connected. OAuth authorization must be enabled by the CHERRY AI backend first.", Toast.LENGTH_LONG).show()
+                        "screen-info" -> Toast.makeText(context, "Android screen observation is not enabled in this build yet. No screen is being captured.", Toast.LENGTH_LONG).show()
+                        "about-info" -> Toast.makeText(context, "CHERRY AI support and documentation links are not configured in this build yet.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            )
         }
     }
 }
@@ -287,182 +315,279 @@ private fun DrawerEntry(label: String, icon: androidx.compose.ui.graphics.vector
 }
 
 @Composable
-private fun VosiAmbientBackground() {
-    val drift = androidx.compose.animation.core.rememberInfiniteTransition(label = "dashboard-ambient")
-    val ambient by drift.animateFloat(
-        initialValue = -1f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(9000), repeatMode = RepeatMode.Reverse),
-        label = "ambient-drift"
+private fun CHERRY AIAmbientBackground() {
+    // Native Compose recreation of the supplied Android HTML's pink/purple blurred blobs.
+    // The shorter cycles make the ambient motion visible without becoming distracting.
+    val motion = rememberInfiniteTransition(label = "vosi-html-ambient")
+    val pinkDrift by motion.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(4200), repeatMode = RepeatMode.Reverse),
+        label = "pink-blob-drift"
     )
-    val haze by drift.animateFloat(
-        initialValue = 0.55f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(6000), repeatMode = RepeatMode.Reverse),
-        label = "haze-shift"
+    val purpleDrift by motion.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(5200), repeatMode = RepeatMode.Reverse),
+        label = "purple-blob-drift"
     )
-    Box(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                listOf(Color(0xFF08284A), Color(0xFF041B33), Color(0xFF021225), Color(0xFF010814))
-            )
-        )
-    ) {
+    val lightDrift by motion.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3400), repeatMode = RepeatMode.Reverse),
+        label = "light-pink-blob-drift"
+    )
+
+    Box(Modifier.fillMaxSize().background(Color(0xFF0B0B0F))) {
         Box(
-            Modifier.align(Alignment.TopStart).offset(x = (-115).dp, y = (-105).dp)
-                .size(390.dp).graphicsLayer {
-                    translationX = ambient * 42.dp.toPx()
-                    translationY = ambient * 30.dp.toPx()
-                    alpha = 0.55f + ((ambient + 1f) * 0.12f)
+            Modifier.align(Alignment.TopStart).offset(x = (-150).dp, y = (-190).dp)
+                .size(430.dp)
+                .graphicsLayer {
+                    translationX = pinkDrift * 74.dp.toPx()
+                    translationY = pinkDrift * 40.dp.toPx()
+                    scaleX = 1f + pinkDrift * 0.18f
+                    scaleY = 1f + pinkDrift * 0.18f
                 }
-                .background(Brush.radialGradient(listOf(Color(0x5538BDF8), Color(0x2238BDF8), Color.Transparent)))
-        )
-        Box(
-            Modifier.align(Alignment.TopEnd).offset(x = 145.dp, y = 80.dp)
-                .size(360.dp).graphicsLayer {
-                    translationX = -ambient * 48.dp.toPx()
-                    translationY = ambient * 54.dp.toPx()
-                    alpha = 0.42f + ((ambient + 1f) * 0.18f)
-                }
-                .background(Brush.radialGradient(listOf(Color(0x554F8EF7), Color(0x223B82F6), Color.Transparent)))
-        )
-        Box(
-            Modifier.align(Alignment.BottomCenter).offset(y = 130.dp)
-                .size(420.dp).graphicsLayer {
-                    translationX = ambient * 38.dp.toPx()
-                    translationY = -ambient * 48.dp.toPx()
-                    alpha = 0.3f + ((ambient + 1f) * 0.16f)
-                }
-                .background(Brush.radialGradient(listOf(Color(0x4438BDF8), Color.Transparent)))
-        )
-        Box(
-            Modifier.fillMaxSize().graphicsLayer {
-                alpha = haze
-                translationX = ambient * 8.dp.toPx()
-                translationY = -ambient * 5.dp.toPx()
-            }.background(
-                Brush.verticalGradient(
-                    0f to Color(0x11111D32),
-                    0.48f to Color.Transparent,
-                    1f to Color(0x66000510)
+                .background(
+                    Brush.radialGradient(
+                        0f to Color(0xCCFF2F9E),
+                        0.42f to Color(0x77FF2F9E),
+                        0.78f to Color(0x22FF2F9E),
+                        1f to Color.Transparent
+                    )
                 )
-            )
+        )
+        Box(
+            Modifier.align(Alignment.TopEnd).offset(x = 135.dp, y = (-160).dp)
+                .size(390.dp)
+                .graphicsLayer {
+                    translationX = -purpleDrift * 64.dp.toPx()
+                    translationY = purpleDrift * 30.dp.toPx()
+                    scaleX = 1f - purpleDrift * 0.10f
+                    scaleY = 1f - purpleDrift * 0.10f
+                }
+                .background(
+                    Brush.radialGradient(
+                        0f to Color(0xCCA44BFF),
+                        0.44f to Color(0x77A44BFF),
+                        0.8f to Color(0x22A44BFF),
+                        1f to Color.Transparent
+                    )
+                )
+        )
+        Box(
+            Modifier.align(Alignment.TopCenter).offset(x = 8.dp, y = (-75).dp)
+                .size(245.dp)
+                .graphicsLayer {
+                    translationX = lightDrift * 26.dp.toPx()
+                    translationY = -lightDrift * 22.dp.toPx()
+                    scaleX = 1f + lightDrift * 0.22f
+                    scaleY = 1f + lightDrift * 0.22f
+                    alpha = 0.78f
+                }
+                .background(
+                    Brush.radialGradient(
+                        0f to Color(0xBBFF77C8),
+                        0.48f to Color(0x66FF77C8),
+                        1f to Color.Transparent
+                    )
+                )
+        )
+        // Fade the glow into the same near-black base used by the HTML prototype.
+        Box(
+            Modifier.fillMaxWidth().height(390.dp).align(Alignment.TopCenter)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.42f to Color(0x220B0B0F),
+                        0.78f to Color(0xCC0B0B0F),
+                        1f to Color(0xFF0B0B0F)
+                    )
+                )
         )
     }
 }
 
 @Composable
 private fun HomeScreen(
-    onChat: () -> Unit,
     onSearch: (String) -> Unit,
-    onTasks: () -> Unit,
-    onDevices: () -> Unit,
     onTalk: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var connectorsOpen by remember { mutableStateOf(false) }
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    val context = LocalContext.current
+
+    Box(Modifier.fillMaxSize()) {
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 13.dp, top = 10.dp)
+                .size(44.dp)
+                .background(Color(0x99191420), RoundedCornerShape(15.dp))
         ) {
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Menu, "Open settings", tint = Color.White, modifier = Modifier.size(27.dp))
-            }
-            Surface(
-                color = Color(0x331B3952),
-                shape = RoundedCornerShape(50),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x5538BDF8))
-            ) {
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF68E5C2)))
-                    Spacer(Modifier.width(7.dp))
-                    Text("READY", color = Color(0xFFD2F8EC), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                }
-            }
+            Icon(Icons.Outlined.Menu, "Open navigation and settings", tint = Color.White, modifier = Modifier.size(23.dp))
         }
-        Spacer(Modifier.height(26.dp))
-        Text("Hi, I'm VOSI.", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Text("What would you like to make happen?", color = Color(0xFFB9C8DC), fontSize = 14.sp)
-        Spacer(Modifier.height(30.dp))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xCC07182B),
-            shape = RoundedCornerShape(24.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x7738BDF8)),
-            shadowElevation = 14.dp
+
+        Column(
+            Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = 21.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Row(
-                Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Outlined.Search, null, tint = GlowBlue, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(10.dp))
-                androidx.compose.foundation.text.BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 14.sp),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(GlowBlue),
-                    decorationBox = { inner ->
-                        Box {
-                            if (query.isBlank()) Text("Ask VOSI anything…", color = Color(0xFF879BB4), fontSize = 14.sp)
-                            inner()
-                        }
-                    },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { if (query.isNotBlank()) onSearch(query.trim()) })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Hi, I'm ", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp)
+                Text(
+                    "CHERRY AI",
+                    style = androidx.compose.ui.text.TextStyle(
+                        brush = Brush.horizontalGradient(listOf(Color(0xFFFF3FB4), Color(0xFFB44CFF))),
+                        fontSize = 31.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.7).sp
+                    )
                 )
-                IconButton(onClick = { connectorsOpen = true }) {
-                    Icon(Icons.Outlined.Extension, "Open connectors", tint = Accent, modifier = Modifier.size(23.dp))
-                }
-                IconButton(onClick = { if (query.isNotBlank()) onSearch(query.trim()) }) {
-                    Icon(Icons.Outlined.ArrowForward, "Send to VOSI", tint = GlowBlue)
+            }
+            Spacer(Modifier.height(48.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xE6131118),
+                shape = RoundedCornerShape(28.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    Brush.linearGradient(listOf(Color(0xFFFF3FB4), Color(0xFFB44CFF)))
+                ),
+                shadowElevation = 13.dp
+            ) {
+                Row(
+                    Modifier.padding(start = 8.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { connectorsOpen = true }, modifier = Modifier.size(42.dp)) {
+                        CubeConnectorMark()
+                    }
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 15.sp
+                        ),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFF65BE)),
+                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            if (query.isNotBlank()) {
+                                val message = query.trim()
+                                query = ""
+                                onSearch(message)
+                            }
+                        }),
+                        decorationBox = { inner ->
+                            Box {
+                                if (query.isBlank()) {
+                                    Text("Ask CHERRY AI anything…", color = Color(0xFF8A8798), fontSize = 15.sp)
+                                }
+                                inner()
+                            }
+                        }
+                    )
+                    IconButton(onClick = onTalk, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.Mic, "Open CHERRY AI voice workspace", tint = Color(0xFFE9D9EE), modifier = Modifier.size(22.dp))
+                    }
+                    FilledIconButton(
+                        onClick = {
+                            if (query.isNotBlank()) {
+                                val message = query.trim()
+                                query = ""
+                                onSearch(message)
+                            }
+                        },
+                        enabled = query.isNotBlank(),
+                        modifier = Modifier.size(38.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = Color(0xFFFF4EAE),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color(0xFF332532),
+                            disabledContentColor = Color(0xFF756A78)
+                        )
+                    ) {
+                        Icon(Icons.Outlined.ArrowUpward, "Send to CHERRY AI", modifier = Modifier.size(19.dp))
+                    }
                 }
             }
-        }
-        Spacer(Modifier.height(14.dp))
-        Text("VOICE  •  CHAT  •  TASKS  •  CONNECTED DEVICES", color = Color(0xFF8DA8C4), fontSize = 9.sp, letterSpacing = 1.6.sp)
-        Spacer(Modifier.height(22.dp))
-        TextButton(onClick = onTalk) {
-            Icon(Icons.Outlined.GraphicEq, null, tint = Accent)
-            Spacer(Modifier.width(8.dp))
-            Text("Start a voice conversation", color = Accent, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onDevices) {
-            Icon(Icons.Outlined.Devices, null, tint = GlowBlue)
-            Spacer(Modifier.width(8.dp))
-            Text("Connect your devices", color = Color(0xFFB8DDF2))
         }
     }
 
     if (connectorsOpen) {
         AlertDialog(
             onDismissRequest = { connectorsOpen = false },
-            containerColor = Color(0xFF0A1B2D),
-            title = { Text("VOSI connectors", color = Color.White) },
+            containerColor = Color(0xFF151119),
+            title = { Text("CHERRY AI Connectors", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Connect services and devices to extend what VOSI can do.", color = Muted, fontSize = 12.sp)
-                    Text("Browser and desktop connections are managed from Connected devices. Account-based connectors will appear here when enabled for your VOSI account.", color = Color(0xFFB8C8DA), fontSize = 12.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Connect services to let CHERRY AI work across your apps.", color = Muted, fontSize = 12.sp)
+                    listOf(
+                        "Gmail" to "Email",
+                        "Google services" to "Calendar, Drive and Contacts",
+                        "Browser integration" to "Browser pages and search",
+                        "Chrome extension" to "Desktop browser companion",
+                        "Third-party apps" to "Authorized integrations"
+                    ).forEach { (name, detail) ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    Toast.makeText(
+                                        context,
+                                        "$name is not connected yet. Its OAuth or browser-pairing flow must be configured before it can be enabled.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                .padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text(detail, color = Muted, fontSize = 10.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Not connected", color = Color(0xFFE8A0C5), fontSize = 10.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Icon(Icons.Outlined.ChevronRight, null, tint = Muted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                    Text(
+                        "No connector will be shown as connected until its real OAuth or pairing flow succeeds.",
+                        color = Color(0xFF9C91A0),
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
+                    )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { connectorsOpen = false; onDevices() }) {
-                    Text("Connected devices", color = GlowBlue)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { connectorsOpen = false }) { Text("Close", color = Accent) }
+                TextButton(onClick = { connectorsOpen = false }) { Text("Close", color = Color(0xFFFF70C5)) }
             }
         )
+    }
+}
+
+@Composable
+private fun CubeConnectorMark() {
+    androidx.compose.foundation.Canvas(Modifier.size(23.dp)) {
+        val w = size.width
+        val h = size.height
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.9.dp.toPx())
+        val outline = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.5f, h * 0.08f)
+            lineTo(w * 0.9f, h * 0.29f)
+            lineTo(w * 0.9f, h * 0.71f)
+            lineTo(w * 0.5f, h * 0.93f)
+            lineTo(w * 0.1f, h * 0.71f)
+            lineTo(w * 0.1f, h * 0.29f)
+            close()
+        }
+        drawPath(outline, Color(0xFFFF70C5), style = stroke)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.5f, h * 0.08f), Offset(w * 0.5f, h * 0.5f), strokeWidth = stroke.width)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.1f, h * 0.29f), Offset(w * 0.5f, h * 0.5f), strokeWidth = stroke.width)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.9f, h * 0.29f), Offset(w * 0.5f, h * 0.5f), strokeWidth = stroke.width)
+        drawLine(Color(0xFFFF70C5), Offset(w * 0.5f, h * 0.5f), Offset(w * 0.5f, h * 0.93f), strokeWidth = stroke.width)
     }
 }
 
@@ -492,10 +617,10 @@ private fun PageHeader(title: String, subtitle: String) {
 @Composable
 private fun ChatScreen(onOpenCompanion: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        PageHeader("Talk to VOSI", "A companion that can help across your devices.")
+        PageHeader("Talk to CHERRY AI", "A companion that can help across your devices.")
         Surface(color = Panel, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("VOSI", color = Accent, fontWeight = FontWeight.Bold)
+                Text("CHERRY AI", color = Accent, fontWeight = FontWeight.Bold)
                 Text("Hello! I'm here. You can speak with me, ask a question, or give me a task.", fontSize = 16.sp)
                 Text("Your existing companion voice and task tools are ready to open.", color = Muted, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
@@ -524,7 +649,7 @@ private fun TasksScreen() {
         thread {
             try {
                 val credential = DeviceCredentialStore.load(context)
-                    ?: throw IllegalStateException("Pair this phone with VOSI to view its tasks and approvals.")
+                    ?: throw IllegalStateException("Pair this phone with CHERRY AI to view its tasks and approvals.")
                 val base = credential.optString("backend_url").trimEnd('/')
                 val token = credential.optString("device_token")
                 val updateResponse = identityRequest(base, "/agent/tasks/updates", "GET", token, JSONObject())
@@ -542,7 +667,7 @@ private fun TasksScreen() {
                 }
             } catch (error: Exception) {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    status = error.message ?: "Could not load VOSI task activity."
+                    status = error.message ?: "Could not load CHERRY AI task activity."
                     busy = false
                 }
             }
@@ -559,7 +684,7 @@ private fun TasksScreen() {
         thread {
             try {
                 val credential = DeviceCredentialStore.load(context)
-                    ?: throw IllegalStateException("Pair this phone with VOSI first.")
+                    ?: throw IllegalStateException("Pair this phone with CHERRY AI first.")
                 val base = credential.optString("backend_url").trimEnd('/')
                 val token = credential.optString("device_token")
                 val path = if (approve) {
@@ -571,7 +696,7 @@ private fun TasksScreen() {
                 identityRequest(base, path, "POST", token, body)
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     busy = false
-                    status = if (approve) "Approval recorded. VOSI can continue with the approved step."
+                    status = if (approve) "Approval recorded. CHERRY AI can continue with the approved step."
                         else "You declined the action. The task was stopped."
                     refreshTasks()
                 }
@@ -593,7 +718,7 @@ private fun TasksScreen() {
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                PageHeader("Your activity", "Follow what VOSI is doing for you.")
+                PageHeader("Your activity", "Follow what CHERRY AI is doing for you.")
                 TextButton(onClick = { refreshTasks() }, enabled = !busy) {
                     if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     else Icon(Icons.Outlined.Refresh, "Refresh", tint = Accent)
@@ -607,7 +732,7 @@ private fun TasksScreen() {
                 val approval = approvals[index]
                 Surface(color = Panel, shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGlow), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Text(approval.optString("goal", "VOSI needs your approval"), fontWeight = FontWeight.SemiBold)
+                        Text(approval.optString("goal", "CHERRY AI needs your approval"), fontWeight = FontWeight.SemiBold)
                         Text(approval.optString("title", "Review this action"), color = Muted, fontSize = 12.sp)
                         val summary = approval.optJSONObject("arguments")?.optJSONObject("checkout_summary")
                         if (summary != null) {
@@ -628,7 +753,7 @@ private fun TasksScreen() {
         }
         item { Text("TASK HISTORY", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
         if (tasks.isEmpty()) {
-            item { InfoTile(Icons.Outlined.PendingActions, "No task history yet", "When you ask VOSI to perform a task from this phone, its progress and verified result will appear here.") }
+            item { InfoTile(Icons.Outlined.PendingActions, "No task history yet", "When you ask CHERRY AI to perform a task from this phone, its progress and verified result will appear here.") }
         } else {
             items(tasks.size) { index ->
                 val task = tasks[index]
@@ -642,7 +767,7 @@ private fun TasksScreen() {
                             Text(task.optString("state", "planned").replaceFirstChar { it.uppercase() }, color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Text("${progress?.optInt("completed", 0) ?: 0}/${progress?.optInt("total", 0) ?: 0} steps", color = Muted, fontSize = 11.sp)
                         }
-                        Text(task.optString("goal", "VOSI task"), fontWeight = FontWeight.SemiBold)
+                        Text(task.optString("goal", "CHERRY AI task"), fontWeight = FontWeight.SemiBold)
                         LinearProgressIndicator(progress = percent / 100f, modifier = Modifier.fillMaxWidth())
                         Text("${percent}% complete", color = Muted, fontSize = 11.sp)
                         if (current != null) Text("Running: ${current.optString("title")}", fontSize = 12.sp)
@@ -660,9 +785,9 @@ private fun TasksScreen() {
 private fun DevicesScreen(onOpenCompanion: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PageHeader("Your devices", "Bring your digital world together.")
-        InfoTile(Icons.Outlined.PhoneAndroid, "This Android phone", "Pair this phone securely with your VOSI backend.")
+        InfoTile(Icons.Outlined.PhoneAndroid, "This Android phone", "Pair this phone securely with your CHERRY AI backend.")
         InfoTile(Icons.Outlined.Computer, "Windows computer", "Send tasks to your paired desktop and receive completion updates.")
-        InfoTile(Icons.Outlined.Language, "Browser", "Connect the VOSI browser companion for supported page and product tasks.")
+        InfoTile(Icons.Outlined.Language, "Browser", "Connect the CHERRY AI browser companion for supported page and product tasks.")
         Button(onClick = onOpenCompanion, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {
             Icon(Icons.Outlined.Link, null); Spacer(Modifier.width(8.dp)); Text("Open device pairing & controls")
         }
@@ -690,10 +815,10 @@ private fun ProfileScreen(
     code: String, backend: String, showServer: Boolean,
     onEmail: (String) -> Unit, onPassword: (String) -> Unit, onCode: (String) -> Unit,
     onBackend: (String) -> Unit, onMode: (String) -> Unit, onToggleServer: () -> Unit,
-    onProfileSetup: () -> Unit, onLogout: () -> Unit, onSubmit: () -> Unit
+    onProfileSetup: () -> Unit, onTestBackend: () -> Unit, onLogout: () -> Unit, onSubmit: () -> Unit
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(22.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-        item { PageHeader("Your VOSI identity", "One account for your connected companion.") }
+        item { PageHeader("Your CHERRY AI identity", "One account for your connected companion.") }
         item {
             Surface(color = Panel, shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGlow), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -702,7 +827,7 @@ private fun ProfileScreen(
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text(if (loggedIn) "Account connected" else "Connect your account", fontWeight = FontWeight.SemiBold)
-                            Text(if (loggedIn) email else "Sign in or create your VOSI account", color = Muted, fontSize = 12.sp)
+                            Text(if (loggedIn) email else "Sign in or create your CHERRY AI account", color = Muted, fontSize = 12.sp)
                         }
                     }
                     if (!loggedIn) {
@@ -745,11 +870,14 @@ private fun ProfileScreen(
         item {
             TextButton(onClick = onToggleServer) { Text(if (showServer) "Hide server settings" else "Advanced: server settings") }
             if (showServer) {
-                OutlinedTextField(value = backend, onValueChange = onBackend, label = { Text("VOSI backend URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Text("Use your deployed HTTPS API URL, or localhost/ADB reverse for development. Account registration requires backend SMTP and identity secrets to be configured.", color = Muted, fontSize = 11.sp)
+                OutlinedTextField(value = backend, onValueChange = onBackend, label = { Text("CHERRY AI backend URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Button(onClick = onTestBackend, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
+                    Text(if (busy) "Checking backend…" else "Test backend connection")
+                }
+                Text("For USB development, keep http://127.0.0.1:8001 and run adb reverse tcp:8001 tcp:8001. For Wi-Fi, enter your computer LAN IP and run the backend with --host 0.0.0.0. Account registration also requires SMTP and identity secrets.", color = Muted, fontSize = 11.sp)
             }
         }
-        item { Text("VOSI never asks for merchant passwords, OTPs, UPI PINs or card security codes.", color = Muted, fontSize = 11.sp) }
+        item { Text("CHERRY AI never asks for merchant passwords, OTPs, UPI PINs or card security codes.", color = Muted, fontSize = 11.sp) }
     }
 }
 
@@ -771,7 +899,7 @@ private fun identityRequest(base: String, path: String, method: String, token: S
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
         val raw = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
         val result = JSONObject(raw)
-        if (code !in 200..299) throw IllegalStateException(result.optString("detail", "VOSI request failed (HTTP $code)."))
+        if (code !in 200..299) throw IllegalStateException(result.optString("detail", "CHERRY AI request failed (HTTP $code)."))
         return result
     } finally { connection.disconnect() }
 }
@@ -783,14 +911,14 @@ object AccountSessionStore {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val encrypted = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
-        VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()
+        CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()
             ?.putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))
             ?.putString("email", email)?.apply()
     }
     fun load(): String? {
         return try {
-            val prefs = VosiSessionContext.app?.getSharedPreferences(Prefs, 0) ?: return null
+            val prefs = CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0) ?: return null
             val ivText = prefs.getString("iv", null) ?: return null
             val dataText = prefs.getString("data", null) ?: return null
             val iv = Base64.decode(ivText, Base64.NO_WRAP)
@@ -800,8 +928,8 @@ object AccountSessionStore {
             String(cipher.doFinal(data), Charsets.UTF_8)
         } catch (_: Exception) { null }
     }
-    fun email(): String? = VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)
-    fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
+    fun email(): String? = CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)
+    fun clear() { CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (store.getKey(Alias, null) as? SecretKey)?.let { return it }
@@ -812,4 +940,4 @@ object AccountSessionStore {
     }
 }
 
-private object VosiSessionContext { var app: android.content.Context? = null }
+private object CHERRY AISessionContext { var app: android.content.Context? = null }

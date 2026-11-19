@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vosi - Your Screen Companion</title>
+    <title>CHERRY AI - Your Screen Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -388,7 +388,7 @@
             max-width: 100%;
         }
 
-        /* Jarvis-inspired Vosi home with its controls kept in the left rail. */
+        /* Jarvis-inspired CHERRY AI home with its controls kept in the left rail. */
         body.bg-space-base { background:#050505 !important; color:#f3f3f3; }
         body.bg-space-base::before {
             background:
@@ -508,32 +508,32 @@
 <body class="h-full bg-space-base text-slate-200 select-none overflow-hidden font-sans vosi-sidebar-collapsed">
     <div id="setup-wizard" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="setup-title" aria-hidden="true">
         <section class="vosi-dialog">
-            <h2 id="setup-title">Set up VOSI your way</h2>
+            <h2 id="setup-title">Set up CHERRY AI your way</h2>
             <p>Choose a few preferences to get started. You can change them any time in the sidebar.</p>
             <label class="dialog-field">Response style<select id="setup-response-style"><option value="balanced">Balanced</option><option value="concise">Short and direct</option><option value="detailed">Detailed</option><option value="stepwise">Step by step</option></select></label>
             <label class="dialog-field">Response language<select id="setup-language"><option value="same">Match my message</option><option value="English">English</option><option value="Hindi">Hindi</option><option value="Kannada">Kannada</option></select></label>
-            <label class="dialog-field">Appearance<select id="setup-theme"><option value="dark">VOSI dark</option><option value="dim">Dimmed</option></select></label>
-            <label class="dialog-check"><input id="setup-voice-replies" type="checkbox" checked><span>Speak VOSI’s replies aloud</span></label>
-            <label class="dialog-check"><input id="setup-hands-free" type="checkbox"><span>Enable “Hey Vosi” wake listening while VOSI is running</span></label>
-            <p class="safety-note">Hands-free listening is optional. When enabled, the microphone stays active and browser speech recognition may process audio online. VOSI cannot wake from a fully closed state.</p>
+            <label class="dialog-field">Appearance<select id="setup-theme"><option value="dark">CHERRY AI dark</option><option value="dim">Dimmed</option></select></label>
+            <label class="dialog-check"><input id="setup-voice-replies" type="checkbox" checked><span>Speak CHERRY AI’s replies aloud</span></label>
+            <label class="dialog-check"><input id="setup-hands-free" type="checkbox"><span>Enable “Hey CHERRY AI” wake listening while CHERRY AI is running</span></label>
+            <p class="safety-note">Hands-free listening is optional. When enabled, the microphone stays active and browser speech recognition may process audio online. CHERRY AI cannot wake from a fully closed state.</p>
             <div class="dialog-actions"><button id="setup-skip" class="dialog-button" type="button">Skip for now</button><button id="setup-finish" class="dialog-button primary" type="button">Save preferences</button></div>
         </section>
     </div>
     <div id="task-review-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="task-review-title" aria-hidden="true">
         <section class="vosi-dialog">
             <h2 id="task-review-title">Review this task</h2>
-            <p>VOSI will draft a plan for you to review, then track progress from the screen context you share.</p>
+            <p>CHERRY AI will draft a plan for you to review, then track progress from the screen context you share.</p>
             <label class="dialog-field">What do you want to accomplish?<input id="task-review-input" type="text" maxlength="240" placeholder="For example: organize these notes into a summary"></label>
             <div id="task-plan-preview" hidden><strong class="text-xs text-sky-200">Suggested steps</strong><div id="task-plan-output" class="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-slate-300"></div></div>
-            <p class="safety-note">The plan is advisory. VOSI won’t click, send, delete, purchase, or submit anything; you stay in control of those actions.</p>
+            <p class="safety-note">The plan is advisory. CHERRY AI won’t click, send, delete, purchase, or submit anything; you stay in control of those actions.</p>
             <div class="dialog-actions"><button id="task-review-cancel" class="dialog-button" type="button">Cancel</button><button id="task-review-plan" class="dialog-button primary" type="button">Create a plan</button><button id="task-review-start" class="dialog-button primary" type="button" hidden>Approve plan and track</button></div>
         </section>
     </div>
     <div id="device-action-dialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="device-action-title" aria-hidden="true">
         <section class="vosi-dialog">
             <h2 id="device-action-title">Open Wi-Fi settings?</h2>
-            <p id="device-action-description">VOSI will open Windows Wi-Fi settings. You can review and make the change there.</p>
-            <p class="safety-note">VOSI will not change your connection directly. You stay in control of network selection and passwords.</p>
+            <p id="device-action-description">CHERRY AI will open Windows Wi-Fi settings. You can review and make the change there.</p>
+            <p class="safety-note">CHERRY AI will not change your connection directly. You stay in control of network selection and passwords.</p>
             <div class="dialog-actions"><button id="device-action-cancel" class="dialog-button" type="button">Cancel</button><button id="device-action-confirm" class="dialog-button primary" type="button">Open settings</button></div>
         </section>
     </div>
@@ -542,13 +542,13 @@
             <h2 id="letter-title">Let’s write your letter</h2>
             <p id="letter-step-prompt">Who should the letter be addressed to?</p>
             <label id="letter-recipient-step" class="dialog-field">Recipient name or organization<input id="letter-recipient" type="text" maxlength="240" placeholder="For example: Priya Sharma or Acme Ltd."></label>
-            <label id="letter-purpose-step" class="dialog-field" hidden>What should the letter say?<textarea id="letter-purpose" maxlength="5000" placeholder="Tell VOSI the reason for the letter and the facts to include."></textarea></label>
+            <label id="letter-purpose-step" class="dialog-field" hidden>What should the letter say?<textarea id="letter-purpose" maxlength="5000" placeholder="Tell CHERRY AI the reason for the letter and the facts to include."></textarea></label>
             <div id="letter-extra-step" hidden>
                 <label class="dialog-field">Your name (optional)<input id="letter-sender" type="text" maxlength="240" placeholder="Your name"></label>
                 <label class="dialog-field">Subject (optional)<input id="letter-subject" type="text" maxlength="240" placeholder="Letter subject"></label>
                 <label class="dialog-field">Tone<select id="letter-tone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="formal">Formal</option><option value="appreciative">Appreciative</option><option value="firm but respectful">Firm but respectful</option></select></label>
             </div>
-            <p class="safety-note">VOSI will create a Word draft and open it for you to review. It will not send the letter. Names, dates, and facts should be checked before use.</p>
+            <p class="safety-note">CHERRY AI will create a Word draft and open it for you to review. It will not send the letter. Names, dates, and facts should be checked before use.</p>
             <div id="letter-draft-status" class="side-note" aria-live="polite"></div>
             <div id="letter-preview-wrap" hidden><label class="dialog-field">Draft preview<textarea id="letter-preview" readonly></textarea></label></div>
             <div class="dialog-actions"><button id="letter-cancel" class="dialog-button" type="button">Cancel</button><button id="letter-back" class="dialog-button" type="button" hidden>Back</button><button id="letter-speak" class="dialog-button" type="button">Speak answer</button><button id="letter-next" class="dialog-button primary" type="button">Next</button><button id="letter-draft-button" class="dialog-button primary" type="button" hidden>Create and open in Word</button><button id="letter-open-button" class="dialog-button primary" type="button" hidden>Open again in Word</button></div>
@@ -573,8 +573,8 @@
 <div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
         <header class="flex items-center justify-between px-3 py-2 mb-2">
             <div class="flex items-center space-x-2 md:hidden">
-                <img src="./src/assets/logo.png" alt="VOSI" class="w-7 h-7 rounded-full object-contain">
-                <span class="font-bold text-sm tracking-wide text-white">Vosi</span>
+                <img src="./src/assets/logo.png" alt="CHERRY AI" class="w-7 h-7 rounded-full object-contain">
+                <span class="font-bold text-sm tracking-wide text-white">CHERRY AI</span>
             </div>
             <div class="hidden md:block"></div>
             <div class="flex items-center space-x-3 ml-auto">
@@ -597,10 +597,10 @@
                 <div class="space-y-6">
                     <div id="sidebar-brand" class="flex items-center space-x-3 px-2 py-1">
                         <div class="relative flex shrink-0 items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-black shadow-lg shadow-indigo-500/30">
-                            <img src="./src/assets/logo.png" alt="VOSI logo" class="block w-full h-full object-contain">
+                            <img src="./src/assets/logo.png" alt="CHERRY AI logo" class="block w-full h-full object-contain">
                         </div>
                         <div id="sidebar-brand-copy" class="min-w-0">
-                            <h1 class="font-bold text-sm text-white tracking-wider">Vosi</h1>
+                            <h1 class="font-bold text-sm text-white tracking-wider">CHERRY AI</h1>
                             <p class="text-[11px] text-slate-400 tracking-tight">Your Digital Screen Assistant</p>
                         </div>
                     </div>
@@ -618,7 +618,7 @@
                             <i data-lucide="settings" class="w-4 h-4"></i><span>Settings</span>
                         </a>
                     </nav>
-                    <div id="sidebar-settings" aria-label="Vosi settings">
+                    <div id="sidebar-settings" aria-label="CHERRY AI settings">
                         <section class="setting-group" aria-labelledby="side-conversation-title">
                             <h2 class="setting-title" id="side-conversation-title">Conversation</h2>
                             <button id="setting-new-chat" class="side-action" type="button"><i data-lucide="plus" class="w-4 h-4 inline-block mr-2"></i>New chat</button>
@@ -642,9 +642,9 @@
                             <div class="setting-row"><span>Voice input</span><label class="settings-switch" aria-label="Voice input"><input id="setting-voice-input" type="checkbox" checked><span></span></label></div>
                             <div class="setting-row"><span>Voice replies</span><label class="settings-switch" aria-label="Voice replies"><input id="setting-voice-replies" type="checkbox" checked><span></span></label></div>
                             <label class="setting-row" for="setting-voice-persona"><span>Spoken voice</span><select id="setting-voice-persona"><option value="female">Warm female</option><option value="male">Warm male</option></select></label>
-                            <div class="setting-row"><span>Hands-free wake phrase<small>“Hey Vosi” while VOSI is running</small></span><label class="settings-switch" aria-label="Hands-free wake phrase"><input id="setting-hands-free" type="checkbox"><span></span></label></div>
-                            <label class="setting-row" for="setting-wake-phrase"><span>Wake phrase</span><input id="setting-wake-phrase" type="text" value="Hey Vosi" maxlength="40"></label>
-                            <p class="side-note">When enabled, VOSI keeps the microphone active to detect the wake phrase. Browser speech recognition may process audio online. VOSI must remain running; it cannot wake from a fully closed state.</p>
+                            <div class="setting-row"><span>Hands-free wake phrase<small>“Hey CHERRY AI” while CHERRY AI is running</small></span><label class="settings-switch" aria-label="Hands-free wake phrase"><input id="setting-hands-free" type="checkbox"><span></span></label></div>
+                            <label class="setting-row" for="setting-wake-phrase"><span>Wake phrase</span><input id="setting-wake-phrase" type="text" value="Hey CHERRY AI" maxlength="40"></label>
+                            <p class="side-note">When enabled, CHERRY AI keeps the microphone active to detect the wake phrase. Browser speech recognition may process audio online. CHERRY AI must remain running; it cannot wake from a fully closed state.</p>
                             <div class="voice-status-row"><span id="voice-status-dot" class="voice-status-dot" aria-hidden="true"></span><span id="voice-status-label" class="voice-status-label">Voice is off</span></div>
                             <button id="voice-pause-button" class="side-action" type="button">Enable wake listening</button>
                             <button id="voice-test-button" class="side-action" type="button">Test microphone</button>
@@ -659,13 +659,13 @@
                             <label class="setting-row" for="setting-theme"><span>Appearance</span><select id="setting-theme"><option value="dark">Jarvis dark</option><option value="dim">Dimmed</option></select></label>
                             <div class="setting-row"><span>Reminder alerts</span><label class="settings-switch" aria-label="Reminder alerts"><input id="setting-reminders" type="checkbox" checked><span></span></label></div>
                             <div class="setting-row"><span>Companion overlay<small>Show while screen awareness is on</small></span><label class="settings-switch" aria-label="Companion overlay"><input id="setting-companion-overlay" type="checkbox" checked><span></span></label></div>
-                            <div class="setting-row"><span>Start with Windows<small>Open VOSI when you sign in</small></span><label class="settings-switch" aria-label="Start with Windows"><input id="setting-start-with-windows" type="checkbox"><span></span></label></div>
+                            <div class="setting-row"><span>Start with Windows<small>Open CHERRY AI when you sign in</small></span><label class="settings-switch" aria-label="Start with Windows"><input id="setting-start-with-windows" type="checkbox"><span></span></label></div>
                             <div id="startup-setting-status" class="side-note" aria-live="polite">Available in the installed desktop app.</div>
                             <button id="setup-open-button" class="side-action" type="button">Open setup guide</button>
                         </section>
                         <section class="setting-group" aria-labelledby="side-privacy-title">
                             <h2 class="setting-title" id="side-privacy-title">Privacy &amp; maintenance</h2>
-                            <p class="side-note">Screen frames go to your local Vosi backend only while awareness is active. Hands-free listening is opt-in; browser speech recognition may process audio online. Preferences are saved on this device.</p>
+                            <p class="side-note">Screen frames go to your local CHERRY AI backend only while awareness is active. Hands-free listening is opt-in; browser speech recognition may process audio online. Preferences are saved on this device.</p>
                             <button id="setting-reset" class="side-action" type="button">Reset settings to defaults</button>
                             <p id="setting-save-status" aria-live="polite">Settings ready.</p>
                         </section>
@@ -689,14 +689,14 @@
                 <div class="text-center space-y-2 max-w-xl">
                     <p class="text-xs tracking-widest text-sky-300 font-semibold uppercase">Your Digital Companion</p>
                     <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-                        Hi, I'm <span class="text-gradient-purple">Vosi.</span>
+                        Hi, I'm <span class="text-gradient-purple">CHERRY AI.</span>
                     </h2>
                     <p class="text-slate-400 text-xs md:text-sm leading-relaxed px-4">
                         I'm here to understand your screen, follow what you're doing, and help when you need me.
                     </p>
                 </div>
 
-                <section id="vosi-chat-transcript" aria-live="polite" aria-label="VOSI conversation"></section>
+                <section id="vosi-chat-transcript" aria-live="polite" aria-label="CHERRY AI conversation"></section>
 
                 <div class="w-full max-w-2xl mt-6 space-y-4">
                     <form id="ai-prompt-form" class="relative flex items-center">
@@ -710,13 +710,13 @@
                                 <a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Gmail">
                                     <i data-lucide="external-link" class="w-4 h-4"></i><span>Open Gmail</span>
                                 </a>
-                                <p id="gmail-connect-status" class="connector-note">Connect your Google account to let VOSI read and send emails. VOSI always asks before sending.</p>
+                                <p id="gmail-connect-status" class="connector-note">Connect your Google account to let CHERRY AI read and send emails. CHERRY AI always asks before sending.</p>
                             </div>
                         </details>
                         <div class="absolute left-12 text-indigo-400 pointer-events-none"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
-                        <input id="user-input" type="text" placeholder="Ask VOSI anything..." class="w-full pl-20 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
+                        <input id="user-input" type="text" placeholder="Ask CHERRY AI anything..." class="w-full pl-20 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
                         <div class="absolute right-2 flex items-center space-x-1">
-                            <button type="button" id="mic-btn" title="Speak to VOSI" aria-label="Speak to VOSI" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                            <button type="button" id="mic-btn" title="Speak to CHERRY AI" aria-label="Speak to CHERRY AI" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
                         </div>
                     </form>
@@ -734,18 +734,18 @@
                             Start screen sharing
                         </button>
                     </div>
-                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4"><div class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">One-time Android pairing code</div><div class="mt-2 flex items-center gap-2"><code id="phone-pair-code" class="min-w-0 flex-1 break-all rounded-lg bg-black/40 p-3 text-sm text-cyan-200"></code><button id="phone-pair-copy" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200">Copy</button></div><p id="phone-pair-expiry" class="mt-2 text-[11px] text-slate-400"></p></div><p id="phone-pair-status" class="mt-2 w-full max-w-xl text-center text-xs text-slate-400" role="status">Connect your Android phone to VOSI.</p>
+                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4"><div class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">One-time Android pairing code</div><div class="mt-2 flex items-center gap-2"><code id="phone-pair-code" class="min-w-0 flex-1 break-all rounded-lg bg-black/40 p-3 text-sm text-cyan-200"></code><button id="phone-pair-copy" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200">Copy</button></div><p id="phone-pair-expiry" class="mt-2 text-[11px] text-slate-400"></p></div><p id="phone-pair-status" class="mt-2 w-full max-w-xl text-center text-xs text-slate-400" role="status">Connect your Android phone to CHERRY AI.</p>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
-                    <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your VOSI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local VOSI mode</div></div><span class="task-state">READY</span></div></div>
-                    <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>VOSI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
-                    <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>VOSI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask VOSI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local VOSI backend.</p></div>
+                    <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your CHERRY AI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local CHERRY AI mode</div></div><span class="task-state">READY</span></div></div>
+                    <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>CHERRY AI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
+                    <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>CHERRY AI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask CHERRY AI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local CHERRY AI backend.</p></div>
                     <div id="tab-page-settings" class="tab-card" style="display:none">
                         <h2>Settings</h2>
-                        <p>VOSI device connections and preferences.</p>
+                        <p>CHERRY AI device connections and preferences.</p>
                         <section class="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
                             <h3 class="text-sm font-bold text-white">Windows device connection</h3>
-                            <p class="mt-2">Pair this PC with your VOSI phone using a short-lived code generated by the VOSI backend. The device credential is stored in Windows Credential Manager.</p>
+                            <p class="mt-2">Pair this PC with your CHERRY AI phone using a short-lived code generated by the CHERRY AI backend. The device credential is stored in Windows Credential Manager.</p>
                             <label for="desktop-pairing-code" class="block mt-4 mb-2 text-xs font-semibold text-slate-300">One-time pairing code</label>
                             <input id="desktop-pairing-code" type="password" autocomplete="off" spellcheck="false" placeholder="Paste pairing code" class="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400">
                             <button id="desktop-pair-button" type="button" class="tab-action">Pair this PC</button>
@@ -788,14 +788,14 @@
                     const response = await fetch(API_BASE + '/gmail/status');
                     const data = await response.json();
                     if (gmailStatus) gmailStatus.textContent = data.status === 'connected'
-                        ? 'Gmail connected. VOSI can read and send emails after your confirmation.'
+                        ? 'Gmail connected. CHERRY AI can read and send emails after your confirmation.'
                         : data.status === 'reconnect_required' ? 'Gmail reading is connected. Choose Reconnect Gmail and approve the send permission.'
                         : data.status === 'connecting' ? 'Waiting for Google authorization…'
                         : data.error || 'Not connected yet. Choose Connect Gmail.';
                     if (gmailButton) gmailButton.querySelector('span').textContent = data.status === 'connected' ? 'Gmail connected' : data.status === 'reconnect_required' ? 'Reconnect Gmail' : 'Connect Gmail';
                     return data.status;
                 } catch (_) {
-                    if (gmailStatus) gmailStatus.textContent = 'Start the VOSI backend, then connect Gmail.';
+                    if (gmailStatus) gmailStatus.textContent = 'Start the CHERRY AI backend, then connect Gmail.';
                     return 'offline';
                 }
             }
@@ -814,7 +814,7 @@
                         status = await refreshGmailStatus();
                     }
                     if (status === 'connected') {
-                        if (gmailStatus) gmailStatus.textContent = 'Connected! Ask VOSI: “Check my 5 latest Gmail messages.”';
+                        if (gmailStatus) gmailStatus.textContent = 'Connected! Ask CHERRY AI: “Check my 5 latest Gmail messages.”';
                     } else if (status === 'error') {
                         if (gmailStatus) gmailStatus.textContent = gmailStatus.textContent || 'Gmail authorization failed. Check your Google OAuth setup.';
                     }
@@ -826,16 +826,16 @@
             void refreshGmailStatus();
         });
 
-        const VOSI_ASSISTANT_NAME_KEY = "vosi.assistant.name.v1";
-        let vosiAssistantName = "VOSI";
+        const CHERRY AI_ASSISTANT_NAME_KEY = "vosi.assistant.name.v1";
+        let vosiAssistantName = "CHERRY AI";
         let waitingForAssistantName = false;
-        try { vosiAssistantName = (localStorage.getItem(VOSI_ASSISTANT_NAME_KEY) || "VOSI").trim().slice(0, 32) || "VOSI"; } catch (_) {}
-        function saveVosiAssistantName(name) {
+        try { vosiAssistantName = (localStorage.getItem(CHERRY AI_ASSISTANT_NAME_KEY) || "CHERRY AI").trim().slice(0, 32) || "CHERRY AI"; } catch (_) {}
+        function saveCHERRY AIAssistantName(name) {
             const cleanName = String(name || "").trim().replace(/\s+/g, " ").slice(0, 32);
             if (!cleanName) return false;
             vosiAssistantName = cleanName;
-            try { localStorage.setItem(VOSI_ASSISTANT_NAME_KEY, cleanName); } catch (_) {}
-            vosiSettings.wakePhrase = cleanName.toLowerCase() === "vosi" ? "Hey Vosi" : cleanName;
+            try { localStorage.setItem(CHERRY AI_ASSISTANT_NAME_KEY, cleanName); } catch (_) {}
+            vosiSettings.wakePhrase = cleanName.toLowerCase() === "vosi" ? "Hey CHERRY AI" : cleanName;
             try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (_) {}
             const wakeInput = document.getElementById("setting-wake-phrase");
             if (wakeInput) wakeInput.value = vosiSettings.wakePhrase;
@@ -849,39 +849,39 @@
         }
         const SETTINGS_KEY = "vosi.settings.v1";
         const ONBOARDING_KEY = "vosi.setup.complete.v1";
-        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey Vosi", reminders: true, companionOverlay: true };
+        const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey CHERRY AI", reminders: true, companionOverlay: true };
         let vosiSettings = { ...DEFAULT_SETTINGS };
-        function loadVosiSettings() {
+        function loadCHERRY AISettings() {
             try { vosiSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; }
             catch (_) { vosiSettings = { ...DEFAULT_SETTINGS }; }
             const style = document.getElementById("setting-response-style"); const language = document.getElementById("setting-language"); const guide = document.getElementById("setting-click-guidance"); const theme = document.getElementById("setting-theme");
             if (style) style.value = vosiSettings.responseStyle; if (language) language.value = vosiSettings.language; if (guide) guide.checked = !!vosiSettings.clickGuidance; if (theme) theme.value = vosiSettings.theme;
             const voicePersona = document.getElementById("setting-voice-persona"); if (voicePersona) voicePersona.value = vosiSettings.voicePersona || "female";
             for (const [id, key] of [["setting-voice-input","voiceInput"],["setting-voice-replies","voiceReplies"],["setting-hands-free","handsFree"],["setting-reminders","reminders"],["setting-companion-overlay","companionOverlay"]]) { const control = document.getElementById(id); if (control) control.checked = !!vosiSettings[key]; }
-            const wakePhrase = document.getElementById("setting-wake-phrase"); if (wakePhrase) wakePhrase.value = vosiSettings.wakePhrase || "Hey Vosi";
-            applyVosiTheme();
+            const wakePhrase = document.getElementById("setting-wake-phrase"); if (wakePhrase) wakePhrase.value = vosiSettings.wakePhrase || "Hey CHERRY AI";
+            applyCHERRY AITheme();
         }
-        function saveVosiSettings() {
-            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark", voiceInput: !!document.getElementById("setting-voice-input")?.checked, voiceReplies: !!document.getElementById("setting-voice-replies")?.checked, voicePersona: document.getElementById("setting-voice-persona")?.value || "female", handsFree: !!document.getElementById("setting-hands-free")?.checked, wakePhrase: document.getElementById("setting-wake-phrase")?.value.trim() || "Hey Vosi", reminders: !!document.getElementById("setting-reminders")?.checked, companionOverlay: !!document.getElementById("setting-companion-overlay")?.checked };
-            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save VOSI settings:", error); } applyVosiTheme();
+        function saveCHERRY AISettings() {
+            vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark", voiceInput: !!document.getElementById("setting-voice-input")?.checked, voiceReplies: !!document.getElementById("setting-voice-replies")?.checked, voicePersona: document.getElementById("setting-voice-persona")?.value || "female", handsFree: !!document.getElementById("setting-hands-free")?.checked, wakePhrase: document.getElementById("setting-wake-phrase")?.value.trim() || "Hey CHERRY AI", reminders: !!document.getElementById("setting-reminders")?.checked, companionOverlay: !!document.getElementById("setting-companion-overlay")?.checked };
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save CHERRY AI settings:", error); } applyCHERRY AITheme();
             const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Saved on this device.";
         }
-        function applyVosiTheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
-        function prepareVosiPrompt(message) {
+        function applyCHERRY AITheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
+        function prepareCHERRY AIPrompt(message) {
             const instructions = ["Do not claim you performed clicks or external actions. Before any action that sends, deletes, purchases, or submits, explain the intended action and wait for the user to explicitly confirm."]; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + "."); if (vosiSettings.voiceReplies) instructions.push("Speak in a warm, friendly, natural conversational tone. Use voice-ready phrasing and contractions, and avoid reading markdown aloud unless the user asks for it.");
             return instructions.length ? "[User preferences: " + instructions.join(" ") + "] " + message : message;
         }
         function updateSettingsObservation(active) { const el = document.getElementById("setting-observation-status"); if (el) { el.textContent = active ? "ON" : "OFF"; el.classList.toggle("text-emerald-300", active); } }
         async function refreshSettingsBackendStatus() {
             const badge = document.getElementById("setting-backend-status"); const detail = document.getElementById("setting-backend-detail"); if (!badge || !detail) return;
-            try { const response = await fetch(API_BASE + "/", { signal: AbortSignal.timeout(2500) }); if (!response.ok) throw new Error("HTTP " + response.status); const data = await response.json(); badge.textContent = "ONLINE"; badge.classList.add("text-emerald-300"); detail.textContent = (data.version ? "VOSI backend v" + data.version : "Local backend") + " · 127.0.0.1:8001"; }
+            try { const response = await fetch(API_BASE + "/", { signal: AbortSignal.timeout(2500) }); if (!response.ok) throw new Error("HTTP " + response.status); const data = await response.json(); badge.textContent = "ONLINE"; badge.classList.add("text-emerald-300"); detail.textContent = (data.version ? "CHERRY AI backend v" + data.version : "Local backend") + " · 127.0.0.1:8001"; }
             catch (_) { badge.textContent = "OFFLINE"; badge.classList.remove("text-emerald-300"); detail.textContent = "Start the FastAPI backend on port 8001."; }
         }
         function setupSettings() {
-            loadVosiSettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-voice-persona", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveVosiSettings));
+            loadCHERRY AISettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-voice-persona", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveCHERRY AISettings));
             setupPreferencePresets();
             void setupStartupPreference();
-            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadVosiSettings(); window.dispatchEvent(new CustomEvent("vosi-settings-reset")); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
+            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadCHERRY AISettings(); window.dispatchEvent(new CustomEvent("vosi-settings-reset")); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
             void refreshSettingsBackendStatus(); setInterval(() => { const page = document.getElementById("tab-page-settings"); if (page && page.style.display !== "none") void refreshSettingsBackendStatus(); }, 10000);
         }
         function setupOnboarding() {
@@ -906,7 +906,7 @@
                 if (theme) theme.value = document.getElementById("setup-theme")?.value || "dark";
                 if (replies) replies.checked = !!document.getElementById("setup-voice-replies")?.checked;
                 if (handsFree) handsFree.checked = !!document.getElementById("setup-hands-free")?.checked;
-                localStorage.setItem(ONBOARDING_KEY, "1"); saveVosiSettings(); close();
+                localStorage.setItem(ONBOARDING_KEY, "1"); saveCHERRY AISettings(); close();
                 if (previousHandsFree !== !!handsFree?.checked) handsFree?.dispatchEvent(new Event("change", { bubbles: true }));
             });
             document.getElementById("setup-open-button")?.addEventListener("click", open);
@@ -921,7 +921,7 @@
                 if (preset === "focus") { if (input) input.checked = true; if (replies) replies.checked = false; if (handsFree) handsFree.checked = false; if (reminders) reminders.checked = false; if (clickGuidance) clickGuidance.checked = true; }
                 if (preset === "quiet") { if (input) input.checked = false; if (replies) replies.checked = false; if (handsFree) handsFree.checked = false; if (reminders) reminders.checked = false; }
                 if (preset === "handsfree") { if (input) input.checked = true; if (replies) replies.checked = true; if (handsFree) handsFree.checked = true; if (reminders) reminders.checked = true; }
-                saveVosiSettings();
+                saveCHERRY AISettings();
                 if (previousHandsFree !== !!handsFree?.checked) handsFree?.dispatchEvent(new Event("change", { bubbles: true }));
                 const status = document.getElementById("setting-save-status"); if (status) status.textContent = (preset === "handsfree" ? "Hands-free preset selected. Allow microphone access if prompted." : preset === "quiet" ? "Quiet preset selected." : "Focus preset selected.");
             }));
@@ -930,14 +930,14 @@
             const control = document.getElementById("setting-start-with-windows"); const status = document.getElementById("startup-setting-status");
             const autostart = window.__TAURI__?.autostart;
             if (!control) return;
-            if (!autostart?.isEnabled || !autostart?.enable || !autostart?.disable) { control.disabled = true; if (status) status.textContent = "Available in the installed VOSI desktop app."; return; }
-            try { control.checked = await autostart.isEnabled(); if (status) status.textContent = control.checked ? "VOSI starts when you sign in." : "VOSI will only start when you open it."; }
+            if (!autostart?.isEnabled || !autostart?.enable || !autostart?.disable) { control.disabled = true; if (status) status.textContent = "Available in the installed CHERRY AI desktop app."; return; }
+            try { control.checked = await autostart.isEnabled(); if (status) status.textContent = control.checked ? "CHERRY AI starts when you sign in." : "CHERRY AI will only start when you open it."; }
             catch (_) { control.disabled = true; if (status) status.textContent = "Could not read the Windows startup setting."; return; }
             control.addEventListener("change", async () => {
                 control.disabled = true;
                 try {
                     if (control.checked) await autostart.enable(); else await autostart.disable();
-                    if (status) status.textContent = control.checked ? "VOSI will start when you sign in." : "VOSI will only start when you open it.";
+                    if (status) status.textContent = control.checked ? "CHERRY AI will start when you sign in." : "CHERRY AI will only start when you open it.";
                 } catch (error) {
                     control.checked = !control.checked;
                     if (status) status.textContent = "Could not update startup setting. " + String(error);
@@ -946,7 +946,7 @@
             window.addEventListener("vosi-settings-reset", () => {
                 if (!control.checked) return;
                 control.checked = false;
-                void autostart.disable().then(() => { if (status) status.textContent = "VOSI will only start when you open it."; }).catch(() => { if (status) status.textContent = "Could not clear the Windows startup setting."; });
+                void autostart.disable().then(() => { if (status) status.textContent = "CHERRY AI will only start when you open it."; }).catch(() => { if (status) status.textContent = "Could not clear the Windows startup setting."; });
             });
         }
         async function checkBackend() {
@@ -1007,15 +1007,15 @@
                     if (!question) return;
                     try {
                         if (typeof window.answerFromCompanion !== 'function') {
-                            throw new Error('VOSI companion handler is not ready. Please reopen VOSI and try again.');
+                            throw new Error('CHERRY AI companion handler is not ready. Please reopen CHERRY AI and try again.');
                         }
                         await window.answerFromCompanion(question);
                     } catch (error) {
-                        console.error('Floating VOSI request failed:', error);
+                        console.error('Floating CHERRY AI request failed:', error);
                         try {
                             await emit('companion-answer', {
                                 success: false,
-                                title: 'VOSI request error',
+                                title: 'CHERRY AI request error',
                                 answer: String(error?.message || error || 'The request could not be processed.'),
                                 observing: false
                             });
@@ -1080,7 +1080,7 @@
                 if (next) next.hidden = step === 2 || step === null;
                 if (speak) speak.hidden = step === 2 || step === null;
                 if (draft) draft.hidden = step !== 2;
-                if (announce && prompts[step]) speakVosi(prompts[step]);
+                if (announce && prompts[step]) speakCHERRY AI(prompts[step]);
                 if (step === 0) window.setTimeout(() => document.getElementById('letter-recipient')?.focus(), 0);
                 if (step === 1) window.setTimeout(() => letterPurpose?.focus(), 0);
                 if (step === 2) window.setTimeout(() => document.getElementById('letter-sender')?.focus(), 0);
@@ -1100,7 +1100,7 @@
                 let bodySeed = remainder;
                 if (recipientMatch) bodySeed = remainder.slice(recipientMatch[0].length).replace(/^\s*(?:about|asking|requesting|regarding|saying|for)\s*/i, '').trim();
                 if (letterPurpose) letterPurpose.value = bodySeed;
-                if (letterDraftStatus) letterDraftStatus.textContent = 'Letter details are sent to your configured VOSI AI provider to create the draft; the Word file is saved locally.';
+                if (letterDraftStatus) letterDraftStatus.textContent = 'Letter details are sent to your configured CHERRY AI AI provider to create the draft; the Word file is saved locally.';
                 if (letterPreviewWrap) letterPreviewWrap.hidden = true;
                 if (letterPreview) letterPreview.value = '';
                 if (letterOpenButton) { letterOpenButton.hidden = true; letterOpenButton.textContent = 'Open again in Word'; }
@@ -1112,7 +1112,7 @@
             letterDialog?.addEventListener('click', event => { if (event.target === letterDialog) closeLetterDialog(); });
             document.getElementById('letter-next')?.addEventListener('click', () => {
                 if (letterFlowStep === 0 && !document.getElementById('letter-recipient')?.value.trim()) {
-                    if (letterDraftStatus) letterDraftStatus.textContent = 'Please tell VOSI who the letter is for.';
+                    if (letterDraftStatus) letterDraftStatus.textContent = 'Please tell CHERRY AI who the letter is for.';
                     document.getElementById('letter-recipient')?.focus(); return;
                 }
                 if (letterFlowStep === 1 && !letterPurpose?.value.trim()) {
@@ -1130,7 +1130,7 @@
                 const button = event.currentTarget;
                 const purpose = letterPurpose?.value.trim();
                 const recipient = document.getElementById('letter-recipient')?.value.trim();
-                if (!recipient) { setLetterStep(0); if (letterDraftStatus) letterDraftStatus.textContent = 'Please tell VOSI who the letter is for.'; return; }
+                if (!recipient) { setLetterStep(0); if (letterDraftStatus) letterDraftStatus.textContent = 'Please tell CHERRY AI who the letter is for.'; return; }
                 if (!purpose) { setLetterStep(1); if (letterDraftStatus) letterDraftStatus.textContent = 'Add the reason and key facts for the letter first.'; return; }
                 button.disabled = true; button.textContent = 'Drafting…';
                 if (letterOpenButton) letterOpenButton.hidden = true;
@@ -1179,13 +1179,13 @@
             letterOpenButton?.addEventListener('click', openGeneratedLetter);
             function openHotelDialog(city = '', announce = false) {
                 if (!city) {
-                    showResponse('Which city?', 'Tell VOSI the city, for example: “Find hotels in Chennai.”');
+                    showResponse('Which city?', 'Tell CHERRY AI the city, for example: “Find hotels in Chennai.”');
                     userInput?.focus();
                     return;
                 }
                 const query = `best hotels in ${city}`;
                 void launchDeviceTarget('search-google', query);
-                if (announce) speakVosi(`Searching Google for hotels in ${city}.`);
+                if (announce) speakCHERRY AI(`Searching Google for hotels in ${city}.`);
             }
             function openWebResearchDialog(query = '', announce = false) {
                 const searchQuery = query.trim();
@@ -1195,12 +1195,12 @@
                     return;
                 }
                 void launchDeviceTarget('search-google', searchQuery);
-                if (announce) speakVosi(`Searching Google for ${searchQuery}.`);
+                if (announce) speakCHERRY AI(`Searching Google for ${searchQuery}.`);
             }            async function playYoutubeSong(query) {
                 const song = String(query || '').trim();
                 if (!song) {
                     const message = 'Which song should I search for on YouTube? Type the title and artist, then send it.';
-                    showResponse('Which song?', message); speakVosi(message); userInput?.focus(); return;
+                    showResponse('Which song?', message); speakCHERRY AI(message); userInput?.focus(); return;
                 }
                 try {
                     await launchDeviceTarget('search-youtube', song);
@@ -1219,7 +1219,7 @@
                 const names = { youtube: 'YouTube', google: 'Google', gmail: 'Gmail', github: 'GitHub', outlook: 'Outlook', calendar: 'Google Calendar', 'google-sign-in': 'Google sign-in', 'microsoft-sign-in': 'Microsoft sign-in', 'github-sign-in': 'GitHub sign-in', 'windows-settings': 'Windows Settings', 'wifi-settings': 'Wi-Fi settings', 'network-settings': 'Network settings', 'sound-settings': 'Sound settings', 'display-settings': 'Display settings', 'bluetooth-settings': 'Bluetooth settings', 'privacy-settings': 'Privacy settings', 'microphone-settings': 'Microphone privacy settings', 'camera-settings': 'Camera privacy settings', 'notifications-settings': 'Notification settings', 'accessibility-settings': 'Accessibility settings', 'apps-settings': 'Apps settings', 'accounts-settings': 'Account settings', 'personalization-settings': 'Personalization settings', 'storage-settings': 'Storage settings', 'time-settings': 'Date and time settings', 'keyboard-settings': 'Keyboard settings', 'mouse-settings': 'Mouse settings', 'power-settings': 'Power settings', 'update-settings': 'Windows Update', calculator: 'Calculator', notepad: 'Notepad', 'file-explorer': 'File Explorer', 'task-manager': 'Task Manager', paint: 'Paint', edge: 'Microsoft Edge', chrome: 'Google Chrome', word: 'Microsoft Word', excel: 'Microsoft Excel', powerpoint: 'PowerPoint', 'outlook-app': 'Outlook' };
                 const appTargets = new Set(['calculator', 'notepad', 'file-explorer', 'task-manager', 'paint', 'edge', 'chrome', 'word', 'excel', 'powerpoint', 'outlook-app']);
                 if (!invoke) {
-                    showResponse('Open in the desktop app', 'Device actions are available when you run the installed VOSI desktop app.');
+                    showResponse('Open in the desktop app', 'Device actions are available when you run the installed CHERRY AI desktop app.');
                     return;
                 }
                 try {
@@ -1227,19 +1227,19 @@
                     else await invoke(appTargets.has(target) ? 'launch_device_app' : 'open_device_target', { target });
                     const isSignIn = target.endsWith('-sign-in');
                     const isSearch = target.startsWith('search-');
-                    const details = isSearch ? 'Opened ' + target.slice(7) + ' results for “' + query + '”.' : isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; VOSI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
+                    const details = isSearch ? 'Opened ' + target.slice(7) + ' results for “' + query + '”.' : isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; CHERRY AI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
                     showResponse(isSearch ? 'Search opened' : 'Opened ' + (names[target] || 'device page'), details);
-                    speakVosi(details);
+                    speakCHERRY AI(details);
                 } catch (error) {
                     const message = String(error?.message || error || 'Could not open that page.');
                     showResponse('Could not open it', message);
-                    speakVosi(message);
+                    speakCHERRY AI(message);
                 }
             }
             function requestDeviceTarget(target, needsConfirmation = false, query = '') {
                 if (!needsConfirmation) { void launchDeviceTarget(target, query); return; }
                 pendingDeviceAction = { target, query };
-                if (deviceActionDescription) deviceActionDescription.textContent = 'VOSI will open Windows Wi-Fi settings. You can review and make the requested connection change there; VOSI will not switch networks or enter a password for you.';
+                if (deviceActionDescription) deviceActionDescription.textContent = 'CHERRY AI will open Windows Wi-Fi settings. You can review and make the requested connection change there; CHERRY AI will not switch networks or enter a password for you.';
                 deviceActionDialog?.classList.add('is-open');
                 deviceActionDialog?.setAttribute('aria-hidden', 'false');
             }
@@ -1351,8 +1351,8 @@
                 const cleanQuery = String(query || '').trim();
                 if (!cleanQuery) { showResponse('What should I find?', 'Say a product, for example: “Find the best body spray under 1000 rupees on Flipkart.”'); return; }
                 const requestId = 'vosi-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-                showResponse('Searching Flipkart', 'VOSI is asking your Chrome extension to search for ' + cleanQuery + (budget ? ' under ₹' + budget : '') + '. Keep Chrome open.');
-                speakVosi('I am searching Flipkart for ' + cleanQuery + (budget ? ' under ' + budget + ' rupees.' : '.'));
+                showResponse('Searching Flipkart', 'CHERRY AI is asking your Chrome extension to search for ' + cleanQuery + (budget ? ' under ₹' + budget : '') + '. Keep Chrome open.');
+                speakCHERRY AI('I am searching Flipkart for ' + cleanQuery + (budget ? ' under ' + budget + ' rupees.' : '.'));
                 try {
                     const start = await fetch(API_BASE + '/browser/search', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1370,9 +1370,9 @@
                             if (data.success && data.results) { result = data.results; break; }
                         }
                     }
-                    if (!result) throw new Error('No product results arrived. Check that the VOSI Flipkart Chrome extension is installed and enabled.');
+                    if (!result) throw new Error('No product results arrived. Check that the CHERRY AI Flipkart Chrome extension is installed and enabled.');
                     const products = (result.products || []).slice(0, 8);
-                    if (!products.length) throw new Error('Flipkart opened, but VOSI could not read product cards. Try scrolling the results page and ask again.');
+                    if (!products.length) throw new Error('Flipkart opened, but CHERRY AI could not read product cards. Try scrolling the results page and ask again.');
                     const ranked = products.map(item => {
                         const price = Number(String(item.price || '').replace(/[^0-9.]/g, '')) || null;
                         const rating = Number(item.rating) || 0;
@@ -1383,20 +1383,20 @@
                     }).filter(item => !budget || !item.priceValue || item.priceValue <= budget).sort((a,b) => b.score-a.score);
                     const best = ranked[0] || products[0];
                     const lines = ranked.slice(0, 5).map((item, i) => (i + 1) + '. ' + item.name + ' — ' + (item.price || 'price not shown') + (item.rating ? ' · ' + item.rating + '★' : '')).join('\n');
-                    const recommendation = 'VOSI found ' + products.length + ' visible listings. ' + (best?.name ? 'My top visible match is ' + best.name + (best.price ? ' at ' + best.price : '') + (best.rating ? ', rated ' + best.rating + ' stars.' : '.') : 'I could not determine a clear best option.');
+                    const recommendation = 'CHERRY AI found ' + products.length + ' visible listings. ' + (best?.name ? 'My top visible match is ' + best.name + (best.price ? ' at ' + best.price : '') + (best.rating ? ', rated ' + best.rating + ' stars.' : '.') : 'I could not determine a clear best option.');
                     showResponse('Flipkart comparison', recommendation + '\n\n' + lines + '\n\nThis is a ranking of visible listings, not a guarantee of product quality. Check seller, ingredients, reviews and delivery details before buying.');
-                    speakVosi(recommendation);
+                    speakCHERRY AI(recommendation);
                 } catch (error) {
                     const message = String(error?.message || error);
                     showResponse('Flipkart search needs attention', message);
-                    speakVosi(message);
+                    speakCHERRY AI(message);
                 }
             }
 
             async function runGmailLatest(count = 5, naturalLanguage = '', searchLabel = '') {
                 const isSearch = !!naturalLanguage;
                 showResponse(isSearch ? 'Searching Gmail' : 'Checking Gmail',
-                    isSearch ? 'VOSI is understanding your request and searching Gmail for matching messages.' : 'VOSI is retrieving your latest messages directly from Gmail.');
+                    isSearch ? 'CHERRY AI is understanding your request and searching Gmail for matching messages.' : 'CHERRY AI is retrieving your latest messages directly from Gmail.');
                 try {
                     const response = await fetch(API_BASE + '/gmail/search', {
                         method: 'POST',
@@ -1410,7 +1410,7 @@
                             ? 'I could not find any Gmail messages matching your request: ' + searchLabel + '.'
                             : 'Gmail is connected, but there are no messages in your inbox.';
                         showResponse('No matching Gmail messages', emptyMessage);
-                        speakVosi(emptyMessage);
+                        speakCHERRY AI(emptyMessage);
                         return emptyMessage;
                     }
                     const lines = data.messages.map((mail, index) =>
@@ -1431,12 +1431,12 @@
                         : 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
                             data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
                     showResponse(isSearch ? 'Gmail search results' : 'Your latest Gmail messages', lines.join('\n\n'));
-                    speakVosi(summary);
+                    speakCHERRY AI(summary);
                     return summary;
                 } catch (error) {
                     const message = String(error?.message || error);
                     showResponse('Gmail connection', message);
-                    speakVosi(message);
+                    speakCHERRY AI(message);
                     return message;
                 }
             }
@@ -1473,8 +1473,8 @@
                     showResponse('Voice input unavailable', 'Use Chrome or Edge with microphone permission, or type the missing email details.');
                     return null;
                 }
-                showResponse('VOSI is listening', prompt);
-                speakVosi(prompt);
+                showResponse('CHERRY AI is listening', prompt);
+                speakCHERRY AI(prompt);
                 await new Promise(resolve => window.setTimeout(resolve, 500));
                 return await new Promise(resolve => {
                     const finish = value => {
@@ -1506,13 +1506,13 @@
                         .replace(/\s+underscore\s+/g, '_')
                         .replace(/\s+(?:dash|hyphen)\s+/g, '-')
                         .replace(/\s+/g, '');
-                    if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakVosi('I did not send the email.'); return; }
+                    if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakCHERRY AI('I did not send the email.'); return; }
                     if (!subject) subject = (await askForVoiceEmailAnswer('What should the email subject be?')) || '';
-                    if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakVosi('I did not send the email.'); return; }
+                    if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakCHERRY AI('I did not send the email.'); return; }
                     if (!body) body = (await askForVoiceEmailAnswer('What would you like the email to say?')) || '';
-                    if (!body) { showResponse('Email not sent', 'I did not receive the email message.'); speakVosi('I did not send the email.'); return; }
+                    if (!body) { showResponse('Email not sent', 'I did not receive the email message.'); speakCHERRY AI('I did not send the email.'); return; }
                 } else {
-                    if (!recipient) recipient = (window.prompt('What email address should VOSI send this to?') || '').trim();
+                    if (!recipient) recipient = (window.prompt('What email address should CHERRY AI send this to?') || '').trim();
                     if (!recipient) { showResponse('Email not sent', 'No recipient email address was provided.'); return; }
                     if (!body) body = (window.prompt('What should the email say?') || '').trim();
                     if (!body) { showResponse('Email not sent', 'The email message is empty.'); return; }
@@ -1525,12 +1525,12 @@
 
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
                     showResponse('Email not sent', 'That recipient address does not look valid. Please try again.');
-                    speakVosi('That email address does not look valid. I did not send the email.');
+                    speakCHERRY AI('That email address does not look valid. I did not send the email.');
                     return;
                 }
                 const preview = 'To: ' + recipient + '\nSubject: ' + subject + '\n\n' + body;
                 showResponse('Review email before sending', preview + (voiceMode ? '\n\nSay “send it” to confirm, or say “cancel”.' : '\n\nWaiting for your confirmation…'));
-                speakVosi(voiceMode ? 'Here is your email. ' + preview + '. Say send it to confirm, or cancel.' : 'Please review the email details. I will send it only after you confirm.');
+                speakCHERRY AI(voiceMode ? 'Here is your email. ' + preview + '. Say send it to confirm, or cancel.' : 'Please review the email details. I will send it only after you confirm.');
 
                 let approved = false;
                 if (voiceMode) {
@@ -1541,8 +1541,8 @@
                     approved = window.confirm('Send this email?\n\n' + preview);
                 }
                 if (!approved) {
-                    showResponse('Email not sent', 'You cancelled or did not confirm. VOSI has not sent this email.');
-                    speakVosi('Okay. I did not send the email.');
+                    showResponse('Email not sent', 'You cancelled or did not confirm. CHERRY AI has not sent this email.');
+                    speakCHERRY AI('Okay. I did not send the email.');
                     return;
                 }
                 try {
@@ -1555,11 +1555,11 @@
                     if (!response.ok || !data.success) throw new Error(data.error || 'Email sending failed.');
                     const result = 'Email sent successfully to ' + recipient + '. Subject: ' + subject + '.';
                     showResponse('Email sent', result);
-                    speakVosi(result);
+                    speakCHERRY AI(result);
                 } catch (error) {
                     const message = String(error?.message || error);
                     showResponse('Email could not be sent', message);
-                    speakVosi(message);
+                    speakCHERRY AI(message);
                 }
             }
 
@@ -1589,30 +1589,30 @@
                 if (command.target === 'invalid-time') { showResponse('Invalid time','Please say a valid time, such as “set an alarm for 5 PM”.'); return; }
                 if (command.target === 'set-alarm' || command.target === 'set-timer') {
                     const invoke=window.__TAURI__?.core?.invoke;
-                    if(!invoke){showResponse('Desktop app required','Alarms and timers are available in the installed VOSI desktop app.');return;}
+                    if(!invoke){showResponse('Desktop app required','Alarms and timers are available in the installed CHERRY AI desktop app.');return;}
                     try {
                         const result=command.target==='set-alarm'
                             ? await invoke('set_alarm',{hour:command.hour,minute:command.minute})
                             : await invoke('set_timer',{seconds:command.seconds});
-                        showResponse(command.target==='set-alarm'?'Alarm set':'Timer started',result); speakVosi(result);
-                    } catch(error){const message=String(error?.message||error);showResponse('Could not set it',message);speakVosi(message);}
+                        showResponse(command.target==='set-alarm'?'Alarm set':'Timer started',result); speakCHERRY AI(result);
+                    } catch(error){const message=String(error?.message||error);showResponse('Could not set it',message);speakCHERRY AI(message);}
                     return;
                 }
                 if(command.target==='volume-control'){
                     const invoke=window.__TAURI__?.core?.invoke;
-                    if(!invoke){showResponse('Desktop app required','Volume controls need the installed VOSI desktop app.');return;}
-                    try{const result=await invoke('control_volume',{action:command.action});showResponse('Volume control',result);speakVosi(result);}catch(error){showResponse('Volume control failed',String(error));}return;
+                    if(!invoke){showResponse('Desktop app required','Volume controls need the installed CHERRY AI desktop app.');return;}
+                    try{const result=await invoke('control_volume',{action:command.action});showResponse('Volume control',result);speakCHERRY AI(result);}catch(error){showResponse('Volume control failed',String(error));}return;
                 }
                 if(command.target==='screenshot'){await launchDeviceTarget('screenshot');return;}
                 if(command.target==='lock-pc'||command.target==='shutdown-pc'||command.target==='restart-pc'){
                     const invoke=window.__TAURI__?.core?.invoke;
-                    if(!invoke){showResponse('Desktop app required','This device action needs the installed VOSI desktop app.');return;}
+                    if(!invoke){showResponse('Desktop app required','This device action needs the installed CHERRY AI desktop app.');return;}
                     if(command.target!=='lock-pc'){
                         pendingDeviceAction={target:command.target,query:''};
-                        if(deviceActionDescription)deviceActionDescription.textContent=command.target==='shutdown-pc'?'VOSI will shut down Windows after a 10-second delay. Save your work before confirming.':'VOSI will restart Windows after a 10-second delay. Save your work before confirming.';
+                        if(deviceActionDescription)deviceActionDescription.textContent=command.target==='shutdown-pc'?'CHERRY AI will shut down Windows after a 10-second delay. Save your work before confirming.':'CHERRY AI will restart Windows after a 10-second delay. Save your work before confirming.';
                         deviceActionDialog?.classList.add('is-open');deviceActionDialog?.setAttribute('aria-hidden','false'); return;
                     }
-                    try{const result=await invoke('lock_pc');showResponse('Device locked',result);speakVosi(result);}catch(error){showResponse('Could not lock device',String(error));}
+                    try{const result=await invoke('lock_pc');showResponse('Device locked',result);speakCHERRY AI(result);}catch(error){showResponse('Could not lock device',String(error));}
                     return;
                 }
                 if (!command) return null;
@@ -1623,7 +1623,7 @@
                 if (command.target === 'write-letter') {
                     await focusMainWindow();
                     openLetterDialog(command.seed || '', true);
-                    return 'I opened the letter form in VOSI. Tell me the recipient first, then the letter details.';
+                    return 'I opened the letter form in CHERRY AI. Tell me the recipient first, then the letter details.';
                 }
                 if (command.target === 'web-research') {
                     openWebResearchDialog(command.query || '', true);
@@ -1643,7 +1643,7 @@
                 }
                 if (command.confirm) await focusMainWindow();
                 requestDeviceTarget(command.target, !!command.confirm, command.query || '');
-                return command.confirm ? 'I opened the related settings in VOSI so you can review them.' : `I opened ${command.target.replaceAll('-', ' ')}.`;
+                return command.confirm ? 'I opened the related settings in CHERRY AI so you can review them.' : `I opened ${command.target.replaceAll('-', ' ')}.`;
             }
             document.getElementById('device-action-cancel')?.addEventListener('click', closeDeviceActionDialog);
             deviceActionDialog?.addEventListener('click', event => { if (event.target === deviceActionDialog) closeDeviceActionDialog(); });
@@ -1652,7 +1652,7 @@
                 closeDeviceActionDialog();
                 if (action?.target === 'shutdown-pc' || action?.target === 'restart-pc') {
                     const invoke=window.__TAURI__?.core?.invoke;
-                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakVosi(message);}).catch(error=>showResponse('Action failed',String(error)));
+                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakCHERRY AI(message);}).catch(error=>showResponse('Action failed',String(error)));
                 } else if (action) void launchDeviceTarget(action.target, action.query);
             });
             sidebarToggle?.addEventListener('click', () => {
@@ -1690,7 +1690,7 @@
                         state.classList.toggle('text-emerald-300', active);
                     }
                     if (current) current.textContent = task.current_step || 'Not detected yet';
-                    if (next) next.textContent = task.next_step || 'Ask VOSI for guidance to begin';
+                    if (next) next.textContent = task.next_step || 'Ask CHERRY AI for guidance to begin';
                     if (button) button.textContent = active ? 'Stop task' : 'Start a task';
                     if (completedList) {
                         completedList.replaceChildren();
@@ -1745,7 +1745,7 @@
                     }
                     if (note) note.textContent = 'Synced just now · visual changes are not proof of task completion';
                 } catch (error) {
-                    if (note) note.textContent = 'Cannot sync workflow. Check that the VOSI backend is running.';
+                    if (note) note.textContent = 'Cannot sync workflow. Check that the CHERRY AI backend is running.';
                     console.warn('Workflow sync failed:', error);
                 }
             }
@@ -1775,7 +1775,7 @@
                 const running = document.getElementById('task-page-state')?.textContent === 'ACTIVE';
                 if (!running) { openTaskReview(); return; }
                 try { await apiPost('/task', { action: 'stop' }); await refreshWorkflow(); }
-                catch (error) { const note = document.getElementById('task-sync-note'); if (note) note.textContent = 'Could not stop task tracking. Check the VOSI backend.'; console.warn('Task update failed:', error); }
+                catch (error) { const note = document.getElementById('task-sync-note'); if (note) note.textContent = 'Could not stop task tracking. Check the CHERRY AI backend.'; console.warn('Task update failed:', error); }
             });
             document.getElementById('task-review-cancel')?.addEventListener('click', closeTaskReview);
             taskPlanButton?.addEventListener('click', async () => {
@@ -1784,8 +1784,8 @@
                 taskPlanButton.disabled = true; taskPlanButton.textContent = 'Creating plan…';
                 try {
                     const request = 'Create a short, numbered, practical plan for this user goal: ' + taskName + '. Do not execute actions. Point out any step that would send, delete, purchase, or submit something and say that the user must explicitly approve it first.';
-                    const data = await apiPost('/ask', { message: prepareVosiPrompt(request), include_screen: false });
-                    if (!data?.success || !data?.brain) throw new Error(data?.brain?.error || data?.error || 'VOSI could not create a plan.');
+                    const data = await apiPost('/ask', { message: prepareCHERRY AIPrompt(request), include_screen: false });
+                    if (!data?.success || !data?.brain) throw new Error(data?.brain?.error || data?.error || 'CHERRY AI could not create a plan.');
                     reviewedTaskName = taskName;
                     if (taskPlanOutput) taskPlanOutput.textContent = data.brain.suggestion || data.brain.understanding || 'Review the goal, work through one step at a time, and confirm any consequential action yourself.';
                     if (taskPlanPreview) taskPlanPreview.hidden = false;
@@ -1801,7 +1801,7 @@
                 if (!taskName || taskName !== reviewedTaskName) { if (taskReviewInput) taskReviewInput.focus(); return; }
                 button.disabled = true;
                 try { await apiPost('/task', { action: 'start', task_name: taskName }); closeTaskReview(); await refreshWorkflow(); }
-                catch (error) { const note = document.getElementById('task-sync-note'); if (note) note.textContent = 'Could not start task tracking. Check the VOSI backend.'; console.warn('Task update failed:', error); }
+                catch (error) { const note = document.getElementById('task-sync-note'); if (note) note.textContent = 'Could not start task tracking. Check the CHERRY AI backend.'; console.warn('Task update failed:', error); }
                 finally { button.disabled = false; }
             });
             taskReviewInput?.addEventListener('input', () => { if (reviewedTaskName && taskReviewInput.value.trim() !== reviewedTaskName) { reviewedTaskName = null; if (taskPlanButton) { taskPlanButton.hidden = false; taskPlanButton.textContent = 'Create a plan'; } if (taskStartButton) taskStartButton.hidden = true; } });
@@ -1855,7 +1855,7 @@
                     awarenessPageState.classList.toggle("is-active", active && !observationPaused);
                     awarenessPageState.classList.toggle("is-paused", active && observationPaused);
                 }
-                if (awarenessPageDetail) awarenessPageDetail.textContent = !active ? "Choose Start observing to share a screen." : observationPaused ? "Preview is live; uploads to VOSI are paused." : "Your selected screen is being previewed and sent every 2 seconds.";
+                if (awarenessPageDetail) awarenessPageDetail.textContent = !active ? "Choose Start observing to share a screen." : observationPaused ? "Preview is live; uploads to CHERRY AI are paused." : "Your selected screen is being previewed and sent every 2 seconds.";
                 if (awarenessPauseButton) {
                     awarenessPauseButton.disabled = !active;
                     awarenessPauseButton.textContent = observationPaused ? "Resume frames" : "Pause frames";
@@ -1884,7 +1884,7 @@
                     const data = await response.json();
                     badge.textContent = "ONLINE";
                     badge.classList.add("text-emerald-300");
-                    detail.textContent = (data.version ? "VOSI backend v" + data.version : "Local backend") + " · 127.0.0.1:8001";
+                    detail.textContent = (data.version ? "CHERRY AI backend v" + data.version : "Local backend") + " · 127.0.0.1:8001";
                 } catch (_) {
                     badge.textContent = "OFFLINE";
                     badge.classList.remove("text-emerald-300");
@@ -2000,7 +2000,7 @@
                     console.log("Screen awareness started – companion should now be visible");
                     try {
                         const { getCurrentWindow } = window.__TAURI__.window;
-                        // Minimize VOSI instead of hiding it, so it stays available in the Windows taskbar.
+                        // Minimize CHERRY AI instead of hiding it, so it stays available in the Windows taskbar.
                         await getCurrentWindow().minimize();
                     } catch (e) {
                         console.warn("Could not minimize main window:", e);
@@ -2120,7 +2120,7 @@
                 recognitionMode = null;
                 isListening = false;
                 if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
-                if (userInput) userInput.placeholder = 'Ask Vosi anything...';
+                if (userInput) userInput.placeholder = 'Ask CHERRY AI anything...';
                 if (current) { current.onend = null; try { current.abort(); } catch (_) {} }
             }
             function startVoiceRecognition(mode) {
@@ -2135,7 +2135,7 @@
                 recognition.interimResults = mode === 'handsfree';
                 if (micBtn && mode === 'push') { micBtn.classList.add('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'true'); }
                 if (userInput && mode === 'push') userInput.placeholder = 'Listening…';
-                setVoiceStatus(mode === 'handsfree' ? 'Listening for “' + (vosiSettings.wakePhrase || 'Hey Vosi') + '”. Browser speech recognition may process audio online.' : 'Listening… browser speech recognition may process audio online.');
+                setVoiceStatus(mode === 'handsfree' ? 'Listening for “' + (vosiSettings.wakePhrase || 'Hey CHERRY AI') + '”. Browser speech recognition may process audio online.' : 'Listening… browser speech recognition may process audio online.');
                 recognition.onresult = event => {
                     let transcript = '';
                     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -2160,7 +2160,7 @@
                         document.getElementById('ai-prompt-form')?.requestSubmit();
                         return;
                     }
-                    const configuredPhrase = (vosiSettings.wakePhrase || 'Hey Vosi').trim();
+                    const configuredPhrase = (vosiSettings.wakePhrase || 'Hey CHERRY AI').trim();
                     const wakeNames = [...new Set([vosiAssistantName, configuredPhrase.replace(/^hey\s+/i, '')].filter(Boolean))];
                     const lowerTranscript = transcript.toLowerCase();
                     let wakeAt = -1;
@@ -2188,7 +2188,7 @@
                 };
                 recognition.onerror = event => {
                     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                        if (mode === 'handsfree') { const control = document.getElementById('setting-hands-free'); if (control) control.checked = false; saveVosiSettings(); }
+                        if (mode === 'handsfree') { const control = document.getElementById('setting-hands-free'); if (control) control.checked = false; saveCHERRY AISettings(); }
                         stopVoiceRecognition();
                         setVoiceStatus('Microphone permission is blocked. Allow it in Windows or the app settings.');
                     } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
@@ -2202,7 +2202,7 @@
                     } else if (mode === 'push') {
                         isListening = false;
                         if (micBtn) { micBtn.classList.remove('text-rose-400', 'animate-pulse'); micBtn.setAttribute('aria-pressed', 'false'); }
-                        if (userInput) userInput.placeholder = 'Ask Vosi anything...';
+                        if (userInput) userInput.placeholder = 'Ask CHERRY AI anything...';
                         if (document.getElementById('setting-hands-free')?.checked && vosiSettings.voiceInput) window.setTimeout(() => startVoiceRecognition('handsfree'), 500);
                     }
                 };
@@ -2251,11 +2251,11 @@
             }
             function addSirToQuestion(text) {
                 const value = String(text || '');
-                // Add a respectful "sir" only when VOSI is asking a question.
+                // Add a respectful "sir" only when CHERRY AI is asking a question.
                 return value.replace(/\?\s*$/, match => /\bsir\s*\?$/i.test(value) ? match : ', sir?');
             }
 
-            function speakVosi(text) {
+            function speakCHERRY AI(text) {
                 text = addSirToQuestion(text);
                 if (!vosiSettings.voiceReplies || !text || !window.speechSynthesis) return;
                 if (recognitionMode === 'handsfree') stopVoiceRecognition();
@@ -2279,7 +2279,7 @@
             window.setTimeout(refreshSpokenVoiceStatus, 150);
             document.getElementById('setting-voice-persona')?.addEventListener('change', refreshSpokenVoiceStatus);
             document.getElementById('setting-language')?.addEventListener('change', refreshSpokenVoiceStatus);
-            micBtn?.setAttribute('aria-label', 'Speak to Vosi');
+            micBtn?.setAttribute('aria-label', 'Speak to CHERRY AI');
             micBtn?.setAttribute('aria-pressed', 'false');
             micBtn?.addEventListener('click', () => {
                 if (!vosiSettings.voiceInput) { setVoiceStatus('Turn on Voice input in the sidebar first.'); return; }
@@ -2297,7 +2297,7 @@
             });
             document.getElementById('setting-hands-free')?.addEventListener('change', event => {
                 if (event.currentTarget.checked) {
-                    if (!startVoiceRecognition('handsfree')) { event.currentTarget.checked = false; saveVosiSettings(); }
+                    if (!startVoiceRecognition('handsfree')) { event.currentTarget.checked = false; saveCHERRY AISettings(); }
                 }
                 else { stopVoiceRecognition(); setVoiceStatus('Hands-free listening is off.'); }
             });
@@ -2340,7 +2340,7 @@
             let chatSessions = [];
             let activeChatId = null;
 
-            function renderVosiChatMessage(role, label, body) {
+            function renderCHERRY AIChatMessage(role, label, body) {
                 const transcript = document.getElementById('vosi-chat-transcript');
                 if (!transcript) return;
                 const row = document.createElement('div');
@@ -2350,7 +2350,7 @@
                 if (role !== 'user') {
                     const heading = document.createElement('span');
                     heading.className = 'vosi-chat-label';
-                    heading.textContent = label || 'VOSI';
+                    heading.textContent = label || 'CHERRY AI';
                     bubble.appendChild(heading);
                 }
                 const message = document.createElement('div');
@@ -2370,7 +2370,7 @@
 
             function saveChatSessions() {
                 try { localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(chatSessions.slice(-40))); }
-                catch (error) { console.warn('VOSI could not save chat history:', error); }
+                catch (error) { console.warn('CHERRY AI could not save chat history:', error); }
             }
 
             function refreshChatSwitcher() {
@@ -2400,13 +2400,13 @@
                 const transcript = document.getElementById('vosi-chat-transcript');
                 if (transcript) {
                     transcript.replaceChildren();
-                    (chat.messages || []).forEach(message => renderVosiChatMessage(message.role, message.label, message.body));
+                    (chat.messages || []).forEach(message => renderCHERRY AIChatMessage(message.role, message.label, message.body));
                 }
                 refreshChatSwitcher();
                 saveChatSessions();
             }
 
-            function createVosiChat() {
+            function createCHERRY AIChat() {
                 const chat = {
                     id: 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
                     title: 'New chat',
@@ -2424,7 +2424,7 @@
                 return chat;
             }
 
-            function initializeVosiChatHistory() {
+            function initializeCHERRY AIChatHistory() {
                 try {
                     const stored = JSON.parse(localStorage.getItem(CHAT_SESSIONS_KEY) || '[]');
                     if (Array.isArray(stored)) {
@@ -2449,8 +2449,8 @@
                 refreshChatSwitcher();
             }
 
-            function appendVosiChatMessage(role, label, body) {
-                const chat = chatSessions.find(item => item.id === activeChatId) || createVosiChat();
+            function appendCHERRY AIChatMessage(role, label, body) {
+                const chat = chatSessions.find(item => item.id === activeChatId) || createCHERRY AIChat();
                 const messageBody = String(body || '');
                 const message = { role: role === 'user' ? 'user' : 'assistant', label: label || '', body: messageBody };
                 chat.messages.push(message);
@@ -2459,17 +2459,17 @@
                     chat.title = messageBody.replace(/\s+/g, ' ').slice(0, 38) || 'New chat';
                 }
                 chat.updatedAt = Date.now();
-                renderVosiChatMessage(message.role, message.label, message.body);
+                renderCHERRY AIChatMessage(message.role, message.label, message.body);
                 saveChatSessions();
                 refreshChatSwitcher();
             }
 
-            document.getElementById('setting-new-chat')?.addEventListener('click', createVosiChat);
+            document.getElementById('setting-new-chat')?.addEventListener('click', createCHERRY AIChat);
             document.getElementById('setting-chat-switch')?.addEventListener('change', event => activateChat(event.target.value));
-            initializeVosiChatHistory();
+            initializeCHERRY AIChatHistory();
 
             function showResponse(title, body) {
-                appendVosiChatMessage('assistant', addSirToQuestion(title), addSirToQuestion(body || ''));
+                appendCHERRY AIChatMessage('assistant', addSirToQuestion(title), addSirToQuestion(body || ''));
                 if (responseBox) responseBox.classList.add('hidden');
             }
 
@@ -2492,12 +2492,12 @@
                         await window.__TAURI__.event.emit("vosi-guidance-clear");
                     }
                 } catch (error) {
-                    console.warn("VOSI click guide error:", error);
+                    console.warn("CHERRY AI click guide error:", error);
                 }
             }
 
             async function answerFromCompanion(query) {
-                appendVosiChatMessage('user', 'You', query);
+                appendCHERRY AIChatMessage('user', 'You', query);
                 try {
                     if (window.__TAURI__?.event?.emit) {
                         await window.__TAURI__.event.emit('companion-state', { state: 'thinking', observing: !!screenStream });
@@ -2516,7 +2516,7 @@
                             answer = 'Got it. Add any optional details in the letter form, then choose Create and open in Word.';
                         }
                         if (answer) {
-                            speakVosi(answer);
+                            speakCHERRY AI(answer);
                             await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'Letter details', answer, observing: !!screenStream });
                             return;
                         }
@@ -2526,7 +2526,7 @@
                     if (sendDraft) {
                         await runGmailSend(sendDraft, true);
                         await window.__TAURI__?.event?.emit('companion-answer', {
-                            success: true, title: 'Email workflow', answer: 'The email workflow has finished. Check the VOSI chat for the send status and confirmation details.',
+                            success: true, title: 'Email workflow', answer: 'The email workflow has finished. Check the CHERRY AI chat for the send status and confirmation details.',
                             observing: !!screenStream
                         });
                         return;
@@ -2535,7 +2535,7 @@
                     if (gmailRequest) {
                         const gmailAnswer = await runGmailLatest(gmailRequest.count, gmailRequest.gmailQuery, gmailRequest.searchLabel);
                         await window.__TAURI__?.event?.emit('companion-answer', {
-                            success: true, title: 'Gmail', answer: gmailAnswer || 'Gmail request finished. Check the VOSI chat for details.',
+                            success: true, title: 'Gmail', answer: gmailAnswer || 'Gmail request finished. Check the CHERRY AI chat for details.',
                             observing: !!screenStream
                         });
                         return;
@@ -2544,8 +2544,8 @@
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
                         const finalAnswer = answer || 'I handled that request.';
-                        speakVosi(finalAnswer);
-                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI command', answer: finalAnswer, observing: !!screenStream });
+                        speakCHERRY AI(finalAnswer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'CHERRY AI command', answer: finalAnswer, observing: !!screenStream });
                         return;
                     }
 
@@ -2555,13 +2555,13 @@
                     const screenGuidanceIntent = /\b(?:this|current|open|running|visible|active)\s+(?:screen|website|webpage|page|tab|window|site)\b|\b(?:where|what|which)\s+(?:should i\s+)?(?:click|tap|press|select)\b|\b(?:where to click|what to click|click next|next step|guide me through|walk me through|on this page|on this website|this button|this form|this error|screen awareness)\b/i.test(normalizedQuery);
                     if (!screenGuidanceIntent) {
                         const answer = 'I can handle supported tasks here without an AI API, including Gmail, email sending, device controls, opening apps, and web or Flipkart searches. For questions about the live screen, ask me what to click or what to do next while screen observing is active.';
-                        speakVosi(answer);
-                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'VOSI', answer, observing: !!screenStream });
+                        speakCHERRY AI(answer);
+                        await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'CHERRY AI', answer, observing: !!screenStream });
                         return;
                     }
                     if (!screenStream || observationPaused) {
                         const answer = 'Start or resume screen observing first, then ask me about the website or where to click.';
-                        speakVosi(answer);
+                        speakCHERRY AI(answer);
                         await window.__TAURI__?.event?.emit('companion-answer', { success: false, title: 'Screen observing is off', answer, observing: !!screenStream });
                         return;
                     }
@@ -2571,33 +2571,33 @@
                         await window.captureLatestScreen();
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
-                    const data = await apiPost("/ask", { message: prepareVosiPrompt(normalizedQuery), include_screen: true });
+                    const data = await apiPost("/ask", { message: prepareCHERRY AIPrompt(normalizedQuery), include_screen: true });
                     await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                     if (data.success && data.brain) {
                         // Match the main chat: the suggestion is the user-facing answer.
                         const answer = data.brain.suggestion || data.brain.understanding || "How else can I help?";
-                        speakVosi(answer);
+                        speakCHERRY AI(answer);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
                                     success: true,
-                                    title: "VOSI",
+                                    title: "CHERRY AI",
                                     answer: answer,
                                     observing: !!screenStream
                                 });
                             }
                         } catch (e) {}
-                        showResponse("VOSI", answer);
+                        showResponse("CHERRY AI", answer);
                     } else {
                         const error = data?.brain?.error || data?.error || "Something went wrong";
                         showResponse("AI Error", error);
-                        speakVosi(error);
+                        speakCHERRY AI(error);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
                                     success: false,
-                                    title: "VOSI",
+                                    title: "CHERRY AI",
                                     answer: error,
                                     observing: !!screenStream
                                 });
@@ -2605,12 +2605,12 @@
                         } catch (e) {}
                     }
                 } catch (err) {
-                    console.error('VOSI companion handler error:', err);
+                    console.error('CHERRY AI companion handler error:', err);
                     try {
                         if (window.__TAURI__?.event?.emit) {
                             await window.__TAURI__.event.emit('companion-answer', {
                                 success: false,
-                                title: "VOSI request error",
+                                title: "CHERRY AI request error",
                                 answer: String(err?.message || err || "I couldn't process that request."),
                                 observing: !!screenStream
                             });
@@ -2629,23 +2629,23 @@
                     e.preventDefault();
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
-                    appendVosiChatMessage('user', 'You', query);
+                    appendCHERRY AIChatMessage('user', 'You', query);
                     if (waitingForAssistantName) {
                         waitingForAssistantName = false;
-                        if (saveVosiAssistantName(query)) {
+                        if (saveCHERRY AIAssistantName(query)) {
                             const reply = 'Thank you, sir. You can call me ' + vosiAssistantName + ' from now on.';
-                            showResponse('Name updated', reply); speakVosi(reply);
+                            showResponse('Name updated', reply); speakCHERRY AI(reply);
                         } else {
                             waitingForAssistantName = true;
                             const reply = 'Please tell me the name you would like me to use, sir.';
-                            showResponse('Choose my name', reply); speakVosi(reply);
+                            showResponse('Choose my name', reply); speakCHERRY AI(reply);
                         }
                         userInput.value = ''; return;
                     }
                     if (/\b(?:change|rename|give|set|choose|pick)\b.{0,45}\b(?:your|assistant)\s+name\b|\bwhat should i call you\b|\bi want to (?:keep|give) (?:your|you a) name\b/i.test(query)) {
                         waitingForAssistantName = true;
                         const reply = 'What name would you like to call me, sir?';
-                        showResponse('Choose my name', reply); speakVosi(reply);
+                        showResponse('Choose my name', reply); speakCHERRY AI(reply);
                         userInput.value = ''; return;
                     }
                     const normalizedQuery = stripAssistantName(query);
@@ -2668,12 +2668,12 @@
                         return;
                     }
                     if (!screenStream && (normalizedQuery.toLowerCase().includes("my screen") || normalizedQuery.toLowerCase().includes("where to click") || normalizedQuery.toLowerCase().includes("latest shared screen"))) {
-                        showResponse("Screen sharing is off", "Start observing first and choose the screen you want VOSI to analyze.");
-                        speakVosi("Screen sharing is off. Start observing first and choose the screen you want Vosi to analyze.");
+                        showResponse("Screen sharing is off", "Start observing first and choose the screen you want CHERRY AI to analyze.");
+                        speakCHERRY AI("Screen sharing is off. Start observing first and choose the screen you want CHERRY AI to analyze.");
                         return;
                     }
 
-                    showResponse("Thinking...", "VOSI is analyzing your request...");
+                    showResponse("Thinking...", "CHERRY AI is analyzing your request...");
                     userInput.value = "";
 
                     try {
@@ -2690,12 +2690,12 @@
                                 data.brain.understanding || "Understood",
                                 answer
                             );
-                            speakVosi(answer);
+                            speakCHERRY AI(answer);
                         } else {
                             const message = data?.brain?.error || data?.error || "Something went wrong";
                             showResponse("AI Error", message);
-                            speakVosi(message);
-                            console.error("VOSI AI error:", data);
+                            speakCHERRY AI(message);
+                            console.error("CHERRY AI AI error:", data);
                         }
                     } catch (err) {
                         const offlineMessage = "Backend is offline. Start the FastAPI server on port 8001 to get real answers.";
@@ -2703,7 +2703,7 @@
                             `You asked: "${query}"`,
                             offlineMessage
                         );
-                        speakVosi(offlineMessage);
+                        speakCHERRY AI(offlineMessage);
                     }
                 });
             }
@@ -2718,7 +2718,7 @@
     const DEVICE_API = "http://127.0.0.1:8001";
     const invoke = (name, args) => {
         const bridge = window.__TAURI__?.core?.invoke;
-        if (!bridge) throw new Error("Open VOSI in the Windows desktop app to use secure device pairing.");
+        if (!bridge) throw new Error("Open CHERRY AI in the Windows desktop app to use secure device pairing.");
         return bridge(name, args);
     };
     const status = document.getElementById("desktop-device-status");
@@ -2737,7 +2737,7 @@
     phoneGenerateButton?.addEventListener("click", async () => {
         phoneGenerateButton.disabled = true;
         phoneGenerateButton.textContent = "Generating secure code…";
-        if (phoneStatus) phoneStatus.textContent = "Contacting the local VOSI backend…";
+        if (phoneStatus) phoneStatus.textContent = "Contacting the local CHERRY AI backend…";
         if (phoneCodeWrap) phoneCodeWrap.classList.add("hidden");
         try {
             const response = await fetch(DEVICE_API + "/agent/devices/pairing/local", {
@@ -2753,7 +2753,7 @@
             const expiry = new Date(data.pairing.expires_at);
             phoneExpiry.textContent = "Expires at " + expiry.toLocaleTimeString() + ". Generate a new code if this one expires.";
             phoneCodeWrap?.classList.remove("hidden");
-            if (phoneStatus) phoneStatus.textContent = "Code ready. Enter it in the Android VOSI app under Pair This Phone With VOSI.";
+            if (phoneStatus) phoneStatus.textContent = "Code ready. Enter it in the Android CHERRY AI app under Pair This Phone With CHERRY AI.";
         } catch (error) {
             if (phoneStatus) phoneStatus.textContent = String(error?.message || error);
         } finally {
@@ -2766,7 +2766,7 @@
         if (!value) return;
         try {
             await navigator.clipboard.writeText(value);
-            if (phoneStatus) phoneStatus.textContent = "Pairing code copied. Paste it into the Android VOSI app.";
+            if (phoneStatus) phoneStatus.textContent = "Pairing code copied. Paste it into the Android CHERRY AI app.";
         } catch (_) {
             if (phoneStatus) phoneStatus.textContent = "Copy is unavailable here. Select and copy the code manually.";
         }
@@ -2791,7 +2791,7 @@
                 },
                 body: JSON.stringify(payload)
             });
-        if (!response.ok) throw new Error("VOSI rejected the desktop execution receipt (HTTP " + response.status + ").");
+        if (!response.ok) throw new Error("CHERRY AI rejected the desktop execution receipt (HTTP " + response.status + ").");
         return response.json();
     }
 
@@ -2810,7 +2810,7 @@
             setDeviceStatus(response.status === 401 ? "Pairing expired or revoked. Pair this PC again." : "PC paired; backend heartbeat unavailable.");
             return null;
         }
-        setDeviceStatus("PC connected to VOSI. Ready for approved device tasks.");
+        setDeviceStatus("PC connected to CHERRY AI. Ready for approved device tasks.");
         return credential;
     }
 
@@ -2840,7 +2840,7 @@
                     if (promptedApprovals.has(key)) continue;
                     promptedApprovals.add(key);
                     const action = approval.capability === "device.pc.shutdown" ? "shut down" : "restart";
-                    const accepted = window.confirm("VOSI request from your phone: " + action + " this Windows PC?\n\nSave your work first. Windows will begin after confirmation.");
+                    const accepted = window.confirm("CHERRY AI request from your phone: " + action + " this Windows PC?\n\nSave your work first. Windows will begin after confirmation.");
                     const decision = accepted ? "approve-device" : "reject-device";
                     try {
                         const result = await fetch(DEVICE_API + "/agent/tasks/" + encodeURIComponent(approval.task_id) +
@@ -2884,10 +2884,10 @@
                         message = await invoke("set_timer", { seconds });
                     } else if (step.capability === "device.bluetooth.settings.open") {
                         await invoke("open_device_target", { target: "bluetooth-settings" });
-                        message = "Opened Windows Bluetooth settings. Change the switch there; VOSI has not toggled Bluetooth.";
+                        message = "Opened Windows Bluetooth settings. Change the switch there; CHERRY AI has not toggled Bluetooth.";
                     } else if (step.capability === "device.wifi.settings.open") {
                         await invoke("open_device_target", { target: "wifi-settings" });
-                        message = "Opened Windows Wi-Fi settings. Change the switch there; VOSI has not toggled Wi-Fi.";
+                        message = "Opened Windows Wi-Fi settings. Change the switch there; CHERRY AI has not toggled Wi-Fi.";
                     } else if (step.capability === "device.pc.shutdown") {
                         message = await invoke("shutdown_pc");
                     } else if (step.capability === "device.pc.restart") {
@@ -2898,7 +2898,7 @@
                         verified: true,
                         receipt: { capability: step.capability, confirmation: message }
                     });
-                    setDeviceStatus("PC completed a VOSI task: " + message);
+                    setDeviceStatus("PC completed a CHERRY AI task: " + message);
                 } catch (error) {
                     await postStepResult(credential, task.task_id, step.step_id, {
                         success: false,
@@ -2910,7 +2910,7 @@
                 }
             }
         } catch (error) {
-            console.warn("VOSI desktop agent poll failed:", error);
+            console.warn("CHERRY AI desktop agent poll failed:", error);
         } finally {
             polling = false;
         }
@@ -2923,7 +2923,7 @@
             return;
         }
         pairButton.disabled = true;
-        setDeviceStatus("Pairing this Windows PC with VOSI...");
+        setDeviceStatus("Pairing this Windows PC with CHERRY AI...");
         try {
             const response = await fetch(DEVICE_API + "/agent/devices/pair", {
                 method: "POST",
@@ -2963,11 +2963,11 @@
                     headers: { "Authorization": "Bearer " + credential.device_token }
                 });
                 if (!response.ok && response.status !== 401) {
-                    throw new Error("VOSI could not revoke this PC credential.");
+                    throw new Error("CHERRY AI could not revoke this PC credential.");
                 }
             }
             await invoke("clear_agent_device_credential");
-            setDeviceStatus("This PC has been disconnected from VOSI.");
+            setDeviceStatus("This PC has been disconnected from CHERRY AI.");
         } catch (error) {
             setDeviceStatus("Could not disconnect this PC: " + String(error?.message || error));
         } finally {
@@ -2980,7 +2980,7 @@
             await heartbeat();
             await pollDesktopTasks();
         } catch (error) {
-            setDeviceStatus("Desktop pairing is available in the Windows VOSI app only.");
+            setDeviceStatus("Desktop pairing is available in the Windows CHERRY AI app only.");
         }
     }
     void startDesktopAgent();

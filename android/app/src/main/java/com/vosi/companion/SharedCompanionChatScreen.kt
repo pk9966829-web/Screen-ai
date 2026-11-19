@@ -26,9 +26,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
 
-private val ChatInk = Color(0xFF080A12)
-private val ChatPanel = Color(0xFF141827)
-private val ChatAccent = Color(0xFFB69CFF)
+private val ChatInk = Color(0xFF0B0B0F)
+private val ChatPanel = Color(0xB9151119)
+private val ChatAccent = Color(0xFFFF70C5)
 private val ChatMuted = Color(0xFF9BA5BC)
 
 private data class CompanionChatMessage(val text: String, val fromUser: Boolean)
@@ -38,21 +38,21 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
     val context = LocalContext.current
     var messages by remember {
         mutableStateOf(
-            listOf(CompanionChatMessage("Hi, I'm VOSI. Your conversations can continue across your paired devices.", false))
+            listOf(CompanionChatMessage("Hi, I'm CHERRY AI. Your conversations can continue across your paired devices.", false))
         )
     }
     var draft by remember { mutableStateOf(initialDraft) }
     var busy by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Connecting to your paired VOSI phone…") }
+    var status by remember { mutableStateOf("Connecting to your paired CHERRY AI phone…") }
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
         val credential = DeviceCredentialStore.load(context)
         val accountToken = AccountSessionStore.load()
         if (credential == null) {
-            status = "Pair this phone with VOSI in the device workspace to start shared chat."
+            status = "Pair this phone with CHERRY AI in the device workspace to start shared chat."
         } else if (accountToken.isNullOrBlank()) {
-            status = "Sign in to your VOSI account in Profile to use private shared chat."
+            status = "Sign in to your CHERRY AI account in Profile to use private shared chat."
         } else {
             status = "Loading your private shared conversation…"
             thread {
@@ -93,13 +93,13 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
     }
 
     Column(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1020), ChatInk, ChatInk))).padding(horizontal = 18.dp, vertical = 16.dp),
+        Modifier.fillMaxSize().background(Color.Transparent).padding(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
                 Modifier.size(48.dp).background(
-                    Brush.radialGradient(listOf(Color(0xFF8D78F0), Color(0xFF273B67), ChatPanel)),
+                    Brush.radialGradient(listOf(Color(0xFFFF3FB4), Color(0xFF8A35B8), ChatPanel)),
                     RoundedCornerShape(50)
                 ),
                 contentAlignment = Alignment.Center
@@ -107,8 +107,8 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                 Icon(Icons.Outlined.AllInclusive, null, tint = Color.White, modifier = Modifier.size(29.dp))
             }
             Column {
-                Text("Talk to VOSI", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("One conversation. All your devices.", color = ChatMuted, fontSize = 11.sp)
+                Text("CHERRY AI", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 1.sp)
+                Text("Your conversation", color = ChatMuted, fontSize = 11.sp)
             }
         }
 
@@ -124,7 +124,7 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                     horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start
                 ) {
                     Surface(
-                        color = if (message.fromUser) Color(0xFF51447E) else ChatPanel,
+                        color = if (message.fromUser) Color(0xB95D2B57) else ChatPanel,
                         shape = RoundedCornerShape(
                             topStart = 18.dp, topEnd = 18.dp,
                             bottomStart = if (message.fromUser) 18.dp else 5.dp,
@@ -155,7 +155,7 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                 value = draft,
                 onValueChange = { draft = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Message VOSI…") },
+                placeholder = { Text("Message CHERRY AI…") },
                 enabled = !busy,
                 maxLines = 4,
                 shape = RoundedCornerShape(20.dp),
@@ -176,17 +176,17 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                     val credential = DeviceCredentialStore.load(context)
                     val accountToken = AccountSessionStore.load()
                     if (credential == null) {
-                        status = "Pair this phone with VOSI before sending a message."
+                        status = "Pair this phone with CHERRY AI before sending a message."
                         return@FilledIconButton
                     }
                     if (accountToken.isNullOrBlank()) {
-                        status = "Sign in to your VOSI account in Profile before sending a private message."
+                        status = "Sign in to your CHERRY AI account in Profile before sending a private message."
                         return@FilledIconButton
                     }
                     messages = messages + CompanionChatMessage(message, true)
                     draft = ""
                     busy = true
-                    status = "VOSI is thinking…"
+                    status = "CHERRY AI is thinking…"
                     thread {
                         try {
                             val result = companionChatRequest(
@@ -199,7 +199,7 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                             )
                             val answer = result.optString("response").trim()
                             if (!result.optBoolean("success") || answer.isEmpty()) {
-                                throw IllegalStateException(answer.ifEmpty { "VOSI couldn't prepare a response. Please try again." })
+                                throw IllegalStateException(answer.ifEmpty { "CHERRY AI couldn't prepare a response. Please try again." })
                             }
                             Handler(Looper.getMainLooper()).post {
                                 messages = messages + CompanionChatMessage(answer, false)
@@ -240,7 +240,7 @@ private fun companionChatRequest(
     accountToken: String
 ): JSONObject {
     require(baseUrl.startsWith("https://") || baseUrl.startsWith("http://")) {
-        "Your paired VOSI backend URL is invalid. Re-pair this phone if needed."
+        "Your paired CHERRY AI backend URL is invalid. Re-pair this phone if needed."
     }
     val connection = URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
     try {
@@ -261,7 +261,7 @@ private fun companionChatRequest(
         val response = JSONObject(raw)
         if (code !in 200..299) {
             throw IllegalStateException(
-                response.optString("detail", "VOSI chat request failed (HTTP $code).")
+                response.optString("detail", "CHERRY AI chat request failed (HTTP $code).")
             )
         }
         return response

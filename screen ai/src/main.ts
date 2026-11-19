@@ -323,7 +323,7 @@ async function askScreenAI(message?: string) {
 
   setStatus("THINKING...");
   mascot?.classList.add("thinking");
-  addTimelineItem("You asked VOSI", question, "violet");
+  addTimelineItem("You asked CHERRY AI", question, "violet");
   if (askInput) askInput.value = "";
 
   try {
@@ -333,16 +333,16 @@ async function askScreenAI(message?: string) {
       body: JSON.stringify({ message: question, include_screen: true })
     });
     if (!response.ok) {
-      throw new Error(`VOSI backend returned HTTP ${response.status}`);
+      throw new Error(`CHERRY AI backend returned HTTP ${response.status}`);
     }
 
     const data: any = await response.json();
     const brain = data?.brain ?? {};
     const answer = brain.understanding || brain.suggestion || brain.error ||
-      data?.error || "VOSI could not answer that question.";
+      data?.error || "CHERRY AI could not answer that question.";
 
     addTimelineItem(
-      data.success && brain.success !== false ? "VOSI response" : "VOSI needs attention",
+      data.success && brain.success !== false ? "CHERRY AI response" : "CHERRY AI needs attention",
       answer,
       data.success && brain.success !== false ? "cyan" : "violet"
     );
@@ -373,10 +373,10 @@ async function askScreenAI(message?: string) {
           "green"
         );
       } catch (guideError) {
-        console.error("VOSI could not show the click guide:", guideError);
+        console.error("CHERRY AI could not show the click guide:", guideError);
         addTimelineItem(
           "Click guide unavailable",
-          "VOSI found a target, but the overlay could not be opened. Check the guide window permissions and restart VOSI.",
+          "CHERRY AI found a target, but the overlay could not be opened. Check the guide window permissions and restart CHERRY AI.",
           "violet"
         );
       }
@@ -385,7 +385,7 @@ async function askScreenAI(message?: string) {
         await window.__TAURI__.event.emit("vosi-guidance-clear");
         await window.__TAURI__.core.invoke("hide_guide");
       } catch (guideError) {
-        console.warn("Could not clear the VOSI click guide:", guideError);
+        console.warn("Could not clear the CHERRY AI click guide:", guideError);
       }
     }
 
@@ -395,9 +395,9 @@ async function askScreenAI(message?: string) {
       setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
     }
   } catch (error) {
-    console.error("VOSI question failed:", error);
+    console.error("CHERRY AI question failed:", error);
     addTimelineItem(
-      "Could not reach VOSI",
+      "Could not reach CHERRY AI",
       "Make sure the backend is running at http://127.0.0.1:8001 and try again. " + String(error),
       "violet"
     );
@@ -601,7 +601,7 @@ async function startScreenCapture() {
             void window.__TAURI__.event.emit("companion-contrast", { theme });
           }
         } catch (contrastError) {
-          console.warn("VOSI could not estimate screen brightness:", contrastError);
+          console.warn("CHERRY AI could not estimate screen brightness:", contrastError);
         }
       }
 
@@ -612,7 +612,7 @@ async function startScreenCapture() {
       const response = await fetch("http://127.0.0.1:8001/screen", { method: "POST", body: form });
       if (!response.ok) throw new Error(`Screen upload failed (${response.status})`);
     } catch (error) {
-      console.warn("VOSI screen frame upload failed:", error);
+      console.warn("CHERRY AI screen frame upload failed:", error);
     } finally {
       captureInProgress = false;
     }
@@ -649,18 +649,18 @@ async function setAwareness(enabled: boolean, fromEndedTrack = false) {
           body: JSON.stringify({ enabled: true })
         });
       } catch (error) {
-        console.warn("Could not update VOSI backend awareness state:", error);
+        console.warn("Could not update CHERRY AI backend awareness state:", error);
       }
       updateAwarenessUI();
       void notifyCompanion(true);
       if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: true });
-      addTimelineItem("Screen awareness started", "VOSI is capturing the screen you selected.", "green");
+      addTimelineItem("Screen awareness started", "CHERRY AI is capturing the screen you selected.", "green");
     } catch (error) {      awarenessEnabled = false;
       stopScreenCapture();
       updateAwarenessUI();
       setStatus("SCREEN SHARING NOT STARTED");
       addTimelineItem("Screen awareness not started", "Choose a screen in the sharing dialog and allow access. " + String(error), "violet");
-      console.warn("VOSI could not start screen capture:", error);
+      console.warn("CHERRY AI could not start screen capture:", error);
       if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: false });
     }
   } else {
@@ -673,12 +673,12 @@ async function setAwareness(enabled: boolean, fromEndedTrack = false) {
         body: JSON.stringify({ enabled: false })
       });
     } catch (error) {
-      console.warn("Could not update VOSI backend awareness state:", error);
+      console.warn("Could not update CHERRY AI backend awareness state:", error);
     }
     updateAwarenessUI();
     void notifyCompanion(false);
     if (window.__TAURI__) void window.__TAURI__.event.emit("observation-status", { active: false });
-    if (!fromEndedTrack) addTimelineItem("Screen awareness stopped", "VOSI is no longer observing your screen.", "violet");
+    if (!fromEndedTrack) addTimelineItem("Screen awareness stopped", "CHERRY AI is no longer observing your screen.", "violet");
   }
 }
 
@@ -1242,13 +1242,13 @@ console.log(
   "Screen AI frontend initialized."
 );
 
-// Open the separate voice companion without changing the existing VOSI interface.
+// Open the separate voice companion without changing the existing CHERRY AI interface.
 document.addEventListener("keydown", (event: KeyboardEvent) => {
   if (event.ctrlKey && event.shiftKey && event.code === "Space") {
     event.preventDefault();
     if (window.__TAURI__) {
       void window.__TAURI__.core.invoke("show_voice_companion").catch((error: unknown) => {
-        console.warn("VOSI voice companion could not be opened:", error);
+        console.warn("CHERRY AI voice companion could not be opened:", error);
       });
     }
   }
