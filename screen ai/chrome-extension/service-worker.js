@@ -113,6 +113,40 @@ async function executeGeneralBrowserStep(device, task, step) {
     });
     return;
   }
+  if (step.capability === "browser.inspect_page") {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab?.id || !tab.url) throw new Error("No active Chrome webpage to inspect.");
+    const pageUrl = new URL(tab.url);
+    if (pageUrl.protocol !== "https:") throw new Error("VOSI can inspect only HTTPS websites.");
+    const hasPermission = await chrome.permissions.contains({ origins: [pageUrl.origin + "/*"] });
+    if (!hasPermission) throw new Error("Website permission is missing. In the extension popup, choose Enable current website first.");
+    const injected = await chrome.scripting.executeScript({
+      target: { tabId: tab.id }, world: "ISOLATED",
+      func: () => {
+        const clean = (value, max = 500) => String(value || "").replace(/\\s+/g, " ").trim().slice(0, max);
+        const redact = value => clean(value, 16000)
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[email redacted]")
+          .replace(/(?:\\+?\\d[\\d .()-]{7,}\\d)/g, "[phone redacted]");
+        const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).visibility !== "hidden" && getComputedStyle(el).display !== "none");
+        const links = Array.from(document.querySelectorAll("a[href]")).filter(visible).slice(0, 40).map(a => ({ text: clean(a.innerText || a.getAttribute("aria-label"), 180), href: a.href.slice(0, 400) })).filter(a => a.text);
+        const headings = Array.from(document.querySelectorAll("h1,h2,h3,h4")).filter(visible).slice(0, 30).map(h => ({ level: Number(h.tagName.slice(1)), text: clean(h.innerText, 250) })).filter(h => h.text);
+        const buttons = Array.from(document.querySelectorAll("button,[role=button]")).filter(visible).slice(0, 40).map(b => clean(b.innerText || b.getAttribute("aria-label") || b.getAttribute("title"), 160)).filter(Boolean);
+        const fields = Array.from(document.querySelectorAll("input,textarea,select,[contenteditable=true]")).filter(visible).slice(0, 40).map(el => ({
+          type: clean(el.type || el.tagName.toLowerCase(), 30),
+          label: clean(el.getAttribute("aria-label") || el.labels?.[0]?.innerText || el.getAttribute("placeholder") || el.getAttribute("name"), 120)
+        })).filter(f => f.label && !/password|secret|token|otp|verification|credit.?card|cvv/i.test(f.label + " " + f.type));
+        const pageText = redact(document.body?.innerText || "");
+        return { title: clean(document.title, 300), url: location.href.slice(0, 2048), headings, buttons, links, fields, selectedText: redact(window.getSelection()?.toString() || "").slice(0, 1000), pageText, capturedAt: new Date().toISOString(), readOnly: true };
+      }
+    });
+    const snapshot = injected?.[0]?.result;
+    if (!snapshot?.pageText) throw new Error("Page inspection returned no readable content.");
+    await postAgentTaskResult(device, task.task_id, step.step_id, {
+      success: true, verified: true,
+      receipt: { capability: "browser.inspect_page", ...snapshot, confirmation: "Inspected page structure and visible text (no page interaction or form values)." }
+    });
+    return;
+  }
   if (step.capability === "browser.read_visible_page") {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab?.id || !tab.url) throw new Error("There is no active Chrome website to read.");
@@ -153,7 +187,7 @@ async function executeAvailableAgentTasks() {
   if (!response.ok) return;
   const data = await response.json();
   for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
-    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web"].includes(task.capability)) continue;
+    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web", "browser.inspect_page"].includes(task.capability)) continue;
     const claimResponse = await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
       method: "POST",
       headers: authHeaders(device),
@@ -162,7 +196,7 @@ async function executeAvailableAgentTasks() {
     if (!claimResponse.ok) continue;
     const claim = await claimResponse.json();
     const step = claim.step;
-    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web"].includes(step.capability)) continue;
+    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web", "browser.inspect_page"].includes(step.capability)) continue;
     if (step.capability !== "browser.search_products") {
       try {
         await executeGeneralBrowserStep(device, task, step);
