@@ -41,7 +41,8 @@ from research_engine import router as research_router
 app.include_router(agent_router)
 app.include_router(voice_router)
 app.include_router(cloud_worker_router)
-app.include_router(identity_router)\napp.include_router(research_router)
+app.include_router(identity_router)
+app.include_router(research_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
