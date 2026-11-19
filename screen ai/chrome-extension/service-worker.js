@@ -81,8 +81,71 @@ async function postAgentTaskResult(device, taskId, stepId, payload) {
   return response.json();
 }
 
+async function executeBrowserInteraction(device, task, step) {
+  const args = step.arguments || {};
+  const action = String(args.action || "");
+  const target = String(args.target || "").trim().slice(0, 120);
+  if (!target || !["click", "type", "scroll", "select"].includes(action)) throw new Error("Unsupported or incomplete browser interaction.");
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!tab?.id || !tab.url) throw new Error("No active Chrome page.");
+  const url = new URL(tab.url);
+  if (url.protocol !== "https:") throw new Error("VOSI interaction is restricted to HTTPS pages.");
+  if (!await chrome.permissions.contains({ origins: [url.origin + "/*"] })) throw new Error("Website permission is missing. Enable the current website in the extension.");
+  const result = await chrome.scripting.executeScript({
+    target: { tabId: tab.id }, world: "ISOLATED",
+    func: ({action, target, text, direction, option}) => {
+      const norm = s => String(s || "").replace(/\\s+/g, " ").trim().toLowerCase();
+      const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).visibility !== "hidden" && getComputedStyle(el).display !== "none");
+      const labelOf = el => norm(el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || el.labels?.[0]?.innerText || el.getAttribute("placeholder"));
+      const matches = Array.from(document.querySelectorAll("button,[role=button],a,input,textarea,select,[contenteditable=true]")).filter(visible).filter(el => labelOf(el) === norm(target));
+      if (action === "scroll") {
+        const before = window.scrollY;
+        window.scrollBy({top: direction === "down" ? Math.max(250, window.innerHeight * 0.7) : -Math.max(250, window.innerHeight * 0.7), behavior: "instant"});
+        return {success: window.scrollY !== before, verified: window.scrollY !== before, evidence: {scroll_before: before, scroll_after: window.scrollY}};
+      }
+      if (matches.length !== 1) return {success:false, verified:false, error: matches.length ? "Target label is ambiguous." : "Target label not found."};
+      const el = matches[0];
+      if (action === "click") {
+        const label = labelOf(el);
+        if (/buy|purchase|checkout|pay|place order|submit|send|delete|remove|confirm|unsubscribe|transfer|book now|save changes|sign in|log in|authorize|grant/i.test(label)) return {success:false, verified:false, error:"This control may have consequential effects and is blocked in the basic interaction stage."};
+        if (el.closest("form") && (el.type === "submit" || el.getAttribute("type") === "submit")) return {success:false, verified:false, error:"Form submission is blocked in the basic interaction stage."};
+        const oldUrl = location.href, oldText = (document.body?.innerText || "").slice(0, 4000);
+        el.click();
+        return {success:true, verified:false, evidence:{clicked_label:label, old_url:oldUrl, current_url:location.href, text_changed:oldText !== (document.body?.innerText || "").slice(0,4000)}, note:"Click was dispatched; page-state verification requires a subsequent inspection."};
+      }
+      if (action === "type") {
+        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el.isContentEditable)) return {success:false,verified:false,error:"Target is not a text-entry field."};
+        const type = norm(el.getAttribute("type") || "text");
+        const fieldLabel = norm(el.getAttribute("aria-label") || el.labels?.[0]?.innerText || el.placeholder || el.name);
+        if (/(password|email|tel|phone|credit|card|cvv|otp|token|secret|url)/i.test(type + " " + fieldLabel)) return {success:false,verified:false,error:"Sensitive or unsupported field type is blocked."};
+        if (el instanceof HTMLInputElement && !["text","search"].includes(type)) return {success:false,verified:false,error:"Only text and search fields are allowed."};
+        el.focus();
+        if (el.isContentEditable) { el.textContent = text; el.dispatchEvent(new InputEvent("input",{bubbles:true,inputType:"insertText",data:text})); }
+        else { const setter=Object.getOwnPropertyDescriptor(el.constructor.prototype,"value")?.set; setter?.call(el,text); el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); }
+        const verified = (el.isContentEditable ? el.textContent : el.value) === text;
+        return {success:verified,verified,evidence:{field_label:fieldLabel,character_count:String(text).length,field_value_verified:verified}};
+      }
+      if (action === "select") {
+        if (!(el instanceof HTMLSelectElement)) return {success:false,verified:false,error:"Target is not a select control."};
+        const optionMatch = Array.from(el.options).find(o => norm(o.text) === norm(option));
+        if (!optionMatch) return {success:false,verified:false,error:"Requested option was not found."};
+        el.value=optionMatch.value; el.dispatchEvent(new Event("change",{bubbles:true}));
+        const verified = el.value === optionMatch.value;
+        return {success:verified,verified,evidence:{field_label:labelOf(el),selected_option:optionMatch.text,selection_verified:verified}};
+      }
+      return {success:false,verified:false,error:"Unsupported interaction."};
+    },
+    args: {action,target,text:action==="type" ? String(args.text || "").slice(0,2000) : "",direction:args.direction,option:args.option}
+  });
+  const evidence = result?.[0]?.result || {};
+  await postAgentTaskResult(device, task.task_id, step.step_id, {
+    success: !!evidence.success, verified: !!evidence.verified, receipt: evidence.success ? {capability:"browser.interact", action, target, evidence, captured_at:new Date().toISOString()} : {},
+    error: evidence.error || (evidence.success && !evidence.verified ? "Action dispatched, but its result was not independently verified." : null)
+  });
+}
+
 async function executeGeneralBrowserStep(device, task, step) {
-  if (step.capability === "browser.search_web") {
+  if (step.capability === "browser.interact") {\n    await executeBrowserInteraction(device, task, step);\n    return;\n  }\n  if (step.capability === "browser.search_web") {
     const query = String(step.arguments?.query || "").trim().slice(0, 500);
     if (!query) throw new Error("Research query is empty.");
     const response = await fetch(API + "/research/search", {
@@ -187,7 +250,7 @@ async function executeAvailableAgentTasks() {
   if (!response.ok) return;
   const data = await response.json();
   for (const task of (Array.isArray(data.tasks) ? data.tasks : []).slice(0, 3)) {
-    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web", "browser.inspect_page"].includes(task.capability)) continue;
+    if (!["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web", "browser.inspect_page", "browser.interact"].includes(task.capability)) continue;
     const claimResponse = await fetch(API + "/agent/tasks/" + encodeURIComponent(task.task_id) + "/claim", {
       method: "POST",
       headers: authHeaders(device),
@@ -196,7 +259,7 @@ async function executeAvailableAgentTasks() {
     if (!claimResponse.ok) continue;
     const claim = await claimResponse.json();
     const step = claim.step;
-    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web", "browser.inspect_page"].includes(step.capability)) continue;
+    if (!step || !["browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.search_web", "browser.inspect_page", "browser.interact"].includes(step.capability)) continue;
     if (step.capability !== "browser.search_products") {
       try {
         await executeGeneralBrowserStep(device, task, step);
