@@ -665,10 +665,12 @@
                         <div class="absolute left-4 text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
                         <input id="user-input" type="text" placeholder="Ask CHERRY AI anything..." class="w-full pl-12 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
                         <div class="absolute right-2 flex items-center space-x-1">
+                            <button type="button" id="connector-btn" class="connector-button" aria-label="Connect apps" title="Connect apps" aria-expanded="false" aria-controls="connector-panel"><svg viewBox="0 0 24 24" aria-hidden="true" class="connector-cube"><path d="M12 2.8 20.2 7.5v9L12 21.2 3.8 16.5v-9L12 2.8Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m3.8 7.5 8.2 4.7 8.2-4.7M12 12.2v9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
                             <button type="button" id="mic-btn" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
                         </div>
                     </form>
+                    <div id="connector-panel" class="connector-panel" hidden role="dialog" aria-label="App connectors"><div class="connector-panel-title">Connect apps</div><p class="connector-panel-note">Choose an app to open its sign-in page. App access is not connected until you complete its authorization.</p><a class="connector-link" href="https://mail.google.com/" target="_blank" rel="noopener noreferrer"><span class="connector-app-mark">G</span><span><strong>Gmail</strong><small>Open Gmail to sign in</small></span><span class="connector-link-arrow">↗</span></a></div>
                     <div class="flex flex-wrap justify-center gap-2">
                         <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
                             Explain my screen
