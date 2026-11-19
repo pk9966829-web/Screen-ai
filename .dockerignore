@@ -1,0 +1,16 @@
+.git
+.github
+**/.env
+**/.env.*
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/uploads/
+**/account_uploads/
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+**/node_modules/
+**/target/
+**/.gradle/

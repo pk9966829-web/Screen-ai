@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CHERRY AI Click Guide</title>
+<title>VOSI Click Guide</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent !important; }
@@ -50,7 +50,7 @@
         const x = Number(guide.target_x);
         const y = Number(guide.target_y);
         if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1000 || y < 0 || y > 1000) {
-          console.warn('CHERRY AI guide received invalid target coordinates:', guide);
+          console.warn('VOSI guide received invalid target coordinates:', guide);
           return;
         }
         target.style.left = (x / 10) + '%';
@@ -70,7 +70,7 @@
       await emit('vosi-guide-ready', { ready: true });
     }
 
-    initializeGuideEvents().catch((error) => console.error('CHERRY AI guide event setup failed:', error));
+    initializeGuideEvents().catch((error) => console.error('VOSI guide event setup failed:', error));
   </script>
 </body>
 </html>

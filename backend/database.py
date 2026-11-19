@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -7,7 +8,7 @@ from datetime import datetime
 
 # Keep the database beside this module so launching the API from a different
 # working directory does not silently create a second, empty database.
-DATABASE_PATH = Path(__file__).resolve().parent / "screen_ai.db"
+DATABASE_PATH = Path(os.getenv("VOSI_SCREEN_DB_PATH", str(Path(__file__).resolve().parent / "screen_ai.db"))).expanduser()
 
 
 @contextmanager
@@ -28,6 +29,7 @@ def initialize_database():
         connection.execute("""
             CREATE TABLE IF NOT EXISTS observations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
                 timestamp TEXT NOT NULL,
                 filename TEXT NOT NULL,
                 file_size INTEGER NOT NULL,
@@ -37,6 +39,7 @@ def initialize_database():
         connection.execute("""
             CREATE TABLE IF NOT EXISTS interactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
                 timestamp TEXT NOT NULL,
                 question TEXT NOT NULL,
                 answer TEXT NOT NULL,
@@ -49,6 +52,7 @@ def initialize_database():
         connection.execute("""
             CREATE TABLE IF NOT EXISTS task_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
                 task_key TEXT NOT NULL,
                 task_name TEXT NOT NULL,
                 status TEXT NOT NULL,
@@ -59,18 +63,25 @@ def initialize_database():
                 completed_steps_json TEXT NOT NULL DEFAULT '[]'
             )
         """)
-        connection.execute("CREATE INDEX IF NOT EXISTS idx_interactions_timestamp ON interactions(timestamp)")
-        connection.execute("CREATE INDEX IF NOT EXISTS idx_task_events_key_id ON task_events(task_key, id)")
+        # Additive ownership migration: pre-existing local rows remain unowned.
+        for table in ("observations", "interactions", "task_events"):
+            columns = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
+            if "user_id" not in columns:
+                connection.execute(f"ALTER TABLE {table} ADD COLUMN user_id TEXT")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_interactions_timestamp ON interactions(user_id, timestamp)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_observations_user_id ON observations(user_id, id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_task_events_user_key_id ON task_events(user_id, task_key, id)")
 
 
-def save_observation(observation):
+def save_observation(observation, user_id=None):
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO observations (timestamp, filename, file_size, status)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO observations (user_id, timestamp, filename, file_size, status)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 observation.get("timestamp", datetime.now().isoformat()),
                 observation["filename"],
                 observation["file_size"],
@@ -79,29 +90,30 @@ def save_observation(observation):
         )
 
 
-def get_recent_observations(limit=5):
+def get_recent_observations(limit=5, user_id=None):
     limit = max(0, min(int(limit), 100))
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT id, timestamp, filename, file_size, status
-            FROM observations ORDER BY id DESC LIMIT ?
+            FROM observations WHERE user_id IS ? ORDER BY id DESC LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     return [dict(row) for row in rows]
 
 
-def save_interaction(question, answer, screens_considered=0, task=None):
+def save_interaction(question, answer, screens_considered=0, task=None, user_id=None):
     timestamp = datetime.now().isoformat()
     task_data = task or {}
     with get_connection() as connection:
         cursor = connection.execute(
             """
-            INSERT INTO interactions (timestamp, question, answer, screens_considered, task_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO interactions (user_id, timestamp, question, answer, screens_considered, task_json)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 timestamp,
                 str(question)[:1000],
                 str(answer)[:4000],
@@ -120,15 +132,15 @@ def save_interaction(question, answer, screens_considered=0, task=None):
     }
 
 
-def get_recent_interactions(limit=20):
+def get_recent_interactions(limit=20, user_id=None):
     limit = max(0, min(int(limit), 100))
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT id, timestamp, question, answer, screens_considered, task_json
-            FROM interactions ORDER BY id DESC LIMIT ?
+            FROM interactions WHERE user_id IS ? ORDER BY id DESC LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     results = []
     for row in reversed(rows):
@@ -147,7 +159,7 @@ def get_recent_interactions(limit=20):
     return results
 
 
-def save_task_state(task_state, status="active"):
+def save_task_state(task_state, status="active", user_id=None):
     if not isinstance(task_state, dict) or not task_state.get("task"):
         return None
     task_key = str(task_state.get("task_key") or "")
@@ -161,11 +173,12 @@ def save_task_state(task_state, status="active"):
         cursor = connection.execute(
             """
             INSERT INTO task_events
-                (task_key, task_name, status, created_at, updated_at,
+                (user_id, task_key, task_name, status, created_at, updated_at,
                  current_step, next_step, completed_steps_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 task_key,
                 str(task_state["task"])[:200],
                 status,
@@ -196,33 +209,34 @@ def _task_from_row(row):
     }
 
 
-def get_active_task():
+def get_active_task(user_id=None):
     with get_connection() as connection:
         row = connection.execute(
             """
             SELECT event.* FROM task_events AS event
-            WHERE event.id = (
+            WHERE event.user_id IS ? AND event.id = (
                 SELECT MAX(latest.id) FROM task_events AS latest
-                WHERE latest.task_key = event.task_key
+                WHERE latest.task_key = event.task_key AND latest.user_id IS event.user_id
             ) AND event.status = 'active'
             ORDER BY event.id DESC LIMIT 1
-            """
+            """,
+            (user_id,),
         ).fetchone()
     return _task_from_row(row) if row else None
 
 
-def get_recent_tasks(limit=20):
+def get_recent_tasks(limit=20, user_id=None):
     limit = max(0, min(int(limit), 100))
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT event.* FROM task_events AS event
-            WHERE event.id = (
+            WHERE event.user_id IS ? AND event.id = (
                 SELECT MAX(latest.id) FROM task_events AS latest
-                WHERE latest.task_key = event.task_key
+                WHERE latest.task_key = event.task_key AND latest.user_id IS event.user_id
             )
             ORDER BY event.id DESC LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     return [_task_from_row(row) for row in rows]

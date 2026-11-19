@@ -1,0 +1,497 @@
+"""Authenticated HTTP surface for VOSI agent planning and paired-device management."""
+import hashlib
+import hmac
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit
+
+from fastapi import APIRouter, Header, HTTPException, Request
+from pydantic import BaseModel, Field
+
+from agent_runtime import AgentRuntime, AgentRuntimeError
+from device_registry import DeviceRegistry
+
+router = APIRouter(prefix="/agent", tags=["VOSI Agent"])
+
+_database_path = Path(os.getenv("VOSI_AGENT_DB_PATH", str(Path(__file__).with_name("vosi_agent.db"))))
+runtime = AgentRuntime(_database_path)
+devices = DeviceRegistry(_database_path)
+
+
+def _bearer(authorization: str | None) -> str | None:
+    scheme, separator, supplied = (authorization or "").partition(" ")
+    return supplied.strip() if separator and scheme.lower() == "bearer" else None
+
+
+def _authorize(authorization: str | None) -> None:
+    expected = os.getenv("VOSI_AGENT_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="VOSI agent API is disabled until VOSI_AGENT_TOKEN is configured.")
+    supplied = _bearer(authorization)
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="Invalid VOSI agent token.")
+
+
+def _authorize_device(authorization: str | None) -> dict[str, Any]:
+    try:
+        return devices.authenticate(_bearer(authorization))
+    except AgentRuntimeError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+def _runtime_call(callback, *args, **kwargs):
+    try:
+        return callback(*args, **kwargs)
+    except AgentRuntimeError as exc:
+        message = str(exc)
+        status = 404 if message in {"Task not found.", "Step not found.", "Device not found."} else 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+
+class AgentTaskCreateRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=2000)
+    steps: list[dict[str, Any]] = Field(min_length=1, max_length=30)
+    origin_device_id: str | None = Field(default=None, max_length=100)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+    expires_at: str | None = None
+    scheduled_at: str | None = Field(default=None, max_length=64)
+
+
+class DevicePairingRequest(BaseModel):
+    platform: str
+    label: str = Field(min_length=1, max_length=80)
+
+
+class DevicePairCompleteRequest(BaseModel):
+    pairing_code: str = Field(min_length=20, max_length=128)
+    capabilities: list[str] = Field(default_factory=list, max_length=50)
+
+
+class DeviceStepResultRequest(BaseModel):
+    success: bool
+    verified: bool
+    receipt: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = Field(default=None, max_length=2000)
+    # Executors may request one bounded retry only for server-allowlisted,
+    # idempotent low-risk capabilities. False remains the safe default.
+    retryable: bool = False
+
+
+class DeviceTaskRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=2000)
+    steps: list[dict[str, Any]] = Field(min_length=1, max_length=10)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+    scheduled_at: str | None = Field(default=None, max_length=64)
+
+
+class StepApprovalRequest(BaseModel):
+    confirmation_digest: str = Field(min_length=64, max_length=64)
+
+
+@router.get("/capabilities")
+def get_agent_capabilities(authorization: str | None = Header(default=None)):
+    _authorize(authorization)
+    return {"success": True, "capabilities": runtime.list_capabilities()}
+
+
+@router.post("/tasks")
+def create_agent_task(
+    request: AgentTaskCreateRequest,
+    authorization: str | None = Header(default=None),
+):
+    _authorize(authorization)
+    task = _runtime_call(
+        runtime.create_task,
+        goal=request.goal,
+        steps=request.steps,
+        origin_device_id=request.origin_device_id,
+        idempotency_key=request.idempotency_key,
+        expires_at=request.expires_at,
+        scheduled_at=request.scheduled_at,
+    )
+    return {"success": True, "task": task}
+
+
+@router.get("/tasks")
+def list_agent_tasks(
+    limit: int = 20,
+    authorization: str | None = Header(default=None),
+):
+    _authorize(authorization)
+    return {"success": True, "tasks": runtime.list_tasks(limit)}
+
+
+# Keep this fixed route before /tasks/{task_id}; device clients see only work
+# that matches their server-registered platform and granted capabilities.
+@router.get("/tasks/available")
+def list_available_device_tasks(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    available = []
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
+        if task["state"] in {"completed", "failed", "cancelled"}:
+            continue
+        if task.get("scheduled_at") and task["scheduled_at"] > datetime.now(timezone.utc).isoformat():
+            continue
+        # Only the first unfinished step is eligible. This preserves task ordering
+        # and prevents a later browser step from jumping ahead of a phone/desktop step.
+        next_step = next((
+            step for step in task["steps"]
+            if step["state"] in {"pending", "ready", "awaiting_approval", "running"}
+        ), None)
+        matching = next_step if (
+            next_step
+            and next_step["target_platform"] == device["platform"]
+            and next_step["capability"] in device["capabilities"]
+            and (next_step["state"] in {"pending", "ready"} or runtime.is_claim_stale(next_step))
+            and (not next_step["approval_required"] or next_step["state"] == "ready")
+        ) else None
+        if matching:
+            available.append({
+                "task_id": task["task_id"],
+                "goal": task["goal"],
+                "step_id": matching["step_id"],
+                "title": matching["title"],
+                "capability": matching["capability"],
+            })
+    return {"success": True, "tasks": available}
+
+
+@router.post("/tasks/request")
+def request_agent_task(
+    request: DeviceTaskRequest,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    if "agent.task.request" not in device["capabilities"]:
+        raise HTTPException(status_code=403, detail="This paired device is not allowed to request VOSI tasks.")
+    # Device-originated requests are restricted to explicitly supported capabilities.
+    # The only external commerce action admitted here is the high-risk order submit step,
+    # which remains blocked until the origin device approves its exact checkout digest.
+    for step in request.steps:
+        capability = step.get("capability") if isinstance(step, dict) else None
+        target_platform = step.get("target_platform") if isinstance(step, dict) else None
+        metadata = runtime.list_capabilities()
+        details = next((item for item in metadata if item["name"] == capability), None)
+        supported_targets = {
+            "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.inspect_page", "browser.search_web", "browser.interact", "commerce.order.place"},
+            "desktop": {
+                "device.alarm.create", "device.volume.action", "device.timer.create",
+                "device.bluetooth.settings.open", "device.wifi.settings.open",
+                "device.pc.shutdown", "device.pc.restart",
+            },
+            "android": {"device.alarm.create", "device.volume.set"},
+        }
+        if capability not in supported_targets.get(target_platform, set()):
+            raise HTTPException(status_code=403, detail="This phone command is not supported by an installed executor on that target device.")
+        arguments = step.get("arguments") if isinstance(step, dict) else None
+        if target_platform == "browser" and capability == "browser.open_tab":
+            raw_url = arguments.get("url") if isinstance(arguments, dict) else None
+            parsed_url = urlsplit(raw_url.strip()) if isinstance(raw_url, str) else None
+            if not parsed_url or parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or len(raw_url) > 2048:
+                raise HTTPException(status_code=422, detail="Chrome can open only a valid HTTPS URL without embedded credentials.")
+        if target_platform == "browser" and capability == "browser.interact":
+            action = arguments.get("action") if isinstance(arguments, dict) else None
+            allowed_actions = {"click", "type", "scroll", "select"}
+            if action not in allowed_actions:
+                raise HTTPException(status_code=422, detail="Browser interaction action must be click, type, scroll, or select.")
+            if not isinstance(arguments.get("target"), str) or not arguments["target"].strip() or len(arguments["target"]) > 120:
+                raise HTTPException(status_code=422, detail="Browser interaction requires a short, explicit target label.")
+            if action == "type" and (not isinstance(arguments.get("text"), str) or len(arguments["text"]) > 2000):
+                raise HTTPException(status_code=422, detail="Typing requires text up to 2000 characters.")
+            if action == "scroll" and arguments.get("direction") not in {"up", "down"}:
+                raise HTTPException(status_code=422, detail="Scroll direction must be up or down.")
+            if action == "select" and (not isinstance(arguments.get("option"), str) or len(arguments["option"]) > 120):
+                raise HTTPException(status_code=422, detail="Select requires an explicit option label.")
+        if target_platform == "browser" and capability == "browser.read_visible_page" and arguments not in (None, {}):
+            raise HTTPException(status_code=422, detail="Reading the active page does not accept additional arguments.")
+        if capability in {"device.pc.shutdown", "device.pc.restart"}:
+            if not details or details["risk"] != "high" or not details["requires_approval"]:
+                raise HTTPException(status_code=403, detail="This Windows action must remain approval-gated.")
+        elif capability == "commerce.order.place":
+            checkout = arguments.get("checkout_summary") if isinstance(arguments, dict) else None
+            required = {"merchant", "items", "delivery_address", "total", "currency", "payment_method"}
+            if not details or details["risk"] != "high" or not details["requires_approval"] or not isinstance(checkout, dict) or not required.issubset(checkout):
+                raise HTTPException(status_code=422, detail="Order submission requires a complete checkout summary and explicit approval.")
+            if not isinstance(checkout.get("items"), list) or not checkout["items"] or not isinstance(checkout.get("total"), (int, float)) or checkout["total"] < 0:
+                raise HTTPException(status_code=422, detail="Checkout items and a non-negative total are required.")
+        elif not details or details["risk"] != "low" or details["requires_approval"]:
+            raise HTTPException(status_code=403, detail="Phone requests are limited to supported low-risk actions or explicitly approval-gated actions.")
+    task = _runtime_call(
+        runtime.create_task,
+        goal=request.goal,
+        steps=request.steps,
+        origin_device_id=device["device_id"],
+        owner_user_id=device.get("user_id"),
+        idempotency_key=request.idempotency_key,
+        scheduled_at=request.scheduled_at,
+    )
+    return {"success": True, "task": task}
+
+
+@router.get("/tasks/updates")
+def get_origin_device_task_updates(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    tasks = runtime.list_tasks(100, user_id=device.get("user_id") or "")
+    updates = []
+    for task in tasks:
+        if device.get("user_id"):
+            if task.get("owner_user_id") != device["user_id"]:
+                continue
+        elif task.get("origin_device_id") != device["device_id"]:
+            continue
+        updates.append({
+            "task_id": task["task_id"],
+            "goal": task["goal"],
+            "state": task["state"],
+            "updated_at": task["updated_at"],
+            "error": task["error"],
+            "progress": task.get("progress"),
+            "current_step": (
+                {key: task["current_step"].get(key) for key in ("step_id", "title", "capability", "state")}
+                if task.get("current_step") else None
+            ),
+            "next_step": (
+                {key: task["next_step"].get(key) for key in ("step_id", "title", "capability", "state")}
+                if task.get("next_step") else None
+            ),
+            "waiting_for_approval": task.get("waiting_for_approval", False),
+            "steps": [{
+                "step_id": step["step_id"],
+                "title": step["title"],
+                "capability": step["capability"],
+                "state": step["state"],
+                "receipt": step["receipt"],
+                "error": step["error"],
+            } for step in task["steps"]],
+        })
+    return {"success": True, "updates": updates}
+
+
+def _approval_digest(arguments: dict[str, Any]) -> str:
+    canonical = json.dumps(arguments, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+@router.get("/tasks/pending-approvals")
+def list_origin_task_approvals(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    approvals = []
+    now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
+        if task.get("origin_device_id") != device["device_id"]:
+            continue
+        if task.get("scheduled_at") and task["scheduled_at"] > now:
+            continue
+        for index, step in enumerate(task["steps"]):
+            if step["state"] != "awaiting_approval":
+                continue
+            if any(previous["state"] != "completed" for previous in task["steps"][:index]):
+                continue
+            approvals.append({
+                "task_id": task["task_id"], "goal": task["goal"],
+                "step_id": step["step_id"], "title": step["title"],
+                "capability": step["capability"], "arguments": step["arguments"],
+                "confirmation_digest": _approval_digest(step["arguments"]),
+            })
+    return {"success": True, "approvals": approvals}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/approve-origin")
+def approve_origin_task_step(
+    task_id: str, step_id: str, request: StepApprovalRequest,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Only the originating device in this account can approve the task.")
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or not step["approval_required"] or step["state"] != "awaiting_approval":
+        raise HTTPException(status_code=409, detail="This step is not awaiting approval.")
+    if step["capability"] != "commerce.order.place":
+        raise HTTPException(status_code=403, detail="This approval route is reserved for reviewed online orders.")
+    if any(previous["state"] != "completed" for previous in task["steps"][:step["position"]]):
+        raise HTTPException(status_code=409, detail="Finish the order preparation steps before approving checkout.")
+    if not hmac.compare_digest(_approval_digest(step["arguments"]), request.confirmation_digest):
+        raise HTTPException(status_code=409, detail="Checkout details changed. Review the updated total and approve again.")
+    return {"success": True, "task": _runtime_call(runtime.approve_step, task_id, step_id)}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/reject-origin")
+def reject_origin_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id") or task.get("origin_device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Only the originating device in this account can reject the task.")
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or step["capability"] != "commerce.order.place" or step["state"] != "awaiting_approval":
+        raise HTTPException(status_code=409, detail="This order is not awaiting your approval.")
+    return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
+
+
+@router.get("/tasks/approvals")
+def list_desktop_task_approvals(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    if device["platform"] != "desktop":
+        raise HTTPException(status_code=403, detail="Only a paired desktop can receive Windows confirmation requests.")
+    approvals = []
+    for task in runtime.list_tasks(100, user_id=device.get("user_id") or ""):
+        for step in task["steps"]:
+            if step["target_platform"] == "desktop" and step["state"] == "awaiting_approval" and step["capability"] in {"device.pc.shutdown", "device.pc.restart"} and step["capability"] in device["capabilities"]:
+                approvals.append({"task_id": task["task_id"], "goal": task["goal"], "step_id": step["step_id"], "title": step["title"], "capability": step["capability"]})
+    return {"success": True, "approvals": approvals}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/approve-device")
+def approve_desktop_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    if device["platform"] != "desktop":
+        raise HTTPException(status_code=403, detail="Only a paired desktop can approve a Windows power action.")
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or step["target_platform"] != "desktop" or step["capability"] not in {"device.pc.shutdown", "device.pc.restart"} or step["capability"] not in device["capabilities"]:
+        raise HTTPException(status_code=403, detail="This desktop approval is not valid for the requested action.")
+    return {"success": True, "task": _runtime_call(runtime.approve_step, task_id, step_id)}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/reject-device")
+def reject_desktop_task_step(task_id: str, step_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    if device["platform"] != "desktop":
+        raise HTTPException(status_code=403, detail="Only a paired desktop can reject a Windows power action.")
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
+    step = next((item for item in task["steps"] if item["step_id"] == step_id), None)
+    if not step or step["target_platform"] != "desktop" or step["capability"] not in {"device.pc.shutdown", "device.pc.restart"} or step["capability"] not in device["capabilities"]:
+        raise HTTPException(status_code=403, detail="This desktop rejection is not valid for the requested action.")
+    return {"success": True, "task": _runtime_call(runtime.reject_step, task_id, step_id)}
+
+
+@router.get("/tasks/{task_id}")
+def get_agent_task(task_id: str, authorization: str | None = Header(default=None)):
+    _authorize(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    return {"success": True, "task": task}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/approve")
+def approve_agent_step(
+    task_id: str,
+    step_id: str,
+    authorization: str | None = Header(default=None),
+):
+    _authorize(authorization)
+    task = _runtime_call(runtime.approve_step, task_id, step_id)
+    return {"success": True, "task": task}
+
+
+@router.post("/tasks/{task_id}/cancel")
+def cancel_agent_task(task_id: str, authorization: str | None = Header(default=None)):
+    _authorize(authorization)
+    task = _runtime_call(runtime.cancel_task, task_id)
+    return {"success": True, "task": task}
+
+
+@router.post("/devices/pairing/local")
+def create_local_phone_pairing(request: Request):
+    # The desktop app talks to its own loopback backend. Do not expose this
+    # bootstrap route to LAN clients; the generated code is a temporary credential.
+    client_host = request.client.host if request.client else ""
+    if client_host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Phone pairing-code generation is available only on this computer.")
+    pairing = _runtime_call(devices.create_pairing, "android", "VOSI Android phone")
+    return {"success": True, "pairing": pairing}
+
+
+@router.post("/devices/pairing")
+def create_device_pairing(
+    request: DevicePairingRequest,
+    authorization: str | None = Header(default=None),
+):
+    _authorize(authorization)
+    pairing = _runtime_call(devices.create_pairing, request.platform, request.label)
+    return {"success": True, "pairing": pairing}
+
+
+@router.post("/devices/pair")
+def complete_device_pairing(request: DevicePairCompleteRequest):
+    # The short-lived, single-use pairing code is the bootstrap credential.
+    paired = _runtime_call(devices.complete_pairing, request.pairing_code, request.capabilities)
+    return {"success": True, "device": paired}
+
+
+@router.get("/devices")
+def list_paired_devices(authorization: str | None = Header(default=None)):
+    _authorize(authorization)
+    return {"success": True, "devices": devices.list_devices()}
+
+
+@router.delete("/devices/me")
+def revoke_current_device(authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    result = _runtime_call(devices.revoke_device, device["device_id"])
+    return {"success": True, **result}
+
+
+@router.delete("/devices/{device_id}")
+def revoke_paired_device(device_id: str, authorization: str | None = Header(default=None)):
+    _authorize(authorization)
+    result = _runtime_call(devices.revoke_device, device_id)
+    return {"success": True, **result}
+
+
+@router.post("/devices/{device_id}/heartbeat")
+def device_heartbeat(device_id: str, authorization: str | None = Header(default=None)):
+    device = _authorize_device(authorization)
+    result = _runtime_call(devices.heartbeat, device_id, _bearer(authorization) or "")
+    return {"success": True, "device": {**result, "platform": device["platform"], "label": device["label"]}}
+
+
+@router.post("/tasks/{task_id}/claim")
+def claim_agent_task_step(
+    task_id: str,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    task = _runtime_call(runtime.get_task, task_id)
+    if task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
+    step = _runtime_call(
+        runtime.claim_next_step,
+        task_id,
+        device["device_id"],
+        device["platform"],
+        set(device["capabilities"]),
+    )
+    return {"success": True, "step": step}
+
+
+@router.post("/tasks/{task_id}/steps/{step_id}/result")
+def record_agent_step_result(
+    task_id: str,
+    step_id: str,
+    request: DeviceStepResultRequest,
+    authorization: str | None = Header(default=None),
+):
+    device = _authorize_device(authorization)
+    existing_task = _runtime_call(runtime.get_task, task_id)
+    if existing_task.get("owner_user_id") != device.get("user_id"):
+        raise HTTPException(status_code=403, detail="This task belongs to another VOSI account.")
+    task = _runtime_call(
+        runtime.record_step_result,
+        task_id,
+        step_id,
+        device["device_id"],
+        request.success,
+        request.verified,
+        request.receipt,
+        request.error,
+        request.retryable,
+    )
+    return {"success": True, "task": task}

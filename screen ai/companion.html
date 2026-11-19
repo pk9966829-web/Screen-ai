@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CHERRY AI Companion</title>
+  <title>VOSI Companion</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; border: none !important; outline: none !important; }
     html, body {
@@ -177,7 +177,7 @@
 <body>
   <div id="companion" class="idle">
     <div class="glow"></div>
-    <img class="logo-mark" src="./src/assets/logo.png" alt="CHERRY AI logo" draggable="false" />
+    <img class="logo-mark" src="./src/assets/logo.png" alt="VOSI logo" draggable="false" />
   </div>
 
   <div id="speech">
@@ -192,11 +192,11 @@
     </div>
     <div id="answer" style="display:none;max-height:150px;overflow:auto;margin:8px 0;padding:9px;border-radius:9px;background:rgba(255,255,255,0.05);color:#dbeafe;font-size:10px;line-height:1.5;white-space:pre-wrap;"></div>
     <form id="ask-form" style="display:flex;gap:6px;margin-bottom:6px;">
-      <input id="ask-input" type="text" placeholder="Ask CHERRY AI or give a command…" autocomplete="off"
+      <input id="ask-input" type="text" placeholder="Ask VOSI or give a command…" autocomplete="off"
         style="flex:1;min-width:0;padding:8px 9px;border-radius:8px;background:rgba(255,255,255,.07);color:#fff;font-size:10px;border:1px solid rgba(56,189,248,.2)!important;">
       <button class="primary" id="btn-ask" type="submit" style="width:auto;margin:0;padding:8px 10px;text-align:center;">Ask</button>
     </form>
-    <button class="secondary" id="btn-speak" type="button">🎙 Speak to CHERRY AI</button>
+    <button class="secondary" id="btn-speak" type="button">🎙 Speak to VOSI</button>
     <button class="secondary" id="btn-observe">Stop observing</button>
   </div>
 
@@ -246,7 +246,7 @@
       try {
         await getCurrentWindow().startDragging();
       } catch (err) {
-        console.warn('CHERRY AI companion drag failed', err);
+        console.warn('VOSI companion drag failed', err);
       }
     });
 
@@ -342,15 +342,15 @@
       if (!question) return;
       askInput.value = '';
       answerEl.style.display = 'block';
-      answerEl.textContent = 'Sending your request to CHERRY AI…';
+      answerEl.textContent = 'Sending your request to VOSI…';
       setState('thinking');
       try {
-        // Route companion requests through the main CHERRY AI command handler so
+        // Route companion requests through the main VOSI command handler so
         // searches, app actions, letters, and screen questions share one path.
         await emit('companion-ask', { question });
       } catch (err) {
         console.error('Could not send companion request:', err);
-        answerEl.textContent = 'Could not reach the main CHERRY AI window. Make sure it is running.';
+        answerEl.textContent = 'Could not reach the main VOSI window. Make sure it is running.';
         setState(isObserving ? 'observing' : 'idle');
         showSpeech('Could not send that request.', 2600);
       }
@@ -365,7 +365,7 @@
       let settings = {};
       try { settings = JSON.parse(localStorage.getItem('vosi.settings.v1') || '{}'); } catch (_) {}
       if (settings.voiceInput === false) {
-        statusText.textContent = 'Turn on Voice input in CHERRY AI settings first.';
+        statusText.textContent = 'Turn on Voice input in VOSI settings first.';
         showSpeech('Voice input is turned off in settings.', 3000);
         return;
       }
@@ -392,10 +392,10 @@
           const question = Array.from(event.results || []).map(result => result?.[0]?.transcript || '').join(' ').trim();
           if (!question) return;
           submitted = true;
-          statusText.textContent = 'CHERRY AI is working…';
+          statusText.textContent = 'VOSI is working…';
           answerEl.textContent = 'I heard: “' + question + '”';
           try { await emit('companion-ask', { question }); }
-          catch (_) { answerEl.textContent = 'Could not reach the main CHERRY AI window.'; }
+          catch (_) { answerEl.textContent = 'Could not reach the main VOSI window.'; }
         };
         recognition.onerror = (event) => {
           const message = event.error === 'not-allowed' || event.error === 'service-not-allowed'
@@ -407,14 +407,14 @@
         recognition.onend = () => {
           companionRecognition = null;
           btnSpeak.disabled = false;
-          btnSpeak.textContent = '🎙 Speak to CHERRY AI';
+          btnSpeak.textContent = '🎙 Speak to VOSI';
           if (!submitted && statusText.textContent === 'Listening…') statusText.textContent = 'No speech heard. Tap Speak to try again.';
         };
         recognition.start();
       } catch (err) {
         companionRecognition = null;
         btnSpeak.disabled = false;
-        btnSpeak.textContent = '🎙 Speak to CHERRY AI';
+        btnSpeak.textContent = '🎙 Speak to VOSI';
         statusText.textContent = 'Could not start voice input. Check microphone permission.';
       }
     });
@@ -467,6 +467,7 @@
       answerEl.style.display = 'block';
       answerEl.textContent = payload.answer || 'No answer received.';
       setState(isObserving ? 'observing' : 'idle');
+      if (!payload.answer) showSpeech('I did not receive an answer. Please try again.', 3500);
       showSpeech(payload.success ? 'Here’s what I found' : 'I need a little help with that.', 2600);
       bubbleOpen = true;
       bubble.classList.add('visible');

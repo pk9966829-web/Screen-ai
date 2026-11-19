@@ -28,7 +28,8 @@ def _screen_change_score(previous_path: str, current_path: str):
 
 
 class ScreenPipeline:
-    def __init__(self):
+    def __init__(self, user_id=None):
+        self.user_id = user_id
         self.context = ContextEngine()
         self.task = TaskEngine()
         self.latest_screen_path = None
@@ -39,7 +40,7 @@ class ScreenPipeline:
         self._last_transition_analysis_at = 0.0
         initialize_database()
         # Resume an unfinished task so progress is not lost when the API restarts.
-        saved_task = get_active_task()
+        saved_task = get_active_task(user_id=self.user_id)
         if saved_task:
             self.task.restore_task_state(saved_task)
 
@@ -66,7 +67,7 @@ class ScreenPipeline:
 
         self.latest_screen_path = str(path)
         context_record = self.context.add_observation(observation)
-        save_observation(observation)
+        save_observation(observation, user_id=self.user_id)
 
         frame = {
             "timestamp": observation.get("timestamp"),
@@ -100,7 +101,7 @@ class ScreenPipeline:
                 except OSError:
                     pass
 
-        stored_history = get_recent_observations()
+        stored_history = get_recent_observations(user_id=self.user_id)
         recent_context = self.context.get_recent_observations()
         brain_result = analyze_context({
             "observation": observation,
@@ -151,7 +152,7 @@ class ScreenPipeline:
                 return
             if update:
                 self.task.apply_workflow_update(update)
-                save_task_state(self.task.get_task_state(), status="active")
+                save_task_state(self.task.get_task_state(), status="active", user_id=self.user_id)
             event = {
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 "filename": Path(current_path).name,
@@ -198,6 +199,6 @@ class ScreenPipeline:
             "recent_context": self.context.get_recent_observations(),
             "recent_screens": self._public_recent_screens(),
             "screen_changes": self.get_recent_screen_changes(),
-            "stored_history": get_recent_observations(),
+            "stored_history": get_recent_observations(user_id=self.user_id),
             "latest_screen_available": bool(self.latest_screen_path),
         }

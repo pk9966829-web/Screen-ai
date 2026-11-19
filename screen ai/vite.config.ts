@@ -30,6 +30,7 @@ export default defineConfig(() => ({
         main: resolve(__dirname, "index.html"),
         companion: resolve(__dirname, "companion.html"),
         screenGuide: resolve(__dirname, "screen-guide.html"),
+        voiceCompanion: resolve(__dirname, "voice-companion.html"),
       },
     },
   },
