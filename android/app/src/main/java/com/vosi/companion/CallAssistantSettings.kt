@@ -54,7 +54,7 @@ internal fun CallAssistantSettingsScreen(onBack: () -> Unit) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("AI greeting", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        OutlinedTextField(value = greeting, onValueChange = { greeting = it }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, placeholder = { Text("Greeting spoken to callers") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Color(0xFFFF70C5), unfocusedBorderColor = Color(0x33FFFFFF), cursorColor = Color(0xFFFF70C5))
+                        OutlinedTextField(value = greeting, onValueChange = { greeting = it }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, placeholder = { Text("Greeting spoken to callers") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Color(0xFFFF70C5), unfocusedBorderColor = Color(0x33FFFFFF), cursorColor = Color(0xFFFF70C5)))
                     }
                 }
             }
