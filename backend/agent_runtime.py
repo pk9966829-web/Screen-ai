@@ -47,6 +47,14 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": True,
         "description": "Inspect a user-authorized webpage structure and visible text without reading form values or interacting.",
     },
+    "browser.interact": {
+        "platforms": ["browser"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Perform a narrowly scoped, non-sensitive interaction on an explicitly authorized active HTTPS webpage and verify its outcome.",
+    },
     "browser.search_products": {
         "platforms": ["browser"],
         "risk": "low",
