@@ -34,6 +34,8 @@ app.include_router(companion_core_router)
 from agent_api import router as agent_router, devices as agent_devices, runtime as agent_runtime
 from agent_runtime import AgentRuntimeError
 from voice_api import router as voice_router
+from call_assistant_api import router as call_assistant_router
+app.include_router(call_assistant_router)
 from cloud_worker import router as cloud_worker_router
 import identity_api
 from identity_api import router as identity_router

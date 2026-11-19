@@ -104,13 +104,15 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
     var loggedIn by remember { mutableStateOf(AccountSessionStore.load() != null) }
     var showServerSettings by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var showCallAssistant by remember { mutableStateOf(false) }
     var settingsSection by remember { mutableStateOf<VosiSettingSection?>(null) }
     var settingsSearch by remember { mutableStateOf("") }
     var chatDraft by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    BackHandler(enabled = settingsSection != null || settingsOpen || tab != VosiTab.HOME) {
+    BackHandler(enabled = showCallAssistant || settingsSection != null || settingsOpen || tab != VosiTab.HOME) {
         when {
+            showCallAssistant -> { showCallAssistant = false; settingsOpen = true }
             settingsSection != null -> { settingsSection = null; settingsOpen = true }
             settingsOpen -> settingsOpen = false
             tab != VosiTab.HOME -> tab = VosiTab.HOME
@@ -252,8 +254,12 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
             )
         }
 
+        if (showCallAssistant) {
+            CallAssistantSettingsScreen(onBack = { showCallAssistant = false; settingsOpen = true })
+        }
+
         val selectedSettings = settingsSection
-        if (selectedSettings != null) {
+        if (selectedSettings != null && !showCallAssistant) {
             VosiSettingsDetailScreen(
                 section = selectedSettings,
                 onBack = { settingsSection = null; settingsOpen = true },
@@ -265,6 +271,7 @@ private fun VosiMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -
                         "tasks" -> { settingsSection = null; tab = VosiTab.TASKS }
                         "devices" -> { settingsSection = null; tab = VosiTab.DEVICES }
                         "companion" -> onOpenCompanion()
+                        "call-assistant" -> { showCallAssistant = true; settingsSection = null; settingsOpen = false }
                         "notifications" -> try {
                             context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
