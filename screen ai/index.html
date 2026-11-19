@@ -414,11 +414,10 @@
         body.vosi-sidebar-expanded #sidebar-toggle .toggle-arrow { transform:rotate(180deg); }
         body.vosi-sidebar-collapsed .vosi-app-shell > .grid.grid-cols-12 { grid-template-columns:minmax(0,1fr)!important; }
         body.vosi-sidebar-collapsed #main-content { grid-column:1!important; }
-        #main-nav[hidden] { display:flex!important; }
+        #main-nav[hidden] { display:none !important; }
         #main-nav { flex-direction:column; gap:3px; }
         #main-nav .nav-item { color:#c9c9c9!important; background:transparent!important; border-color:transparent!important; box-shadow:none!important; }
         #main-nav .nav-item.active { color:#fff!important; background:rgba(255,255,255,.09)!important; border-color:rgba(255,255,255,.08)!important; }
-        #main-nav .nav-item[data-tab="settings"] { display:none!important; }
         #sidebar-brand { padding:0 8px!important; }
         #sidebar-brand .relative { width:34px!important; height:34px!important; box-shadow:none!important; }
         #sidebar-settings { display:flex; flex-direction:column; gap:15px; }
@@ -436,6 +435,41 @@
         #sidebar-settings .task-state { font-size:9px; padding:3px 7px; }
         #sidebar-settings .side-note { padding:0 8px; color:#838383; font-size:10px; line-height:1.45; }
         #setting-save-status { min-height:14px; padding:0 8px; color:#8ee6bd; font-size:10px; }
+        #main-content > .w-full.max-w-2xl { position:relative; }
+        .connector-button {
+            display:grid; place-items:center; width:34px; height:34px; flex:0 0 34px;
+            border:1px solid rgba(255,255,255,.18); border-radius:50%;
+            color:#e8e8e8; background:rgba(255,255,255,.075);
+            transition:background .18s ease,border-color .18s ease,transform .18s ease;
+        }
+        .connector-button:hover,.connector-button[aria-expanded="true"] {
+            color:#fff; background:rgba(255,255,255,.16);
+            border-color:rgba(255,255,255,.42); transform:translateY(-1px);
+        }
+        .connector-cube { width:19px; height:19px; display:block; }
+        .connector-panel {
+            position:absolute; z-index:120; top:60px; right:8px;
+            width:min(300px,calc(100vw - 40px)); padding:14px;
+            border:1px solid rgba(255,255,255,.17); border-radius:16px;
+            background:rgba(18,18,20,.97); color:#f4f4f4;
+            box-shadow:0 18px 55px rgba(0,0,0,.55); backdrop-filter:blur(18px);
+        }
+        #connector-panel[hidden] { display:none!important; }
+        .connector-panel-title { color:#fff; font-size:13px; font-weight:750; }
+        .connector-panel-note { margin:5px 0 12px; color:#a3a3a3; font-size:10px; line-height:1.5; }
+        .connector-link {
+            display:flex; align-items:center; gap:10px; padding:10px;
+            border:1px solid rgba(255,255,255,.10); border-radius:11px;
+            color:#eee; background:rgba(255,255,255,.045); text-decoration:none;
+        }
+        .connector-link:hover { background:rgba(255,255,255,.09); }
+        .connector-app-mark {
+            display:grid; place-items:center; width:28px; height:28px; flex:0 0 28px;
+            border-radius:9px; background:#fff; color:#4285f4; font-size:15px; font-weight:800;
+        }
+        .connector-link strong { display:block; font-size:11px; }
+        .connector-link small { display:block; margin-top:2px; color:#9ca3af; font-size:9px; }
+        .connector-link-arrow { margin-left:auto; color:#aaa; font-size:13px; }
         .quick-action { padding:9px 12px; border:1px solid rgba(255,255,255,.12); border-radius:999px; color:#dedede; background:rgba(255,255,255,.055); font-size:11px; transition:background .2s,border-color .2s,transform .2s; }
         .quick-action:hover { background:rgba(255,255,255,.11); border-color:rgba(125,190,255,.3); transform:translateY(-1px); }
         .preset-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:0 8px; }
@@ -533,9 +567,9 @@
     <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 14s; animation-delay: -4s;"></div>
     <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
 
-    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="false" aria-controls="app-sidebar" aria-label="Show settings">
+    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="true" aria-controls="app-sidebar" aria-label="Hide settings">
                         <span class="toggle-arrow" aria-hidden="true">›</span>
-                        <span class="toggle-label">Show settings</span>
+                        <span class="toggle-label">Hide settings</span>
                     </button>
 
 <div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
@@ -581,6 +615,9 @@
                         </a>
                         <a href="#" data-tab="tasks" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
                             <i data-lucide="check-square" class="w-4 h-4"></i><span>Tasks</span>
+                        </a>
+                        <a href="#" data-tab="connectors" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
+                            <i data-lucide="plug" class="w-4 h-4"></i><span>Connectors</span>
                         </a>
                         <a href="#" data-tab="settings" class="nav-item flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all">
                             <i data-lucide="settings" class="w-4 h-4"></i><span>Settings</span>
@@ -663,11 +700,13 @@
                         <div class="absolute left-4 text-indigo-400"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
                         <input id="user-input" type="text" placeholder="Ask CHERRY AI anything..." class="w-full pl-12 pr-24 py-3.5 rounded-2xl bg-space-800/80 border border-indigo-500/20 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/20 text-sm text-white placeholder-slate-500 outline-none transition-all">
                         <div class="absolute right-2 flex items-center space-x-1">
+                            <button type="button" id="connector-btn" class="connector-button" aria-label="Connect apps" title="Connect apps" aria-expanded="false" aria-controls="connector-panel"><svg viewBox="0 0 24 24" aria-hidden="true" class="connector-cube"><path d="M12 2.8 20.2 7.5v9L12 21.2 3.8 16.5v-9L12 2.8Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m3.8 7.5 8.2 4.7 8.2-4.7M12 12.2v9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
                             <button type="button" id="mic-btn" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
                             <button type="submit" class="p-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
                         </div>
                     </form>
-                    <div class="flex flex-wrap justify-center gap-2">
+                    <div id="connector-panel" class="connector-panel" hidden role="dialog" aria-label="App connectors"><div class="connector-panel-title">Connect apps</div><p class="connector-panel-note">Choose an app to open its sign-in page. App access is not connected until you complete its authorization.</p><a class="connector-link" href="https://mail.google.com/" target="_blank" rel="noopener noreferrer"><span class="connector-app-mark">G</span><span><strong>Gmail</strong><small>Open Gmail to sign in</small></span><span class="connector-link-arrow">↗</span></a></div>
+                    <div class="flex flex-wrap justify-center gap-2" aria-label="Quick suggestions">
                         <button class="quick-action" type="button" data-prompt="Explain what is visible on my shared screen. Keep it concise and separate what you can see from what you infer.">
                             Explain my screen
                         </button>
@@ -677,39 +716,21 @@
                         <button class="quick-action" type="button" data-prompt="Guide me through the next step on my screen. Identify a control only if you can confidently see it; do not claim you clicked it.">
                             Guide next step
                         </button>
-                        <button class="quick-action" type="button" data-action="awareness">
-                            Start screen sharing
-                        </button>
-                        <button class="quick-action" type="button" data-action="task">
-                            Plan a task
-                        </button>
-                        <button class="quick-action" type="button" data-action="letter">
-                            Write a letter
-                        </button>
-                        <button class="quick-action" type="button" data-action="web-research">
-                            Search the web
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="youtube">
-                            Open YouTube
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="wifi-settings">
-                            Wi-Fi settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="windows-settings">
-                            Windows settings
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="calculator">
-                            Open Calculator
-                        </button>
-                        <button class="quick-action" type="button" data-device-target="file-explorer">
-                            Open File Explorer
-                        </button>
                     </div>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your CHERRY AI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local CHERRY AI mode</div></div><span class="task-state">READY</span></div></div>
                     <div id="tab-page-awareness" class="tab-card" style="display:none"><h2>Screen Awareness</h2><p>CHERRY AI previews the screen you explicitly share and sends frames to the local AI backend while observation is active.</p><div class="tab-row"><div><div class="tab-label">Observation</div><div id="awareness-page-detail" class="tab-value">Choose Start observing to share a screen.</div></div><span id="awareness-page-state" class="task-state">OFF</span></div><div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40"><div class="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live screen preview</span><span id="awareness-frame-status" class="text-[10px] text-slate-500">Waiting for screen share</span></div><video id="awareness-preview" class="block w-full max-h-64 min-h-36 object-contain bg-black/60" autoplay muted playsinline></video><div id="awareness-preview-placeholder" class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-slate-500">Your preview will appear here after you choose a screen to share.</div></div><div class="mt-3 grid grid-cols-2 gap-2"><button id="awareness-page-button" class="tab-action mt-0">Start observing</button><button id="awareness-pause-button" class="tab-action mt-0 border border-white/10 bg-white/5 text-slate-200" disabled>Pause frames</button></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="awareness-what-button" class="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-sky-200 hover:bg-sky-400/[0.12]">What am I doing?</button><button id="awareness-guide-button" class="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-3 text-left text-xs font-semibold text-indigo-200 hover:bg-indigo-400/[0.12]">Guide me where to click</button></div><p class="mt-3 text-[10px] leading-relaxed text-slate-500">Privacy: sharing starts only after you select a screen in the system dialog. Stop observing to end capture; pause stops new uploads but keeps the preview and screen share active.</p><div class="tab-row"><div><div class="tab-label">AI backend</div><div id="awareness-backend-detail" class="tab-value">Checking local backend…</div></div><span id="awareness-backend-state" class="task-state">CHECKING</span></div></div>
                     <div id="tab-page-tasks" class="tab-card" style="display:none"><h2>Workflow progress</h2><p>CHERRY AI tracks the steps it can confirm from your screen and conversation.</p><div class="tab-row"><div><div class="tab-label" id="task-page-title">No active task</div><div class="tab-value">Current workflow</div></div><span id="task-page-state" class="task-state">IDLE</span></div><div class="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current step</div><div id="task-current-step" class="text-sm text-slate-200 mt-2">Not detected yet</div><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4">Next action</div><div id="task-next-step" class="text-sm text-sky-300 mt-2">Ask CHERRY AI for guidance to begin</div></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confirmed completed steps</div><ul id="task-completed-steps" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No completed steps recorded yet</li></ul></div><div class="mt-5"><div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Detected screen transitions</div><ul id="task-screen-changes" class="space-y-2 text-sm text-slate-300"><li class="text-slate-500">No visual transitions detected yet</li></ul></div><button id="task-page-button" class="tab-action">Start a task</button><p id="task-sync-note" class="text-[10px] mt-3 text-slate-500">Progress syncs with the local CHERRY AI backend.</p></div>
+                    <div id="tab-page-connectors" class="tab-card" style="display:none">
+                        <h2>Connectors</h2>
+                        <p>Review the external services CHERRY AI may connect to. A status is shown only when this web frontend can verify it; these entries are not presented as connected.</p>
+                        <div class="tab-row"><div><div class="tab-label">Gmail</div><div class="tab-value">Email search, reading, and drafting</div></div><span class="task-state">SETUP REQUIRED</span></div>
+                        <div class="tab-row"><div><div class="tab-label">Google Calendar</div><div class="tab-value">Calendar events and scheduling</div></div><span class="task-state">SETUP REQUIRED</span></div>
+                        <div class="tab-row"><div><div class="tab-label">GitHub</div><div class="tab-value">Repositories, issues, and pull requests</div></div><span class="task-state">SETUP REQUIRED</span></div>
+                        <div class="tab-row"><div><div class="tab-label">Web Search (Tavily)</div><div class="tab-value">Backend web research provider</div></div><span class="task-state">VERIFY BACKEND</span></div>
+                        <p class="mt-4">Connection and OAuth management are not yet implemented in this web screen. No account is connected by displaying this directory.</p>
+                    </div>
                     <div id="tab-page-settings" class="tab-card" style="display:none"><h2>Settings</h2><p>CHERRY AI preferences are available in the left sidebar.</p></div>
                 </div>
             </main>
@@ -924,6 +945,35 @@
         function setupInteractivity() {
             const sidebarToggle = document.getElementById('sidebar-toggle');
             const sidebarNav = document.getElementById('main-nav');
+            const setSidebarExpanded = expanded => {
+                if (sidebarNav) sidebarNav.hidden = !expanded;
+                if (sidebarToggle) {
+                    sidebarToggle.setAttribute('aria-expanded', String(expanded));
+                    sidebarToggle.setAttribute('aria-label', expanded ? 'Hide sidebar' : 'Show sidebar');
+                    const label = sidebarToggle.querySelector('.toggle-label');
+                    if (label) label.textContent = expanded ? 'Hide sidebar' : 'Show sidebar';
+                }
+                document.body.classList.toggle('vosi-sidebar-expanded', expanded);
+                document.body.classList.toggle('vosi-sidebar-collapsed', !expanded);
+                document.getElementById('app-sidebar')?.setAttribute('aria-hidden', String(!expanded));
+            };
+            const connectorButton = document.getElementById('connector-btn');
+            const connectorPanel = document.getElementById('connector-panel');
+            connectorButton?.addEventListener('click', () => {
+                const open = connectorButton.getAttribute('aria-expanded') !== 'true';
+                connectorButton.setAttribute('aria-expanded', String(open));
+                if (connectorPanel) connectorPanel.hidden = !open;
+            });
+            document.addEventListener('click', event => {
+                if (!connectorButton || !connectorPanel) return;
+                if (event.target instanceof Node && (connectorButton.contains(event.target) || connectorPanel.contains(event.target))) return;
+                connectorButton.setAttribute('aria-expanded', 'false');
+                connectorPanel.hidden = true;
+            });
+            sidebarToggle?.addEventListener('click', () => {
+                setSidebarExpanded(sidebarToggle.getAttribute('aria-expanded') !== 'true');
+            });
+            setSidebarExpanded(document.body.classList.contains('vosi-sidebar-expanded'));
             const deviceActionDialog = document.getElementById('device-action-dialog');
             const deviceActionDescription = document.getElementById('device-action-description');
             const letterDialog = document.getElementById('letter-dialog');
@@ -1234,20 +1284,10 @@
                 closeDeviceActionDialog();
                 if (action) void launchDeviceTarget(action.target, action.query);
             });
-            sidebarToggle?.addEventListener('click', () => {
-                const expanded = sidebarToggle.getAttribute('aria-expanded') !== 'true';
-                if (sidebarNav) sidebarNav.hidden = !expanded;
-                sidebarToggle.setAttribute('aria-expanded', String(expanded));
-                sidebarToggle.setAttribute('aria-label', expanded ? 'Hide settings' : 'Show settings');
-                const label = sidebarToggle.querySelector('.toggle-label');
-                if (label) label.textContent = expanded ? 'Hide settings' : 'Show settings';
-                document.body.classList.toggle('vosi-sidebar-expanded', expanded);
-                document.body.classList.toggle('vosi-sidebar-collapsed', !expanded);
-            });
             const navItems = document.querySelectorAll('.nav-item');
             const main = document.querySelector('main');
             const overlay = document.getElementById('tab-overlay');
-            const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), settings: document.getElementById('tab-page-settings') };
+            const pages = { home: document.getElementById('tab-page-home'), awareness: document.getElementById('tab-page-awareness'), tasks: document.getElementById('tab-page-tasks'), connectors: document.getElementById('tab-page-connectors'), settings: document.getElementById('tab-page-settings') };
             async function refreshWorkflow() {
                 const title = document.getElementById('task-page-title');
                 const state = document.getElementById('task-page-state');
