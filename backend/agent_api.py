@@ -176,7 +176,7 @@ def request_agent_task(
         metadata = runtime.list_capabilities()
         details = next((item for item in metadata if item["name"] == capability), None)
         supported_targets = {
-            "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page", "commerce.order.place"},
+            "browser": {"browser.search_products", "browser.open_tab", "browser.read_visible_page", "browser.inspect_page", "browser.search_web", "browser.interact", "commerce.order.place"},
             "desktop": {
                 "device.alarm.create", "device.volume.action", "device.timer.create",
                 "device.bluetooth.settings.open", "device.wifi.settings.open",
@@ -192,6 +192,19 @@ def request_agent_task(
             parsed_url = urlsplit(raw_url.strip()) if isinstance(raw_url, str) else None
             if not parsed_url or parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or len(raw_url) > 2048:
                 raise HTTPException(status_code=422, detail="Chrome can open only a valid HTTPS URL without embedded credentials.")
+        if target_platform == "browser" and capability == "browser.interact":
+            action = arguments.get("action") if isinstance(arguments, dict) else None
+            allowed_actions = {"click", "type", "scroll", "select"}
+            if action not in allowed_actions:
+                raise HTTPException(status_code=422, detail="Browser interaction action must be click, type, scroll, or select.")
+            if not isinstance(arguments.get("target"), str) or not arguments["target"].strip() or len(arguments["target"]) > 120:
+                raise HTTPException(status_code=422, detail="Browser interaction requires a short, explicit target label.")
+            if action == "type" and (not isinstance(arguments.get("text"), str) or len(arguments["text"]) > 2000):
+                raise HTTPException(status_code=422, detail="Typing requires text up to 2000 characters.")
+            if action == "scroll" and arguments.get("direction") not in {"up", "down"}:
+                raise HTTPException(status_code=422, detail="Scroll direction must be up or down.")
+            if action == "select" and (not isinstance(arguments.get("option"), str) or len(arguments["option"]) > 120):
+                raise HTTPException(status_code=422, detail="Select requires an explicit option label.")
         if target_platform == "browser" and capability == "browser.read_visible_page" and arguments not in (None, {}):
             raise HTTPException(status_code=422, detail="Reading the active page does not accept additional arguments.")
         if capability in {"device.pc.shutdown", "device.pc.restart"}:
