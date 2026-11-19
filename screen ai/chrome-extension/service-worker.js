@@ -40,10 +40,10 @@ async function sendHeartbeat() {
 
 async function reportAgentBrowserResults(message, sender) {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith("https://www.flipkart.com/")) {
-    throw new Error("Agent results were not sent by the VOSI Flipkart content script.");
+    throw new Error("Agent results were not sent by the CHERRY AI Flipkart content script.");
   }
   const device = await getPairedDevice();
-  if (!device?.deviceToken) throw new Error("Chrome is not paired with VOSI.");
+  if (!device?.deviceToken) throw new Error("Chrome is not paired with CHERRY AI.");
   const products = Array.isArray(message.products) ? message.products.slice(0, 8) : [];
   const success = products.length > 0;
   const response = await fetch(
@@ -65,7 +65,7 @@ async function reportAgentBrowserResults(message, sender) {
       })
     }
   );
-  if (!response.ok) throw new Error("VOSI rejected the task result (HTTP " + response.status + ").");
+  if (!response.ok) throw new Error("CHERRY AI rejected the task result (HTTP " + response.status + ").");
   await chrome.storage.local.set({ vosiLastTaskResult: new Date().toISOString() });
   return response.json();
 }
@@ -77,7 +77,7 @@ async function postAgentTaskResult(device, taskId, stepId, payload) {
     headers: { ...authHeaders(device), "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  if (!response.ok) throw new Error("VOSI rejected the browser task receipt (HTTP " + response.status + ").");
+  if (!response.ok) throw new Error("CHERRY AI rejected the browser task receipt (HTTP " + response.status + ").");
   return response.json();
 }
 
@@ -87,7 +87,7 @@ async function executeGeneralBrowserStep(device, task, step) {
     let parsed;
     try { parsed = new URL(raw); } catch { throw new Error("The requested website address is invalid."); }
     if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password || raw.length > 2048) {
-      throw new Error("VOSI can open only valid HTTPS website addresses without embedded credentials.");
+      throw new Error("CHERRY AI can open only valid HTTPS website addresses without embedded credentials.");
     }
     const tab = await chrome.tabs.create({ url: parsed.href, active: true });
     await postAgentTaskResult(device, task.task_id, step.step_id, {
@@ -100,9 +100,9 @@ async function executeGeneralBrowserStep(device, task, step) {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab?.id || !tab.url) throw new Error("There is no active Chrome website to read.");
     const pageUrl = new URL(tab.url);
-    if (pageUrl.protocol !== "https:") throw new Error("VOSI can read only HTTPS websites.");
+    if (pageUrl.protocol !== "https:") throw new Error("CHERRY AI can read only HTTPS websites.");
     const hasPermission = await chrome.permissions.contains({ origins: [pageUrl.origin + "/*"] });
-    if (!hasPermission) throw new Error("Website access is not enabled. Open the VOSI extension popup and choose Enable current website.");
+    if (!hasPermission) throw new Error("Website access is not enabled. Open the CHERRY AI extension popup and choose Enable current website.");
     const injected = await chrome.scripting.executeScript({
       target: { tabId: tab.id }, world: "ISOLATED",
       func: () => ({
@@ -182,7 +182,7 @@ async function executeAvailableAgentTasks() {
   }
 }
 
-async function checkForVosiCommand() {
+async function checkForCHERRY AICommand() {
   if (checking) return;
   checking = true;
   try {
@@ -205,7 +205,7 @@ async function checkForVosiCommand() {
       headers: authHeaders(device)
     });
   } catch (error) {
-    console.warn("VOSI browser bridge could not reach its local backend:", error);
+    console.warn("CHERRY AI browser bridge could not reach its local backend:", error);
   } finally {
     checking = false;
   }
@@ -213,10 +213,10 @@ async function checkForVosiCommand() {
 
 async function forwardProductResults(message, sender) {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith("https://www.flipkart.com/")) {
-    throw new Error("Product results were not sent by the VOSI Flipkart content script.");
+    throw new Error("Product results were not sent by the CHERRY AI Flipkart content script.");
   }
   const device = await getPairedDevice();
-  if (!device?.deviceToken) throw new Error("Pair this Chrome extension with VOSI first.");
+  if (!device?.deviceToken) throw new Error("Pair this Chrome extension with CHERRY AI first.");
   const response = await fetch(API + "/browser/results", {
     method: "POST",
     headers: { ...authHeaders(device), "Content-Type": "application/json" },
@@ -225,23 +225,23 @@ async function forwardProductResults(message, sender) {
       products: Array.isArray(message.products) ? message.products.slice(0, 30) : []
     })
   });
-  if (!response.ok) throw new Error("VOSI rejected the product results (" + response.status + ").");
+  if (!response.ok) throw new Error("CHERRY AI rejected the product results (" + response.status + ").");
   return response.json();
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === "VOSI_DEVICE_UPDATED") {
+  if (message?.type === "CHERRY AI_DEVICE_UPDATED") {
     void sendHeartbeat();
-    void checkForVosiCommand();
+    void checkForCHERRY AICommand();
     return false;
   }
-  if (message?.type === "VOSI_BROWSER_RESULTS") {
+  if (message?.type === "CHERRY AI_BROWSER_RESULTS") {
     forwardProductResults(message, sender)
       .then(result => sendResponse({ success: true, result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
-  if (message?.type === "VOSI_AGENT_BROWSER_RESULTS") {
+  if (message?.type === "CHERRY AI_AGENT_BROWSER_RESULTS") {
     reportAgentBrowserResults(message, sender)
       .then(result => sendResponse({ success: true, result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
@@ -250,17 +250,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-function startVosiAlarms() {
+function startCHERRY AIAlarms() {
   chrome.alarms.create("vosi-poll", { periodInMinutes: 0.5 });
   chrome.alarms.create("vosi-device-heartbeat", { periodInMinutes: 1 });
   void sendHeartbeat();
-  void checkForVosiCommand();
+  void checkForCHERRY AICommand();
 }
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === "vosi-poll") void checkForVosiCommand();
+  if (alarm.name === "vosi-poll") void checkForCHERRY AICommand();
   if (alarm.name === "vosi-device-heartbeat") void sendHeartbeat();
 });
-chrome.runtime.onInstalled.addListener(startVosiAlarms);
-chrome.runtime.onStartup.addListener(startVosiAlarms);
-startVosiAlarms();
+chrome.runtime.onInstalled.addListener(startCHERRY AIAlarms);
+chrome.runtime.onStartup.addListener(startCHERRY AIAlarms);
+startCHERRY AIAlarms();
