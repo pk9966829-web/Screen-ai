@@ -35,3 +35,32 @@ def test_unknown_general_caller_gets_disclosure():
     result = calls._classify("I am calling about the project.")
     reply = calls._reply("I am calling about the project.", result["intent"], result["urgent"])
     assert "I'm VOSI, an AI assistant" in reply
+
+
+def test_detects_and_replies_in_hindi():
+    text = "आप कौन हैं? कृपया उन्हें मेरा संदेश दे दीजिए।"
+    result = calls._classify(text)
+    reply = calls._reply(text, result["intent"], result["urgent"], result["language"])
+    assert result["language"] == "hi"
+    assert "मैं VOSI हूँ" in reply
+
+
+def test_detects_and_replies_in_kannada():
+    text = "ನೀವು ಯಾರು? ದಯವಿಟ್ಟು ಅವರಿಗೆ ನನ್ನ ಸಂದೇಶ ತಿಳಿಸಿ."
+    result = calls._classify(text)
+    reply = calls._reply(text, result["intent"], result["urgent"], result["language"])
+    assert result["language"] == "kn"
+    assert "ನಾನು VOSI" in reply
+
+
+def test_honours_explicit_language_override():
+    result = calls._classify("Who are you?", "hi")
+    reply = calls._reply("Who are you?", result["intent"], result["urgent"], result["language"])
+    assert result["language"] == "hi"
+    assert "मैं VOSI हूँ" in reply
+
+
+def test_detects_kannada_urgent_call():
+    result = calls._classify("ಇದು ತುರ್ತು ಅಪಘಾತ, ಆಸ್ಪತ್ರೆಗೆ ಆಂಬುಲೆನ್ಸ್ ಬೇಕು.")
+    assert result["urgent"] is True
+    assert result["language"] == "kn"
