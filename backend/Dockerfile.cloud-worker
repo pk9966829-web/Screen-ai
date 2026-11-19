@@ -1,0 +1,15 @@
+FROM mcr.microsoft.com/playwright/python:v1.55.0-noble
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+COPY backend/cloud-browser-worker-requirements.txt ./requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements.txt
+COPY backend/cloud_browser_worker.py ./cloud_browser_worker.py
+
+RUN useradd --create-home --uid 10001 vosi
+USER vosi
+
+CMD ["python", "cloud_browser_worker.py"]

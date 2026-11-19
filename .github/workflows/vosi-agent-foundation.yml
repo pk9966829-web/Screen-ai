@@ -1,0 +1,145 @@
+name: VOSI autonomous agent foundation
+
+on:
+  push:
+    branches:
+      - feature/vosi-autonomous-companion-foundation
+      - feature/vosi-continuous-voice-companion
+      - feature/vosi-windows-voice-companion
+      - feature/vosi-autonomous-task-orchestrator
+      - feature/vosi-cloud-execution-engine
+      - feature/vosi-cloud-browser-executor
+      - feature/vosi-personal-identity-onboarding
+      - feature/vosi-shared-user-identity-backend
+      - feature/vosi-native-android-app
+      - feature/vosi-android-shared-chat
+      - feature/vosi-android-background-worker
+      - feature/vosi-task-planner-executor
+      - feature/vosi-account-scoped-companion
+      - feature/vosi-universal-intelligence
+      - feature/vosi-account-scoped-task-runtime
+      - feature/vosi-verified-retry-execution
+      - feature/vosi-account-scoped-screen-state
+      - feature/vosi-single-node-production-deploy-v2
+      - feature/vosi-android-dashboard-shell
+      - feature/vosi-chatgpt-mobile-shell
+      - feature/vosi-universal-intelligence
+      - feature/vosi-browser-interaction
+      - feature/vosi-production-backup-recovery
+  pull_request:
+    branches:
+      - main
+      - feature/vosi-account-scoped-task-runtime
+      - feature/vosi-verified-retry-execution
+      - feature/vosi-account-scoped-screen-state
+      - feature/vosi-single-node-production-deploy
+      - feature/vosi-single-node-production-deploy-v2
+      - feature/vosi-production-backup-recovery
+      - feature/whatsapp-personal-android
+      - feature/vosi-autonomous-companion-foundation
+      - feature/vosi-continuous-voice-companion
+      - feature/vosi-windows-voice-companion
+      - feature/vosi-autonomous-task-orchestrator
+      - feature/vosi-cloud-execution-engine
+      - feature/vosi-cloud-browser-executor
+      - feature/vosi-personal-identity-onboarding
+      - feature/vosi-shared-user-identity-backend
+      - feature/vosi-companion-core
+      - feature/vosi-android-shared-chat
+      - feature/vosi-android-background-worker
+      - feature/vosi-android-futuristic-ui
+      - feature/vosi-android-dashboard-shell
+      - feature/vosi-account-scoped-companion
+  workflow_dispatch:
+
+jobs:
+  backend-agent-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt -r backend/cloud-browser-worker-requirements.txt pytest httpx
+      - name: Validate Chrome extension JavaScript and manifest
+        run: |
+          node --check "screen ai/chrome-extension/service-worker.js"
+          node --check "screen ai/chrome-extension/content.js"
+          node --check "screen ai/chrome-extension/popup.js"
+          python -c "import json; json.load(open('screen ai/chrome-extension/manifest.json', encoding='utf-8'))"
+          python - <<'PY'
+          import re
+          import subprocess
+          import tempfile
+          from pathlib import Path
+          html = Path("screen ai/index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script\b[^>]*>([\s\S]*?)</script>", html, re.IGNORECASE)
+          for index, script in enumerate(scripts):
+              if not script.strip():
+                  continue
+              path = Path(tempfile.gettempdir()) / f"vosi-inline-{index}.js"
+              path.write_text(script, encoding="utf-8")
+              subprocess.run(["node", "--check", str(path)], check=True)
+          print(f"Validated {len(scripts)} inline script blocks.")
+          PY
+      - name: Test VOSI agent runtime
+        working-directory: backend
+        run: python -m pytest ../tests/test_agent_runtime.py ../tests/test_agent_api.py ../tests/test_device_registry.py ../tests/test_browser_bridge_auth.py ../tests/test_companion.py ../tests/test_companion_brain.py ../tests/test_companion_voice.py ../tests/test_task_orchestrator.py ../tests/test_cloud_worker.py ../tests/test_cloud_browser_worker.py ../tests/test_identity_api.py tests/test_companion_core_api.py tests/test_companion_task_planner.py tests/test_account_companion_isolation.py tests/test_account_task_isolation.py ../tests/test_account_legacy_storage.py tests/test_backup_vosi.py ../tests/test_research_engine.py -q
+
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Build VOSI Companion APK
+        run: gradle -p android --no-daemon :app:assembleDebug
+      - name: Upload VOSI Companion debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VOSI-Companion-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  windows-desktop-check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build VOSI desktop frontend
+        working-directory: screen ai
+        run: |
+          npm ci
+          npm run build
+      - name: Check Windows Tauri desktop build
+        run: cargo check --manifest-path "screen ai/src-tauri/Cargo.toml"
+
+  production-container-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose configuration
+        run: |
+          cp backend/.env.production.example backend/.env
+          cd backend
+          docker compose config --quiet
+      - name: Build production API image
+        run: docker build -f backend/Dockerfile -t vosi-api:ci .
+      - name: Build optional cloud browser worker image
+        run: docker build -f backend/Dockerfile.cloud-worker -t vosi-cloud-browser-worker:ci .

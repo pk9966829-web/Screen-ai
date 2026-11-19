@@ -1,0 +1,106 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      VOSI_MULTI_TENANT: "true"
+      VOSI_AGENT_DB_PATH: /data/vosi_agent.db
+      VOSI_COMPANION_DB_PATH: /data/vosi_companion.sqlite3
+      VOSI_SCREEN_DB_PATH: /data/screen_ai.db
+      VOSI_ACCOUNT_UPLOAD_DIR: /data/account_uploads
+      VOSI_CORS_ORIGINS: ${VOSI_CORS_ORIGINS}
+    volumes:
+      - vosi_data:/data
+    expose:
+      - "8001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health/ready', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+    networks:
+      - private
+
+  proxy:
+    image: caddy:2
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VOSI_DOMAIN: ${VOSI_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      - private
+
+  backup:
+    profiles: ["backup"]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      VOSI_AGENT_DB_PATH: /data/vosi_agent.db
+      VOSI_COMPANION_DB_PATH: /data/vosi_companion.sqlite3
+      VOSI_SCREEN_DB_PATH: /data/screen_ai.db
+      VOSI_ACCOUNT_UPLOAD_DIR: /data/account_uploads
+      VOSI_BACKUP_DATA_DIR: /data
+      VOSI_BACKUP_OUTPUT_DIR: /backups
+    volumes:
+      - vosi_data:/data:ro
+      - ./backups:/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    # Bypass the API entrypoint: /data is intentionally mounted read-only.
+    entrypoint: ["python"]
+    command: ["backup_vosi.py"]
+    networks:
+      - private
+
+  cloud-browser-worker:
+    profiles: ["cloud-worker"]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile.cloud-worker
+    env_file:
+      - .env
+    environment:
+      VOSI_CLOUD_API_URL: https://${VOSI_DOMAIN}
+      VOSI_CLOUD_WORKER_ACCOUNT_TOKEN: ${VOSI_CLOUD_WORKER_ACCOUNT_TOKEN:-}
+    restart: unless-stopped
+    init: true
+    shm_size: "1gb"
+    pids_limit: 256
+    mem_limit: 2g
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - private
+
+volumes:
+  vosi_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  private:
+    driver: bridge

@@ -16,7 +16,7 @@ declare global {
 // DOM ELEMENTS
 // =========================================================
 
-const app = document.getElementById("app");
+const app = document.getElementById("app") as HTMLElement;
 
 if (!app) {
   throw new Error("Screen AI app container was not found.");
@@ -30,9 +30,6 @@ const statusText =
 const mascot =
   document.getElementById("mascot");
 
-
-const mascotInner =
-  document.getElementById("mascotInner");
 
 
 const askInput =
@@ -1244,3 +1241,15 @@ addTimelineItem(
 console.log(
   "Screen AI frontend initialized."
 );
+
+// Open the separate voice companion without changing the existing VOSI interface.
+document.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.ctrlKey && event.shiftKey && event.code === "Space") {
+    event.preventDefault();
+    if (window.__TAURI__) {
+      void window.__TAURI__.core.invoke("show_voice_companion").catch((error: unknown) => {
+        console.warn("VOSI voice companion could not be opened:", error);
+      });
+    }
+  }
+});

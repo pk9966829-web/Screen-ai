@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/playwright/python:v1.55.0-noble
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VOSI_WORKER_LOG_LEVEL=INFO
+
+WORKDIR /worker
+COPY cloud-browser-worker-requirements.txt /worker/requirements.txt
+RUN pip install --no-cache-dir -r /worker/requirements.txt
+COPY cloud_browser_worker.py /worker/cloud_browser_worker.py
+
+CMD ["python", "/worker/cloud_browser_worker.py"]
