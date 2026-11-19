@@ -46,6 +46,7 @@ on:
       - feature/vosi-android-background-worker
       - feature/vosi-android-futuristic-ui
       - feature/vosi-android-dashboard-shell
+      - feature/vosi-chatgpt-mobile-shell
       - feature/vosi-account-scoped-companion
   workflow_dispatch:
 
