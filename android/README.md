@@ -1,18 +1,22 @@
 # VOSI Android Companion
 
-Starter native Android project for the VOSI desktop companion.
+Native Kotlin Android companion for the shared VOSI web, desktop, and backend task system.
 
 ## Target device
 - Redmi A7 Pro
 - Xiaomi HyperOS 3.0.2.0.WBVINXM
 - Android 16
 
-## Current starter milestone
-- Native Kotlin Android app structure.
-- Runtime permission request for contacts.
-- Local contact lookup by display name.
-- Phone call action only after an explicit in-app confirmation.
-- No cloud upload of contacts or phone numbers.
+## Current capabilities
+- Secure one-time pairing with the VOSI backend; device credentials are protected with Android Keystore.
+- Shared companion chat and account-scoped identity/task context.
+- Phone-local media-volume and alarm actions, with confirmation/permission checks where required.
+- Task requests for supported paired Windows and Chrome executors, including browser research and product-search workflows.
+- A best-effort WorkManager task worker and completion notifications; Android/OEM power management can delay or stop background work.
+- Optional WhatsApp notification previews and notification quick-reply where the official WhatsApp notification exposes a reply action.
+- Local contact lookup and phone-call flow only after explicit in-app confirmation.
+
+VOSI does not silently place calls, send WhatsApp messages, submit website forms, make purchases, or bypass Android security controls.
 
 ## Open and build
 1. Install Android Studio.
