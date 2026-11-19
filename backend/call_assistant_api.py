@@ -27,6 +27,27 @@ URGENT_TERMS = (
     "emergency", "urgent", "accident", "hospital", "ambulance", "police",
     "danger", "critical", "unconscious", "life threatening",
 )
+SUPPORTED_LANGUAGES = {"auto", "en", "hi", "kn"}
+
+
+def _detect_language(text: str, requested: str = "auto") -> str:
+    """Detect Hindi/Kannada from Unicode script; otherwise use English."""
+    requested = (requested or "auto").strip().lower()
+    if requested in {"english", "en"}:
+        return "en"
+    if requested in {"hindi", "hi"}:
+        return "hi"
+    if requested in {"kannada", "kn"}:
+        return "kn"
+    if requested != "auto":
+        requested = "auto"
+    devanagari = sum("\\u0900" <= ch <= "\\u097f" for ch in text)
+    kannada = sum("\\u0c80" <= ch <= "\\u0cff" for ch in text)
+    if kannada > 0 and kannada >= devanagari:
+        return "kn"
+    if devanagari > 0:
+        return "hi"
+    return "en"
 
 
 def _connect():
@@ -94,6 +115,7 @@ class CallStartRequest(BaseModel):
 class CallTurnRequest(BaseModel):
     session_id: str = Field(min_length=1, max_length=64)
     transcript: str = Field(min_length=1, max_length=2000)
+    language: str = Field(default="auto", max_length=12)
 
 
 class CallFinishRequest(BaseModel):
@@ -140,8 +162,11 @@ def call_turn(
         if row["status"] != "active":
             raise HTTPException(status_code=409, detail="This call session has ended.")
         history = json.loads(row["transcript"] or "[]")
-        classification = _classify(text)
-        reply = _reply(text, classification["intent"], classification["urgent"])
+        requested_language = request.language.strip().lower()
+        if requested_language not in SUPPORTED_LANGUAGES:
+            requested_language = "auto"
+        classification = _classify(text, requested_language)
+        reply = _reply(text, classification["intent"], classification["urgent"], classification["language"])
         history.append({"caller": text[:2000], "assistant": reply, "intent": classification["intent"]})
         # A message is captured only when the caller explicitly supplies one.
         message = row["message"]
@@ -152,7 +177,7 @@ def call_turn(
         db.execute("UPDATE call_sessions SET transcript=?,message=?,urgent=?,updated_at=? WHERE session_id=? AND user_id=?",
                    (json.dumps(history[-30:]), message, int(urgent), now, request.session_id, user_id))
     return {"success": True, "session_id": request.session_id, "response": reply,
-            "intent": classification["intent"], "urgent": urgent,
+            "intent": classification["intent"], "language": classification["language"], "urgent": urgent,
             "message_captured": bool(message), "requires_human_attention": urgent}
 
 
