@@ -37,6 +37,19 @@ def test_browser_inspection_is_registered_as_permissioned_low_risk_capability(tm
     assert agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.inspect_page"})["state"] == "running"
 
 
+def test_browser_interaction_is_registered_and_permissioned(tmp_path):
+    agent = runtime(tmp_path)
+    capabilities = {item["name"]: item for item in agent.list_capabilities()}
+    interaction = capabilities["browser.interact"]
+    assert interaction["risk"] == "low"
+    assert interaction["requires_permission"] is True
+    assert interaction["requires_approval"] is False
+    task = agent.create_task("Interact with a webpage", [step("browser.interact", "browser", arguments={"action":"click","target":"Search"})])
+    assert task["state"] == "planned"
+    claimed = agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.interact"})
+    assert claimed["state"] == "running"
+
+
 def test_low_risk_task_can_be_claimed_only_with_granted_capability(tmp_path):
     agent = runtime(tmp_path)
     task = agent.create_task("Find a body spray", [step()])
