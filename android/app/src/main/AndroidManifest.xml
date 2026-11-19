@@ -11,13 +11,13 @@
         android:name=".VosiApplication"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
-        android:label="VOSI"
+        android:label="CHERRY AI"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <receiver android:name=".VosiAlarmReceiver" android:enabled="true" android:exported="false" />
         <service
             android:name=".WhatsAppNotificationListener"
-            android:label="VOSI WhatsApp notification access"
+            android:label="CHERRY AI WhatsApp notification access"
             android:exported="false"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
