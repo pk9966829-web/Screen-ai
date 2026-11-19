@@ -31,7 +31,23 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
         "reversible": True,
         "description": "Read visible content from the active, user-authorized page.",
     },
-    "browser.search_web": {\n        "platforms": ["browser"],\n        "risk": "low",\n        "requires_permission": True,\n        "requires_approval": False,\n        "reversible": True,\n        "description": "Search public web sources and return source URLs for research.",\n    },\n    "browser.search_products": {
+    "browser.search_web": {
+        "platforms": ["browser"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Search public web sources and return source URLs for research.",
+    },
+    "browser.inspect_page": {
+        "platforms": ["browser"],
+        "risk": "low",
+        "requires_permission": True,
+        "requires_approval": False,
+        "reversible": True,
+        "description": "Inspect a user-authorized webpage structure and visible text without reading form values or interacting.",
+    },
+    "browser.search_products": {
         "platforms": ["browser"],
         "risk": "low",
         "requires_permission": True,
