@@ -110,6 +110,7 @@ def _reply(text: str, intent: str, urgent: bool) -> str:
 class CallStartRequest(BaseModel):
     caller_name: str | None = Field(default=None, max_length=120)
     caller_number: str | None = Field(default=None, max_length=40)
+    language: str = Field(default="auto", max_length=12)
 
 
 class CallTurnRequest(BaseModel):
@@ -138,8 +139,13 @@ def start_call_session(
             (session_id, user_id, (request.caller_name or "").strip()[:120],
              (request.caller_number or "").strip()[:40], "active", "[]", "", 0, now, now),
         )
+    requested_language = request.language.strip().lower()
+    if requested_language not in SUPPORTED_LANGUAGES:
+        requested_language = "auto"
+    language = _detect_language("", requested_language)
     return {"success": True, "session_id": session_id, "status": "active",
-            "disclosure": "I'm VOSI, an AI assistant answering on the account holder's behalf.",
+            "disclosure": _reply("", "identity", False, language),
+            "language": language,
             "transport": "simulation_only", "cellular_audio_connected": False}
 
 
