@@ -532,9 +532,9 @@
     <div class="nebula w-[50vw] h-[50vh] top-[20%] right-[20%] mix-blend-screen" style="animation-duration: 14s; animation-delay: -4s;"></div>
     <div id="dust-container" class="absolute inset-0 pointer-events-none z-0"></div>
 
-    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="false" aria-controls="app-sidebar" aria-label="Show settings">
+    <button id="sidebar-toggle" type="button" class="vosi-sidebar-toggle" aria-expanded="true" aria-controls="app-sidebar" aria-label="Hide settings">
                         <span class="toggle-arrow" aria-hidden="true">›</span>
-                        <span class="toggle-label">Show settings</span>
+                        <span class="toggle-label">Hide settings</span>
                     </button>
 
 <div class="vosi-app-shell flex flex-col h-screen w-screen p-3 md:p-5 relative z-10">
@@ -947,6 +947,19 @@
                 document.body.classList.toggle('vosi-sidebar-collapsed', !expanded);
                 document.getElementById('app-sidebar')?.setAttribute('aria-hidden', String(!expanded));
             };
+            const connectorButton = document.getElementById('connector-btn');
+            const connectorPanel = document.getElementById('connector-panel');
+            connectorButton?.addEventListener('click', () => {
+                const open = connectorButton.getAttribute('aria-expanded') !== 'true';
+                connectorButton.setAttribute('aria-expanded', String(open));
+                if (connectorPanel) connectorPanel.hidden = !open;
+            });
+            document.addEventListener('click', event => {
+                if (!connectorButton || !connectorPanel) return;
+                if (event.target instanceof Node && (connectorButton.contains(event.target) || connectorPanel.contains(event.target))) return;
+                connectorButton.setAttribute('aria-expanded', 'false');
+                connectorPanel.hidden = true;
+            });
             sidebarToggle?.addEventListener('click', () => {
                 setSidebarExpanded(sidebarToggle.getAttribute('aria-expanded') !== 'true');
             });
