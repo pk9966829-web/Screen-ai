@@ -25,6 +25,18 @@ def step(capability="browser.search_products", platform="browser", **extra):
     }
 
 
+def test_browser_inspection_is_registered_as_permissioned_low_risk_capability(tmp_path):
+    agent = runtime(tmp_path)
+    capabilities = {item["name"]: item for item in agent.list_capabilities()}
+    inspection = capabilities["browser.inspect_page"]
+    assert inspection["risk"] == "low"
+    assert inspection["requires_permission"] is True
+    assert inspection["requires_approval"] is False
+    task = agent.create_task("Inspect the current webpage", [step("browser.inspect_page", "browser")])
+    assert task["state"] == "planned"
+    assert agent.claim_next_step(task["task_id"], "chrome-1", "browser", {"browser.inspect_page"})["state"] == "running"
+
+
 def test_low_risk_task_can_be_claimed_only_with_granted_capability(tmp_path):
     agent = runtime(tmp_path)
     task = agent.create_task("Find a body spray", [step()])
