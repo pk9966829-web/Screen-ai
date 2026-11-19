@@ -38,7 +38,7 @@ def test_unknown_general_caller_gets_disclosure():
 
 
 def test_detects_and_replies_in_hindi():
-    text = "आप कौन हैं? कृपया उन्हें मेरा संदेश दे दीजिए।"
+    text = "आप कौन हैं?"
     result = calls._classify(text)
     reply = calls._reply(text, result["intent"], result["urgent"], result["language"])
     assert result["language"] == "hi"
@@ -46,7 +46,7 @@ def test_detects_and_replies_in_hindi():
 
 
 def test_detects_and_replies_in_kannada():
-    text = "ನೀವು ಯಾರು? ದಯವಿಟ್ಟು ಅವರಿಗೆ ನನ್ನ ಸಂದೇಶ ತಿಳಿಸಿ."
+    text = "ನೀವು ಯಾರು?"
     result = calls._classify(text)
     reply = calls._reply(text, result["intent"], result["urgent"], result["language"])
     assert result["language"] == "kn"
@@ -63,4 +63,15 @@ def test_honours_explicit_language_override():
 def test_detects_kannada_urgent_call():
     result = calls._classify("ಇದು ತುರ್ತು ಅಪಘಾತ, ಆಸ್ಪತ್ರೆಗೆ ಆಂಬುಲೆನ್ಸ್ ಬೇಕು.")
     assert result["urgent"] is True
+    assert result["language"] == "kn"
+
+def test_hindi_message_intent_is_recognised():
+    result = calls._classify("कृपया उन्हें मेरा संदेश दे दीजिए।")
+    assert result["intent"] == "message"
+    assert result["language"] == "hi"
+
+
+def test_kannada_message_intent_is_recognised():
+    result = calls._classify("ದಯವಿಟ್ಟು ಅವರಿಗೆ ನನ್ನ ಸಂದೇಶ ತಿಳಿಸಿ.")
+    assert result["intent"] == "message"
     assert result["language"] == "kn"
