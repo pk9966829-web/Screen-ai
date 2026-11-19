@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "VOSI",
+  "productName": "CHERRY AI",
   "version": "0.1.0",
   "identifier": "com.pb7.vosi",
   "build": {
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "VOSI",
+        "title": "CHERRY AI",
         "width": 1100,
         "height": 720,
         "resizable": true,
@@ -22,7 +22,7 @@
       },
       {
         "label": "companion",
-        "title": "VOSI Companion",
+        "title": "CHERRY AI Companion",
         "url": "companion.html",
         "width": 360,
         "height": 220,
@@ -43,7 +43,7 @@
       },
       {
         "label": "guide",
-        "title": "VOSI Click Guide",
+        "title": "CHERRY AI Click Guide",
         "url": "screen-guide.html",
         "width": 1280,
         "height": 720,
