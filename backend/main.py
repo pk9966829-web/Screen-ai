@@ -808,12 +808,13 @@ def ask_screen_ai(
     if not message:
         return {"success": False, "error": "Message cannot be empty"}
 
-    # Local allowlisted commands are intercepted before any AI/provider call.
-    if not req.include_screen:
-        local_result = route_local_command(message)
-        if local_result is not None:
-            return {"success": local_result.get("success", False), "message": message,
-                    "brain": local_result, "local_command": True, "screen_used": False}
+    # Local allowlisted commands are intercepted before any AI/provider call,
+    # even while screen observation is active. Unrecognised requests continue
+    # to the normal screen-aware AI path below.
+    local_result = route_local_command(message)
+    if local_result is not None:
+        return {"success": local_result.get("success", False), "message": message,
+                "brain": local_result, "local_command": True, "screen_used": False}
 
     state = active_pipeline.get_state()
     recent_frames = active_pipeline.get_recent_screen_frames() if req.include_screen else []
