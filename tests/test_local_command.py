@@ -12,6 +12,14 @@ def test_youtube_search_routed_locally(monkeypatch):
     assert result["local_command"] is True and result["success"] is True
     assert "youtube.com/results" in opened[0] and "chest" in opened[0]
 
+def test_compound_open_youtube_and_search(monkeypatch):
+    opened = []
+    monkeypatch.setattr("local_command._open_target", lambda url: opened.append(url) or True)
+    result = route_local_command("open YouTube and search for xyz song")
+    assert result["local_command"] is True and result["success"] is True
+    assert "youtube.com/results" in opened[0] and "xyz+song" in opened[0]
+
+
 def test_open_whitelisted_app(monkeypatch):
     monkeypatch.setattr("local_command._open_target", lambda target: target == "notepad")
     result = route_local_command("open notepad")
