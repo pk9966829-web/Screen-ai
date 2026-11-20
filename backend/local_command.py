@@ -123,7 +123,7 @@ def route_local_command(message: str) -> dict[str, Any] | None:
         if re.match(r"^(https?://)?[\w.-]+\.[a-z]{2,}(?:/.*)?$", target):
             url = target if target.startswith(("http://", "https://")) else "https://" + target
             ok = _open_target(url)
-            return {"success": ok, "local_command": True, "understanding": f"Opened {url}." if ok else "Unable to open website."
+            return {"success": ok, "local_command": True, "understanding": f"Opened {url}." if ok else "Unable to open website."}
 
     # Calculations, no external model.
     calc_match = re.match(r"^(?:calculate|what is|what's)\s+([0-9.() +\-*/%]+)\??$", low)
