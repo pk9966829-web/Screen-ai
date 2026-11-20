@@ -98,6 +98,16 @@ def route_local_command(message: str) -> dict[str, Any] | None:
     if not text: return None
     low = re.sub(r"\s+", " ", text.lower()).strip()
 
+    # Compound browser command: "open YouTube and search for <query>".
+    compound_youtube = re.match(r"^(?:open|launch|start)\\s+(?:youtube|you tube)\\s+(?:and\\s+)?(?:search|look up|find)\\s+(?:for\\s+)?(.+)$", low, re.I)
+    if compound_youtube:
+        query = compound_youtube.group(1).strip()
+        if not query:
+            return {"success": False, "local_command": True, "understanding": "Please tell me what to search for on YouTube."}
+        url = "https://www.youtube.com/results?search_query=" + urllib.parse.quote_plus(query)
+        opened = _open_target(url)
+        return {"success": opened, "local_command": True, "understanding": f"Opened YouTube search for “{query}” in your browser." if opened else "Could not open the browser."}
+
     # Public web/video/product searches: open browser directly, no model/API.
     for pattern, site in SEARCH_PATTERNS:
         match = pattern.match(low)
