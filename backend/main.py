@@ -33,6 +33,7 @@ from companion_core_api import router as companion_core_router
 app.include_router(companion_core_router)
 from agent_api import router as agent_router, devices as agent_devices, runtime as agent_runtime
 from agent_runtime import AgentRuntimeError
+from local_command import route_local_command
 from voice_api import router as voice_router
 from cloud_worker import router as cloud_worker_router
 import identity_api
@@ -806,6 +807,13 @@ def ask_screen_ai(
     message = (req.message or "").strip()
     if not message:
         return {"success": False, "error": "Message cannot be empty"}
+
+    # Local allowlisted commands are intercepted before any AI/provider call.
+    if not req.include_screen:
+        local_result = route_local_command(message)
+        if local_result is not None:
+            return {"success": local_result.get("success", False), "message": message,
+                    "brain": local_result, "local_command": True, "screen_used": False}
 
     state = active_pipeline.get_state()
     recent_frames = active_pipeline.get_recent_screen_frames() if req.include_screen else []
