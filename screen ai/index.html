@@ -1245,6 +1245,8 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                const compoundYoutube = text.match(/^(?:open|launch|start)\\s+(?:youtube|you tube)\\s+(?:and\\s+)?(?:search|look up|find)\\s+(?:for\\s+)?(.+)$/i);
+                if (compoundYoutube) return { target: 'search-youtube', query: compoundYoutube[1].trim() };
                 const flipkartIntent = /\b(flipkart)\b/.test(text) && /\b(search|find|compare|best|buy|look for)\b/.test(text);
                 if (flipkartIntent) {
                     const budgetMatch = text.match(/(?:under|below|less than|within)\s*(?:₹|rs\.?\s*)?([\d,]+)/i);
@@ -1624,6 +1626,10 @@
                     await focusMainWindow();
                     openLetterDialog(command.seed || '', true);
                     return 'I opened the letter form in CHERRY AI. Tell me the recipient first, then the letter details.';
+                }
+                if (command.target === 'search-youtube') {
+                    await launchDeviceTarget('search-youtube', command.query || '');
+                    return command.query ? `Searching YouTube for ${command.query}.` : 'Tell me what you want to search for on YouTube.';
                 }
                 if (command.target === 'web-research') {
                     openWebResearchDialog(command.query || '', true);
