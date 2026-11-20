@@ -99,7 +99,7 @@ def route_local_command(message: str) -> dict[str, Any] | None:
     low = re.sub(r"\s+", " ", text.lower()).strip()
 
     # Compound browser command: "open YouTube and search for <query>".
-    compound_youtube = re.match(r"^(?:open|launch|start)\\s+(?:youtube|you tube)\\s+(?:and\\s+)?(?:search|look up|find)\\s+(?:for\\s+)?(.+)$", low, re.I)
+    compound_youtube = re.match(r"^(?:open|launch|start)\s+(?:youtube|you tube)\s+(?:and\s+)?(?:search|look up|find)\s+(?:for\s+)?(.+)$", low, re.I)
     if compound_youtube:
         query = compound_youtube.group(1).strip()
         if not query:
