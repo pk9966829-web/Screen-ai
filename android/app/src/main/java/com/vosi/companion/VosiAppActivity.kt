@@ -105,7 +105,7 @@ private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: ()
     var loggedIn by remember { mutableStateOf(AccountSessionStore.load() != null) }
     var showServerSettings by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
-    var settingsSection by remember { mutableStateOf<CHERRY AISettingSection?>(null) }
+    var settingsSection by remember { mutableStateOf<VosiSettingSection?>(null) }
     var settingsSearch by remember { mutableStateOf("") }
     var chatDraft by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -237,7 +237,7 @@ private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: ()
         }
 
         if (settingsOpen) {
-            CHERRY AISettingsDrawer(
+            VosiSettingsDrawer(
                 search = settingsSearch,
                 onSearch = { settingsSearch = it },
                 onSelect = { section -> settingsSection = section; settingsOpen = false },
@@ -256,7 +256,7 @@ private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: ()
 
         val selectedSettings = settingsSection
         if (selectedSettings != null) {
-            CHERRY AISettingsDetailScreen(
+            VosiSettingsDetailScreen(
                 section = selectedSettings,
                 onBack = { settingsSection = null; settingsOpen = true },
                 onAction = { action ->
