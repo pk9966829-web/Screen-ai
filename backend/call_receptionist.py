@@ -25,9 +25,10 @@ def _enabled() -> bool:
     return os.getenv("CHERRY_CALL_RECEPTIONIST_ENABLED", "").strip().lower() in {"1", "true", "yes"}
 
 
-def _configuration() -> tuple[str, str, str, str]:
+def _configuration() -> tuple[str, str, str, str, str]:
     return (
-        os.getenv("CHERRY_EXOTEL_STREAM_TOKEN", "").strip(),
+        os.getenv("CHERRY_EXOTEL_STREAM_USER", "").strip(),
+        os.getenv("CHERRY_EXOTEL_STREAM_PASSWORD", "").strip(),
         os.getenv("CHERRY_LIVE_API_KEY", "").strip(),
         os.getenv("CHERRY_LIVE_MODEL", "gpt-live-1.1").strip(),
         os.getenv("CHERRY_LIVE_VOICE", "marin").strip(),
@@ -35,8 +36,15 @@ def _configuration() -> tuple[str, str, str, str]:
 
 
 def _configured() -> bool:
-    token, api_key, model, voice = _configuration()
-    return _enabled() and len(token) >= 32 and bool(api_key and model and voice)
+    username, password, api_key, model, voice = _configuration()
+    return _enabled() and bool(username and len(password) >= 32 and api_key and model and voice)
+
+
+def _authorized_websocket(websocket: WebSocket) -> bool:
+    username, password, _, _, _ = _configuration()
+    supplied = websocket.headers.get("authorization", "")
+    expected = "Basic " + base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+    return bool(username and password) and hmac.compare_digest(supplied, expected)
 
 
 def _exotel_stream_id(message: dict[str, Any]) -> str:
@@ -115,7 +123,7 @@ def live_session_start(model: str, voice: str, caller: str, destination: str) ->
 
 @router.get("/status")
 def receptionist_status():
-    token, api_key, model, voice = _configuration()
+    username, password, api_key, model, voice = _configuration()
     return {
         "success": True,
         "enabled": _enabled(),
@@ -125,7 +133,8 @@ def receptionist_status():
         "missing": [
             name for name, ready in (
                 ("CHERRY_CALL_RECEPTIONIST_ENABLED", _enabled()),
-                ("CHERRY_EXOTEL_STREAM_TOKEN (32+ characters)", len(token) >= 32),
+                ("CHERRY_EXOTEL_STREAM_USER", bool(username)),
+                ("CHERRY_EXOTEL_STREAM_PASSWORD (32+ characters)", len(password) >= 32),
                 ("CHERRY_LIVE_API_KEY", bool(api_key)),
                 ("CHERRY_LIVE_MODEL", bool(model)),
                 ("CHERRY_LIVE_VOICE", bool(voice)),
@@ -135,10 +144,10 @@ def receptionist_status():
     }
 
 
-@router.websocket("/exotel/media/{stream_token}")
-async def exotel_media_bridge(websocket: WebSocket, stream_token: str):
-    expected, api_key, model, voice = _configuration()
-    if not _configured() or not hmac.compare_digest(stream_token, expected):
+@router.websocket("/exotel/media")
+async def exotel_media_bridge(websocket: WebSocket):
+    _, _, api_key, model, voice = _configuration()
+    if not _configured() or not _authorized_websocket(websocket):
         await websocket.close(code=4403)
         return
 
@@ -154,6 +163,7 @@ async def exotel_media_bridge(websocket: WebSocket, stream_token: str):
                 return
             if event.get("event") == "start":
                 start = event.get("start") if isinstance(event.get("start"), dict) else {}
+                stream_sid = _exotel_stream_id(event) or _exotel_stream_id(start)
                 break
         if start is None:
             await websocket.close(code=4400)
@@ -192,9 +202,7 @@ async def exotel_media_bridge(websocket: WebSocket, stream_token: str):
                 await websocket.close(code=1011)
                 return
 
-            stream_sid = _exotel_stream_id(event) or str(start.get("stream_sid") or start.get("stream sid") or "")
             if not stream_sid:
-                # Exotel's top-level start envelope commonly carries the stream ID.
                 stream_sid = str(start.get("stream_sid") or start.get("stream sid") or "")
             if not stream_sid:
                 await websocket.close(code=4400)
