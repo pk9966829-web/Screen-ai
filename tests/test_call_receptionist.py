@@ -41,12 +41,12 @@ def test_exotel_media_parser_rejects_invalid_and_oversized_payloads():
 
 
 def test_exotel_media_parser_accepts_even_pcm16_bytes():
-    payload = base64.b64encode(b"\\x01\\x00" * 160).decode()
-    assert call_receptionist.decode_exotel_media({"media": {"payload": payload}}) == b"\\x01\\x00" * 160
+    payload = base64.b64encode(b"\x01\x00" * 160).decode()
+    assert call_receptionist.decode_exotel_media({"media": {"payload": payload}}) == b"\x01\x00" * 160
 
 
 def test_output_chunks_follow_exotel_frame_size():
-    pcm = b"\\x00\\x00" * 1600
+    pcm = b"\x00\x00" * 1600
     messages = call_receptionist.exotel_media_messages("stream-1", pcm)
     assert len(messages) == 1
     assert len(base64.b64decode(messages[0]["media"]["payload"])) == 3200
