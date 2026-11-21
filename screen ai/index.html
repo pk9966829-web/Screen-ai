@@ -826,15 +826,15 @@
             void refreshGmailStatus();
         });
 
-        const CHERRY AI_ASSISTANT_NAME_KEY = "vosi.assistant.name.v1";
+        const CherryAI_ASSISTANT_NAME_KEY = "vosi.assistant.name.v1";
         let vosiAssistantName = "CHERRY AI";
         let waitingForAssistantName = false;
-        try { vosiAssistantName = (localStorage.getItem(CHERRY AI_ASSISTANT_NAME_KEY) || "CHERRY AI").trim().slice(0, 32) || "CHERRY AI"; } catch (_) {}
-        function saveCHERRY AIAssistantName(name) {
+        try { vosiAssistantName = (localStorage.getItem(CherryAI_ASSISTANT_NAME_KEY) || "CHERRY AI").trim().slice(0, 32) || "CHERRY AI"; } catch (_) {}
+        function saveCherryAIAssistantName(name) {
             const cleanName = String(name || "").trim().replace(/\s+/g, " ").slice(0, 32);
             if (!cleanName) return false;
             vosiAssistantName = cleanName;
-            try { localStorage.setItem(CHERRY AI_ASSISTANT_NAME_KEY, cleanName); } catch (_) {}
+            try { localStorage.setItem(CherryAI_ASSISTANT_NAME_KEY, cleanName); } catch (_) {}
             vosiSettings.wakePhrase = cleanName.toLowerCase() === "vosi" ? "Hey CHERRY AI" : cleanName;
             try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (_) {}
             const wakeInput = document.getElementById("setting-wake-phrase");
@@ -851,7 +851,7 @@
         const ONBOARDING_KEY = "vosi.setup.complete.v1";
         const DEFAULT_SETTINGS = { responseStyle: "balanced", language: "same", clickGuidance: true, theme: "dark", voiceInput: true, voiceReplies: true, voicePersona: "female", handsFree: false, wakePhrase: "Hey CHERRY AI", reminders: true, companionOverlay: true };
         let vosiSettings = { ...DEFAULT_SETTINGS };
-        function loadCHERRY AISettings() {
+        function loadCherryAISettings() {
             try { vosiSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; }
             catch (_) { vosiSettings = { ...DEFAULT_SETTINGS }; }
             const style = document.getElementById("setting-response-style"); const language = document.getElementById("setting-language"); const guide = document.getElementById("setting-click-guidance"); const theme = document.getElementById("setting-theme");
@@ -859,15 +859,15 @@
             const voicePersona = document.getElementById("setting-voice-persona"); if (voicePersona) voicePersona.value = vosiSettings.voicePersona || "female";
             for (const [id, key] of [["setting-voice-input","voiceInput"],["setting-voice-replies","voiceReplies"],["setting-hands-free","handsFree"],["setting-reminders","reminders"],["setting-companion-overlay","companionOverlay"]]) { const control = document.getElementById(id); if (control) control.checked = !!vosiSettings[key]; }
             const wakePhrase = document.getElementById("setting-wake-phrase"); if (wakePhrase) wakePhrase.value = vosiSettings.wakePhrase || "Hey CHERRY AI";
-            applyCHERRY AITheme();
+            applyCherryAITheme();
         }
-        function saveCHERRY AISettings() {
+        function saveCherryAISettings() {
             vosiSettings = { responseStyle: document.getElementById("setting-response-style")?.value || "balanced", language: document.getElementById("setting-language")?.value || "same", clickGuidance: !!document.getElementById("setting-click-guidance")?.checked, theme: document.getElementById("setting-theme")?.value || "dark", voiceInput: !!document.getElementById("setting-voice-input")?.checked, voiceReplies: !!document.getElementById("setting-voice-replies")?.checked, voicePersona: document.getElementById("setting-voice-persona")?.value || "female", handsFree: !!document.getElementById("setting-hands-free")?.checked, wakePhrase: document.getElementById("setting-wake-phrase")?.value.trim() || "Hey CHERRY AI", reminders: !!document.getElementById("setting-reminders")?.checked, companionOverlay: !!document.getElementById("setting-companion-overlay")?.checked };
-            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save CHERRY AI settings:", error); } applyCHERRY AITheme();
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(vosiSettings)); } catch (error) { console.warn("Could not save CHERRY AI settings:", error); } applyCherryAITheme();
             const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Saved on this device.";
         }
-        function applyCHERRY AITheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
-        function prepareCHERRY AIPrompt(message) {
+        function applyCherryAITheme() { document.body.classList.toggle("vosi-dim-theme", vosiSettings.theme === "dim"); }
+        function prepareCherryAIPrompt(message) {
             const instructions = ["Do not claim you performed clicks or external actions. Before any action that sends, deletes, purchases, or submits, explain the intended action and wait for the user to explicitly confirm."]; if (vosiSettings.responseStyle === "concise") instructions.push("Keep the answer short and direct."); if (vosiSettings.responseStyle === "detailed") instructions.push("Give a detailed explanation with useful context."); if (vosiSettings.responseStyle === "stepwise") instructions.push("Explain as clear numbered steps whenever appropriate."); if (vosiSettings.language !== "same") instructions.push("Respond in " + vosiSettings.language + "."); if (vosiSettings.voiceReplies) instructions.push("Speak in a warm, friendly, natural conversational tone. Use voice-ready phrasing and contractions, and avoid reading markdown aloud unless the user asks for it.");
             return instructions.length ? "[User preferences: " + instructions.join(" ") + "] " + message : message;
         }
@@ -878,10 +878,10 @@
             catch (_) { badge.textContent = "OFFLINE"; badge.classList.remove("text-emerald-300"); detail.textContent = "Start the FastAPI backend on port 8001."; }
         }
         function setupSettings() {
-            loadCHERRY AISettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-voice-persona", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveCHERRY AISettings));
+            loadCherryAISettings(); ["setting-response-style", "setting-language", "setting-click-guidance", "setting-theme", "setting-voice-input", "setting-voice-replies", "setting-voice-persona", "setting-hands-free", "setting-wake-phrase", "setting-reminders", "setting-companion-overlay"].forEach(id => document.getElementById(id)?.addEventListener("change", saveCherryAISettings));
             setupPreferencePresets();
             void setupStartupPreference();
-            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadCHERRY AISettings(); window.dispatchEvent(new CustomEvent("vosi-settings-reset")); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
+            document.getElementById("setting-reset")?.addEventListener("click", () => { try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {} vosiSettings = { ...DEFAULT_SETTINGS }; loadCherryAISettings(); window.dispatchEvent(new CustomEvent("vosi-settings-reset")); const status = document.getElementById("setting-save-status"); if (status) status.textContent = "Defaults restored."; });
             void refreshSettingsBackendStatus(); setInterval(() => { const page = document.getElementById("tab-page-settings"); if (page && page.style.display !== "none") void refreshSettingsBackendStatus(); }, 10000);
         }
         function setupOnboarding() {
@@ -906,7 +906,7 @@
                 if (theme) theme.value = document.getElementById("setup-theme")?.value || "dark";
                 if (replies) replies.checked = !!document.getElementById("setup-voice-replies")?.checked;
                 if (handsFree) handsFree.checked = !!document.getElementById("setup-hands-free")?.checked;
-                localStorage.setItem(ONBOARDING_KEY, "1"); saveCHERRY AISettings(); close();
+                localStorage.setItem(ONBOARDING_KEY, "1"); saveCherryAISettings(); close();
                 if (previousHandsFree !== !!handsFree?.checked) handsFree?.dispatchEvent(new Event("change", { bubbles: true }));
             });
             document.getElementById("setup-open-button")?.addEventListener("click", open);
@@ -921,7 +921,7 @@
                 if (preset === "focus") { if (input) input.checked = true; if (replies) replies.checked = false; if (handsFree) handsFree.checked = false; if (reminders) reminders.checked = false; if (clickGuidance) clickGuidance.checked = true; }
                 if (preset === "quiet") { if (input) input.checked = false; if (replies) replies.checked = false; if (handsFree) handsFree.checked = false; if (reminders) reminders.checked = false; }
                 if (preset === "handsfree") { if (input) input.checked = true; if (replies) replies.checked = true; if (handsFree) handsFree.checked = true; if (reminders) reminders.checked = true; }
-                saveCHERRY AISettings();
+                saveCherryAISettings();
                 if (previousHandsFree !== !!handsFree?.checked) handsFree?.dispatchEvent(new Event("change", { bubbles: true }));
                 const status = document.getElementById("setting-save-status"); if (status) status.textContent = (preset === "handsfree" ? "Hands-free preset selected. Allow microphone access if prompted." : preset === "quiet" ? "Quiet preset selected." : "Focus preset selected.");
             }));
@@ -1080,7 +1080,7 @@
                 if (next) next.hidden = step === 2 || step === null;
                 if (speak) speak.hidden = step === 2 || step === null;
                 if (draft) draft.hidden = step !== 2;
-                if (announce && prompts[step]) speakCHERRY AI(prompts[step]);
+                if (announce && prompts[step]) speakCherryAI(prompts[step]);
                 if (step === 0) window.setTimeout(() => document.getElementById('letter-recipient')?.focus(), 0);
                 if (step === 1) window.setTimeout(() => letterPurpose?.focus(), 0);
                 if (step === 2) window.setTimeout(() => document.getElementById('letter-sender')?.focus(), 0);
@@ -1185,7 +1185,7 @@
                 }
                 const query = `best hotels in ${city}`;
                 void launchDeviceTarget('search-google', query);
-                if (announce) speakCHERRY AI(`Searching Google for hotels in ${city}.`);
+                if (announce) speakCherryAI(`Searching Google for hotels in ${city}.`);
             }
             function openWebResearchDialog(query = '', announce = false) {
                 const searchQuery = query.trim();
@@ -1195,12 +1195,12 @@
                     return;
                 }
                 void launchDeviceTarget('search-google', searchQuery);
-                if (announce) speakCHERRY AI(`Searching Google for ${searchQuery}.`);
+                if (announce) speakCherryAI(`Searching Google for ${searchQuery}.`);
             }            async function playYoutubeSong(query) {
                 const song = String(query || '').trim();
                 if (!song) {
                     const message = 'Which song should I search for on YouTube? Type the title and artist, then send it.';
-                    showResponse('Which song?', message); speakCHERRY AI(message); userInput?.focus(); return;
+                    showResponse('Which song?', message); speakCherryAI(message); userInput?.focus(); return;
                 }
                 try {
                     await launchDeviceTarget('search-youtube', song);
@@ -1229,11 +1229,11 @@
                     const isSearch = target.startsWith('search-');
                     const details = isSearch ? 'Opened ' + target.slice(7) + ' results for “' + query + '”.' : isSignIn ? 'Opened ' + names[target] + ' in your browser. Enter your password and any verification code yourself.' : target === 'wifi-settings' ? 'Opened Wi-Fi settings. Choose or change your network there; CHERRY AI does not change the connection directly.' : 'Opened ' + (names[target] || 'the requested page') + ' on your device.';
                     showResponse(isSearch ? 'Search opened' : 'Opened ' + (names[target] || 'device page'), details);
-                    speakCHERRY AI(details);
+                    speakCherryAI(details);
                 } catch (error) {
                     const message = String(error?.message || error || 'Could not open that page.');
                     showResponse('Could not open it', message);
-                    speakCHERRY AI(message);
+                    speakCherryAI(message);
                 }
             }
             function requestDeviceTarget(target, needsConfirmation = false, query = '') {
@@ -1245,6 +1245,8 @@
             }
             function parseDeviceCommand(raw) {
                 const text = raw.toLowerCase().replace(/[’']/g, '').trim();
+                const compoundYoutube = text.match(/^(?:open|launch|start)\\s+(?:youtube|you tube)\\s+(?:and\\s+)?(?:search|look up|find)\\s+(?:for\\s+)?(.+)$/i);
+                if (compoundYoutube) return { target: 'search-youtube', query: compoundYoutube[1].trim() };
                 const flipkartIntent = /\b(flipkart)\b/.test(text) && /\b(search|find|compare|best|buy|look for)\b/.test(text);
                 if (flipkartIntent) {
                     const budgetMatch = text.match(/(?:under|below|less than|within)\s*(?:₹|rs\.?\s*)?([\d,]+)/i);
@@ -1352,7 +1354,7 @@
                 if (!cleanQuery) { showResponse('What should I find?', 'Say a product, for example: “Find the best body spray under 1000 rupees on Flipkart.”'); return; }
                 const requestId = 'vosi-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
                 showResponse('Searching Flipkart', 'CHERRY AI is asking your Chrome extension to search for ' + cleanQuery + (budget ? ' under ₹' + budget : '') + '. Keep Chrome open.');
-                speakCHERRY AI('I am searching Flipkart for ' + cleanQuery + (budget ? ' under ' + budget + ' rupees.' : '.'));
+                speakCherryAI('I am searching Flipkart for ' + cleanQuery + (budget ? ' under ' + budget + ' rupees.' : '.'));
                 try {
                     const start = await fetch(API_BASE + '/browser/search', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1385,11 +1387,11 @@
                     const lines = ranked.slice(0, 5).map((item, i) => (i + 1) + '. ' + item.name + ' — ' + (item.price || 'price not shown') + (item.rating ? ' · ' + item.rating + '★' : '')).join('\n');
                     const recommendation = 'CHERRY AI found ' + products.length + ' visible listings. ' + (best?.name ? 'My top visible match is ' + best.name + (best.price ? ' at ' + best.price : '') + (best.rating ? ', rated ' + best.rating + ' stars.' : '.') : 'I could not determine a clear best option.');
                     showResponse('Flipkart comparison', recommendation + '\n\n' + lines + '\n\nThis is a ranking of visible listings, not a guarantee of product quality. Check seller, ingredients, reviews and delivery details before buying.');
-                    speakCHERRY AI(recommendation);
+                    speakCherryAI(recommendation);
                 } catch (error) {
                     const message = String(error?.message || error);
                     showResponse('Flipkart search needs attention', message);
-                    speakCHERRY AI(message);
+                    speakCherryAI(message);
                 }
             }
 
@@ -1410,7 +1412,7 @@
                             ? 'I could not find any Gmail messages matching your request: ' + searchLabel + '.'
                             : 'Gmail is connected, but there are no messages in your inbox.';
                         showResponse('No matching Gmail messages', emptyMessage);
-                        speakCHERRY AI(emptyMessage);
+                        speakCherryAI(emptyMessage);
                         return emptyMessage;
                     }
                     const lines = data.messages.map((mail, index) =>
@@ -1431,12 +1433,12 @@
                         : 'Here are your ' + data.messages.length + ' latest Gmail messages. ' +
                             data.messages.slice(0, 3).map((mail, index) => 'Message ' + (index + 1) + ': ' + mail.subject + ', from ' + mail.sender + '.').join(' ');
                     showResponse(isSearch ? 'Gmail search results' : 'Your latest Gmail messages', lines.join('\n\n'));
-                    speakCHERRY AI(summary);
+                    speakCherryAI(summary);
                     return summary;
                 } catch (error) {
                     const message = String(error?.message || error);
                     showResponse('Gmail connection', message);
-                    speakCHERRY AI(message);
+                    speakCherryAI(message);
                     return message;
                 }
             }
@@ -1474,7 +1476,7 @@
                     return null;
                 }
                 showResponse('CHERRY AI is listening', prompt);
-                speakCHERRY AI(prompt);
+                speakCherryAI(prompt);
                 await new Promise(resolve => window.setTimeout(resolve, 500));
                 return await new Promise(resolve => {
                     const finish = value => {
@@ -1506,11 +1508,11 @@
                         .replace(/\s+underscore\s+/g, '_')
                         .replace(/\s+(?:dash|hyphen)\s+/g, '-')
                         .replace(/\s+/g, '');
-                    if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakCHERRY AI('I did not send the email.'); return; }
+                    if (!recipient) { showResponse('Email not sent', 'I did not receive a recipient email address.'); speakCherryAI('I did not send the email.'); return; }
                     if (!subject) subject = (await askForVoiceEmailAnswer('What should the email subject be?')) || '';
-                    if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakCHERRY AI('I did not send the email.'); return; }
+                    if (!subject) { showResponse('Email not sent', 'I did not receive an email subject.'); speakCherryAI('I did not send the email.'); return; }
                     if (!body) body = (await askForVoiceEmailAnswer('What would you like the email to say?')) || '';
-                    if (!body) { showResponse('Email not sent', 'I did not receive the email message.'); speakCHERRY AI('I did not send the email.'); return; }
+                    if (!body) { showResponse('Email not sent', 'I did not receive the email message.'); speakCherryAI('I did not send the email.'); return; }
                 } else {
                     if (!recipient) recipient = (window.prompt('What email address should CHERRY AI send this to?') || '').trim();
                     if (!recipient) { showResponse('Email not sent', 'No recipient email address was provided.'); return; }
@@ -1525,12 +1527,12 @@
 
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
                     showResponse('Email not sent', 'That recipient address does not look valid. Please try again.');
-                    speakCHERRY AI('That email address does not look valid. I did not send the email.');
+                    speakCherryAI('That email address does not look valid. I did not send the email.');
                     return;
                 }
                 const preview = 'To: ' + recipient + '\nSubject: ' + subject + '\n\n' + body;
                 showResponse('Review email before sending', preview + (voiceMode ? '\n\nSay “send it” to confirm, or say “cancel”.' : '\n\nWaiting for your confirmation…'));
-                speakCHERRY AI(voiceMode ? 'Here is your email. ' + preview + '. Say send it to confirm, or cancel.' : 'Please review the email details. I will send it only after you confirm.');
+                speakCherryAI(voiceMode ? 'Here is your email. ' + preview + '. Say send it to confirm, or cancel.' : 'Please review the email details. I will send it only after you confirm.');
 
                 let approved = false;
                 if (voiceMode) {
@@ -1542,7 +1544,7 @@
                 }
                 if (!approved) {
                     showResponse('Email not sent', 'You cancelled or did not confirm. CHERRY AI has not sent this email.');
-                    speakCHERRY AI('Okay. I did not send the email.');
+                    speakCherryAI('Okay. I did not send the email.');
                     return;
                 }
                 try {
@@ -1555,11 +1557,11 @@
                     if (!response.ok || !data.success) throw new Error(data.error || 'Email sending failed.');
                     const result = 'Email sent successfully to ' + recipient + '. Subject: ' + subject + '.';
                     showResponse('Email sent', result);
-                    speakCHERRY AI(result);
+                    speakCherryAI(result);
                 } catch (error) {
                     const message = String(error?.message || error);
                     showResponse('Email could not be sent', message);
-                    speakCHERRY AI(message);
+                    speakCherryAI(message);
                 }
             }
 
@@ -1594,14 +1596,14 @@
                         const result=command.target==='set-alarm'
                             ? await invoke('set_alarm',{hour:command.hour,minute:command.minute})
                             : await invoke('set_timer',{seconds:command.seconds});
-                        showResponse(command.target==='set-alarm'?'Alarm set':'Timer started',result); speakCHERRY AI(result);
-                    } catch(error){const message=String(error?.message||error);showResponse('Could not set it',message);speakCHERRY AI(message);}
+                        showResponse(command.target==='set-alarm'?'Alarm set':'Timer started',result); speakCherryAI(result);
+                    } catch(error){const message=String(error?.message||error);showResponse('Could not set it',message);speakCherryAI(message);}
                     return;
                 }
                 if(command.target==='volume-control'){
                     const invoke=window.__TAURI__?.core?.invoke;
                     if(!invoke){showResponse('Desktop app required','Volume controls need the installed CHERRY AI desktop app.');return;}
-                    try{const result=await invoke('control_volume',{action:command.action});showResponse('Volume control',result);speakCHERRY AI(result);}catch(error){showResponse('Volume control failed',String(error));}return;
+                    try{const result=await invoke('control_volume',{action:command.action});showResponse('Volume control',result);speakCherryAI(result);}catch(error){showResponse('Volume control failed',String(error));}return;
                 }
                 if(command.target==='screenshot'){await launchDeviceTarget('screenshot');return;}
                 if(command.target==='lock-pc'||command.target==='shutdown-pc'||command.target==='restart-pc'){
@@ -1612,7 +1614,7 @@
                         if(deviceActionDescription)deviceActionDescription.textContent=command.target==='shutdown-pc'?'CHERRY AI will shut down Windows after a 10-second delay. Save your work before confirming.':'CHERRY AI will restart Windows after a 10-second delay. Save your work before confirming.';
                         deviceActionDialog?.classList.add('is-open');deviceActionDialog?.setAttribute('aria-hidden','false'); return;
                     }
-                    try{const result=await invoke('lock_pc');showResponse('Device locked',result);speakCHERRY AI(result);}catch(error){showResponse('Could not lock device',String(error));}
+                    try{const result=await invoke('lock_pc');showResponse('Device locked',result);speakCherryAI(result);}catch(error){showResponse('Could not lock device',String(error));}
                     return;
                 }
                 if (!command) return null;
@@ -1624,6 +1626,10 @@
                     await focusMainWindow();
                     openLetterDialog(command.seed || '', true);
                     return 'I opened the letter form in CHERRY AI. Tell me the recipient first, then the letter details.';
+                }
+                if (command.target === 'search-youtube') {
+                    await launchDeviceTarget('search-youtube', command.query || '');
+                    return command.query ? `Searching YouTube for ${command.query}.` : 'Tell me what you want to search for on YouTube.';
                 }
                 if (command.target === 'web-research') {
                     openWebResearchDialog(command.query || '', true);
@@ -1652,7 +1658,7 @@
                 closeDeviceActionDialog();
                 if (action?.target === 'shutdown-pc' || action?.target === 'restart-pc') {
                     const invoke=window.__TAURI__?.core?.invoke;
-                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakCHERRY AI(message);}).catch(error=>showResponse('Action failed',String(error)));
+                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakCherryAI(message);}).catch(error=>showResponse('Action failed',String(error)));
                 } else if (action) void launchDeviceTarget(action.target, action.query);
             });
             sidebarToggle?.addEventListener('click', () => {
@@ -1784,7 +1790,7 @@
                 taskPlanButton.disabled = true; taskPlanButton.textContent = 'Creating plan…';
                 try {
                     const request = 'Create a short, numbered, practical plan for this user goal: ' + taskName + '. Do not execute actions. Point out any step that would send, delete, purchase, or submit something and say that the user must explicitly approve it first.';
-                    const data = await apiPost('/ask', { message: prepareCHERRY AIPrompt(request), include_screen: false });
+                    const data = await apiPost('/ask', { message: prepareCherryAIPrompt(request), include_screen: false });
                     if (!data?.success || !data?.brain) throw new Error(data?.brain?.error || data?.error || 'CHERRY AI could not create a plan.');
                     reviewedTaskName = taskName;
                     if (taskPlanOutput) taskPlanOutput.textContent = data.brain.suggestion || data.brain.understanding || 'Review the goal, work through one step at a time, and confirm any consequential action yourself.';
@@ -2188,7 +2194,7 @@
                 };
                 recognition.onerror = event => {
                     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                        if (mode === 'handsfree') { const control = document.getElementById('setting-hands-free'); if (control) control.checked = false; saveCHERRY AISettings(); }
+                        if (mode === 'handsfree') { const control = document.getElementById('setting-hands-free'); if (control) control.checked = false; saveCherryAISettings(); }
                         stopVoiceRecognition();
                         setVoiceStatus('Microphone permission is blocked. Allow it in Windows or the app settings.');
                     } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
@@ -2255,7 +2261,7 @@
                 return value.replace(/\?\s*$/, match => /\bsir\s*\?$/i.test(value) ? match : ', sir?');
             }
 
-            function speakCHERRY AI(text) {
+            function speakCherryAI(text) {
                 text = addSirToQuestion(text);
                 if (!vosiSettings.voiceReplies || !text || !window.speechSynthesis) return;
                 if (recognitionMode === 'handsfree') stopVoiceRecognition();
@@ -2297,7 +2303,7 @@
             });
             document.getElementById('setting-hands-free')?.addEventListener('change', event => {
                 if (event.currentTarget.checked) {
-                    if (!startVoiceRecognition('handsfree')) { event.currentTarget.checked = false; saveCHERRY AISettings(); }
+                    if (!startVoiceRecognition('handsfree')) { event.currentTarget.checked = false; saveCherryAISettings(); }
                 }
                 else { stopVoiceRecognition(); setVoiceStatus('Hands-free listening is off.'); }
             });
@@ -2340,7 +2346,7 @@
             let chatSessions = [];
             let activeChatId = null;
 
-            function renderCHERRY AIChatMessage(role, label, body) {
+            function renderCherryAIChatMessage(role, label, body) {
                 const transcript = document.getElementById('vosi-chat-transcript');
                 if (!transcript) return;
                 const row = document.createElement('div');
@@ -2400,13 +2406,13 @@
                 const transcript = document.getElementById('vosi-chat-transcript');
                 if (transcript) {
                     transcript.replaceChildren();
-                    (chat.messages || []).forEach(message => renderCHERRY AIChatMessage(message.role, message.label, message.body));
+                    (chat.messages || []).forEach(message => renderCherryAIChatMessage(message.role, message.label, message.body));
                 }
                 refreshChatSwitcher();
                 saveChatSessions();
             }
 
-            function createCHERRY AIChat() {
+            function createCherryAIChat() {
                 const chat = {
                     id: 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
                     title: 'New chat',
@@ -2424,7 +2430,7 @@
                 return chat;
             }
 
-            function initializeCHERRY AIChatHistory() {
+            function initializeCherryAIChatHistory() {
                 try {
                     const stored = JSON.parse(localStorage.getItem(CHAT_SESSIONS_KEY) || '[]');
                     if (Array.isArray(stored)) {
@@ -2449,8 +2455,8 @@
                 refreshChatSwitcher();
             }
 
-            function appendCHERRY AIChatMessage(role, label, body) {
-                const chat = chatSessions.find(item => item.id === activeChatId) || createCHERRY AIChat();
+            function appendCherryAIChatMessage(role, label, body) {
+                const chat = chatSessions.find(item => item.id === activeChatId) || createCherryAIChat();
                 const messageBody = String(body || '');
                 const message = { role: role === 'user' ? 'user' : 'assistant', label: label || '', body: messageBody };
                 chat.messages.push(message);
@@ -2459,17 +2465,17 @@
                     chat.title = messageBody.replace(/\s+/g, ' ').slice(0, 38) || 'New chat';
                 }
                 chat.updatedAt = Date.now();
-                renderCHERRY AIChatMessage(message.role, message.label, message.body);
+                renderCherryAIChatMessage(message.role, message.label, message.body);
                 saveChatSessions();
                 refreshChatSwitcher();
             }
 
-            document.getElementById('setting-new-chat')?.addEventListener('click', createCHERRY AIChat);
+            document.getElementById('setting-new-chat')?.addEventListener('click', createCherryAIChat);
             document.getElementById('setting-chat-switch')?.addEventListener('change', event => activateChat(event.target.value));
-            initializeCHERRY AIChatHistory();
+            initializeCherryAIChatHistory();
 
             function showResponse(title, body) {
-                appendCHERRY AIChatMessage('assistant', addSirToQuestion(title), addSirToQuestion(body || ''));
+                appendCherryAIChatMessage('assistant', addSirToQuestion(title), addSirToQuestion(body || ''));
                 if (responseBox) responseBox.classList.add('hidden');
             }
 
@@ -2497,7 +2503,7 @@
             }
 
             async function answerFromCompanion(query) {
-                appendCHERRY AIChatMessage('user', 'You', query);
+                appendCherryAIChatMessage('user', 'You', query);
                 try {
                     if (window.__TAURI__?.event?.emit) {
                         await window.__TAURI__.event.emit('companion-state', { state: 'thinking', observing: !!screenStream });
@@ -2516,7 +2522,7 @@
                             answer = 'Got it. Add any optional details in the letter form, then choose Create and open in Word.';
                         }
                         if (answer) {
-                            speakCHERRY AI(answer);
+                            speakCherryAI(answer);
                             await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'Letter details', answer, observing: !!screenStream });
                             return;
                         }
@@ -2544,7 +2550,7 @@
                     if (command) {
                         const answer = await dispatchDeviceCommand(command);
                         const finalAnswer = answer || 'I handled that request.';
-                        speakCHERRY AI(finalAnswer);
+                        speakCherryAI(finalAnswer);
                         await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'CHERRY AI command', answer: finalAnswer, observing: !!screenStream });
                         return;
                     }
@@ -2555,13 +2561,13 @@
                     const screenGuidanceIntent = /\b(?:this|current|open|running|visible|active)\s+(?:screen|website|webpage|page|tab|window|site)\b|\b(?:where|what|which)\s+(?:should i\s+)?(?:click|tap|press|select)\b|\b(?:where to click|what to click|click next|next step|guide me through|walk me through|on this page|on this website|this button|this form|this error|screen awareness)\b/i.test(normalizedQuery);
                     if (!screenGuidanceIntent) {
                         const answer = 'I can handle supported tasks here without an AI API, including Gmail, email sending, device controls, opening apps, and web or Flipkart searches. For questions about the live screen, ask me what to click or what to do next while screen observing is active.';
-                        speakCHERRY AI(answer);
+                        speakCherryAI(answer);
                         await window.__TAURI__?.event?.emit('companion-answer', { success: true, title: 'CHERRY AI', answer, observing: !!screenStream });
                         return;
                     }
                     if (!screenStream || observationPaused) {
                         const answer = 'Start or resume screen observing first, then ask me about the website or where to click.';
-                        speakCHERRY AI(answer);
+                        speakCherryAI(answer);
                         await window.__TAURI__?.event?.emit('companion-answer', { success: false, title: 'Screen observing is off', answer, observing: !!screenStream });
                         return;
                     }
@@ -2571,13 +2577,13 @@
                         await window.captureLatestScreen();
                         await new Promise(resolve => setTimeout(resolve, 250));
                     }
-                    const data = await apiPost("/ask", { message: prepareCHERRY AIPrompt(normalizedQuery), include_screen: true });
+                    const data = await apiPost("/ask", { message: prepareCherryAIPrompt(normalizedQuery), include_screen: true });
                     await updateClickGuide(data?.brain?.guidance);
                     await refreshWorkflow();
                     if (data.success && data.brain) {
                         // Match the main chat: the suggestion is the user-facing answer.
                         const answer = data.brain.suggestion || data.brain.understanding || "How else can I help?";
-                        speakCHERRY AI(answer);
+                        speakCherryAI(answer);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
@@ -2592,7 +2598,7 @@
                     } else {
                         const error = data?.brain?.error || data?.error || "Something went wrong";
                         showResponse("AI Error", error);
-                        speakCHERRY AI(error);
+                        speakCherryAI(error);
                         try {
                             if (window.__TAURI__?.event?.emit) {
                                 await window.__TAURI__.event.emit('companion-answer', {
@@ -2629,23 +2635,23 @@
                     e.preventDefault();
                     const query = (userInput?.value || "").trim();
                     if (!query) return;
-                    appendCHERRY AIChatMessage('user', 'You', query);
+                    appendCherryAIChatMessage('user', 'You', query);
                     if (waitingForAssistantName) {
                         waitingForAssistantName = false;
-                        if (saveCHERRY AIAssistantName(query)) {
+                        if (saveCherryAIAssistantName(query)) {
                             const reply = 'Thank you, sir. You can call me ' + vosiAssistantName + ' from now on.';
-                            showResponse('Name updated', reply); speakCHERRY AI(reply);
+                            showResponse('Name updated', reply); speakCherryAI(reply);
                         } else {
                             waitingForAssistantName = true;
                             const reply = 'Please tell me the name you would like me to use, sir.';
-                            showResponse('Choose my name', reply); speakCHERRY AI(reply);
+                            showResponse('Choose my name', reply); speakCherryAI(reply);
                         }
                         userInput.value = ''; return;
                     }
                     if (/\b(?:change|rename|give|set|choose|pick)\b.{0,45}\b(?:your|assistant)\s+name\b|\bwhat should i call you\b|\bi want to (?:keep|give) (?:your|you a) name\b/i.test(query)) {
                         waitingForAssistantName = true;
                         const reply = 'What name would you like to call me, sir?';
-                        showResponse('Choose my name', reply); speakCHERRY AI(reply);
+                        showResponse('Choose my name', reply); speakCherryAI(reply);
                         userInput.value = ''; return;
                     }
                     const normalizedQuery = stripAssistantName(query);
@@ -2669,7 +2675,7 @@
                     }
                     if (!screenStream && (normalizedQuery.toLowerCase().includes("my screen") || normalizedQuery.toLowerCase().includes("where to click") || normalizedQuery.toLowerCase().includes("latest shared screen"))) {
                         showResponse("Screen sharing is off", "Start observing first and choose the screen you want CHERRY AI to analyze.");
-                        speakCHERRY AI("Screen sharing is off. Start observing first and choose the screen you want CHERRY AI to analyze.");
+                        speakCherryAI("Screen sharing is off. Start observing first and choose the screen you want CHERRY AI to analyze.");
                         return;
                     }
 
@@ -2690,11 +2696,11 @@
                                 data.brain.understanding || "Understood",
                                 answer
                             );
-                            speakCHERRY AI(answer);
+                            speakCherryAI(answer);
                         } else {
                             const message = data?.brain?.error || data?.error || "Something went wrong";
                             showResponse("AI Error", message);
-                            speakCHERRY AI(message);
+                            speakCherryAI(message);
                             console.error("CHERRY AI AI error:", data);
                         }
                     } catch (err) {
@@ -2703,7 +2709,7 @@
                             `You asked: "${query}"`,
                             offlineMessage
                         );
-                        speakCHERRY AI(offlineMessage);
+                        speakCherryAI(offlineMessage);
                     }
                 });
             }
