@@ -73,7 +73,7 @@ class PersonalIdentityActivity : Activity() {
             }, matchWidth())
         }
         val scroll = ScrollView(this).apply { isFillViewport = true; addView(root) }
-        CHERRY AILegacyTheme.apply(root, scroll)
+        VosiLegacyTheme.apply(root, scroll)
         setContentView(scroll)
     }
 
