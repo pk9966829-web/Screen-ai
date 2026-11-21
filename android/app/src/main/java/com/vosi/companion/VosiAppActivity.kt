@@ -60,10 +60,10 @@ private val GlowBlue = Color(0xFFB44CFF)
 private val Muted = Color(0xFF9BA5BC)
 private val BorderGlow = Color(0x334E5E9B)
 
-class CHERRY AIAppActivity : ComponentActivity() {
+class VosiAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        CHERRY AISessionContext.app = applicationContext
+        VosiSessionContext.app = applicationContext
         window.statusBarColor = android.graphics.Color.rgb(11, 11, 15)
         window.navigationBarColor = android.graphics.Color.rgb(11, 11, 15)
         setContent {
@@ -74,23 +74,24 @@ class CHERRY AIAppActivity : ComponentActivity() {
                     surfaceVariant = Soft, onSurfaceVariant = Muted
                 )
             ) {
-                CHERRY AIMobileRoot(
+                CherryMobileRoot(
                     onOpenCompanion = { startActivity(Intent(this, MainActivity::class.java)) },
-                    onOpenProfileSetup = { startActivity(Intent(this, PersonalIdentityActivity::class.java)) }
+                    onOpenProfileSetup = { startActivity(Intent(this, PersonalIdentityActivity::class.java)) },
+                    onOpenCallAssistant = { startActivity(Intent(this, CherryCallAssistantActivity::class.java)) }
                 )
             }
         }
     }
 }
 
-private enum class CHERRY AITab(val label: String) { HOME("Home"), CHAT("Chat"), TASKS("Tasks"), DEVICES("Devices"), PROFILE("Profile") }
+private enum class CherryTab(val label: String) { HOME("Home"), CHAT("Chat"), TASKS("Tasks"), DEVICES("Devices"), PROFILE("Profile") }
 
 @Composable
-private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit) {
-    var tab by remember { mutableStateOf(CHERRY AITab.HOME) }
+private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit, onOpenCallAssistant: () -> Unit) {
+    var tab by remember { mutableStateOf(CherryTab.HOME) }
     var backend by remember {
         mutableStateOf(
-            CHERRY AISessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+            VosiSessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
                 ?.getString("device_backend_url", "http://127.0.0.1:8001")
                 ?: "http://127.0.0.1:8001"
         )
@@ -109,34 +110,35 @@ private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup:
     var chatDraft by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    BackHandler(enabled = settingsSection != null || settingsOpen || tab != CHERRY AITab.HOME) {
+    BackHandler(enabled = settingsSection != null || settingsOpen || tab != CherryTab.HOME) {
         when {
             settingsSection != null -> { settingsSection = null; settingsOpen = true }
             settingsOpen -> settingsOpen = false
-            tab != CHERRY AITab.HOME -> tab = CHERRY AITab.HOME
+            tab != CherryTab.HOME -> tab = CherryTab.HOME
         }
     }
 
     Box(Modifier.fillMaxSize()) {
-        CHERRY AIAmbientBackground()
+        CherryAmbientBackground()
         Scaffold(containerColor = Color.Transparent) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (tab) {
-                    CHERRY AITab.HOME -> HomeScreen(
-                        onSearch = { query -> chatDraft = query; tab = CHERRY AITab.CHAT },
+                    CherryTab.HOME -> HomeScreen(
+                        onSearch = { query -> chatDraft = query; tab = CherryTab.CHAT },
                         onTalk = onOpenCompanion,
-                        onOpenSettings = { settingsOpen = true }
+                        onOpenSettings = { settingsOpen = true },
+                        onOpenCallAssistant = onOpenCallAssistant
                     )
-                    CHERRY AITab.CHAT -> SharedCompanionChatScreen(initialDraft = chatDraft)
-                    CHERRY AITab.TASKS -> TasksScreen()
-                    CHERRY AITab.DEVICES -> DevicesScreen(onOpenCompanion)
-                    CHERRY AITab.PROFILE -> ProfileScreen(
+                    CherryTab.CHAT -> SharedCompanionChatScreen(initialDraft = chatDraft)
+                    CherryTab.TASKS -> TasksScreen()
+                    CherryTab.DEVICES -> DevicesScreen(onOpenCompanion)
+                    CherryTab.PROFILE -> ProfileScreen(
                         loggedIn, accountEmail, accountStatus, accountBusy, authMode, password,
                         verificationCode, backend, showServerSettings,
                         onEmail = { accountEmail = it }, onPassword = { password = it },
                         onCode = { verificationCode = it }, onBackend = {
                             backend = it
-                            CHERRY AISessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                            VosiSessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
                                 ?.edit()?.putString("device_backend_url", it.trim().trimEnd('/'))?.apply()
                         },
                         onMode = { authMode = it }, onToggleServer = { showServerSettings = !showServerSettings },
@@ -153,7 +155,7 @@ private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup:
                                     if (paths == null || !paths.has("/ask") || !paths.has("/identity/login")) {
                                         throw IllegalStateException("A server responded, but it doesn't look like the expected CHERRY AI backend.")
                                     }
-                                    CHERRY AISessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
+                                    VosiSessionContext.app?.getSharedPreferences("vosi_companion_settings", 0)
                                         ?.edit()?.putString("device_backend_url", base)?.apply()
                                     android.os.Handler(android.os.Looper.getMainLooper()).post {
                                         accountStatus = "Backend connected. CHERRY AI API is reachable at $base"
@@ -220,7 +222,7 @@ private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup:
             }
         }
 
-        if (tab != CHERRY AITab.HOME && settingsSection == null && !settingsOpen) {
+        if (tab != CherryTab.HOME && settingsSection == null && !settingsOpen) {
             Surface(
                 modifier = Modifier.align(Alignment.CenterStart).width(27.dp).height(58.dp)
                     .clickable { settingsOpen = true },
@@ -241,10 +243,10 @@ private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup:
                 onSelect = { section -> settingsSection = section; settingsOpen = false },
                 onNavigate = { destination ->
                     tab = when (destination) {
-                        "chat" -> CHERRY AITab.CHAT
-                        "tasks" -> CHERRY AITab.TASKS
-                        "devices" -> CHERRY AITab.DEVICES
-                        else -> CHERRY AITab.HOME
+                        "chat" -> CherryTab.CHAT
+                        "tasks" -> CherryTab.TASKS
+                        "devices" -> CherryTab.DEVICES
+                        else -> CherryTab.HOME
                     }
                     settingsOpen = false
                 },
@@ -259,11 +261,11 @@ private fun CHERRY AIMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup:
                 onBack = { settingsSection = null; settingsOpen = true },
                 onAction = { action ->
                     when (action) {
-                        "profile" -> { settingsSection = null; tab = CHERRY AITab.PROFILE }
-                        "backend" -> { settingsSection = null; showServerSettings = true; tab = CHERRY AITab.PROFILE }
-                        "chat" -> { settingsSection = null; tab = CHERRY AITab.CHAT }
-                        "tasks" -> { settingsSection = null; tab = CHERRY AITab.TASKS }
-                        "devices" -> { settingsSection = null; tab = CHERRY AITab.DEVICES }
+                        "profile" -> { settingsSection = null; tab = CherryTab.PROFILE }
+                        "backend" -> { settingsSection = null; showServerSettings = true; tab = CherryTab.PROFILE }
+                        "chat" -> { settingsSection = null; tab = CherryTab.CHAT }
+                        "tasks" -> { settingsSection = null; tab = CherryTab.TASKS }
+                        "devices" -> { settingsSection = null; tab = CherryTab.DEVICES }
                         "companion" -> onOpenCompanion()
                         "notifications" -> try {
                             context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -315,7 +317,7 @@ private fun DrawerEntry(label: String, icon: androidx.compose.ui.graphics.vector
 }
 
 @Composable
-private fun CHERRY AIAmbientBackground() {
+private fun CherryAmbientBackground() {
     // Native Compose recreation of the supplied Android HTML's pink/purple blurred blobs.
     // The shorter cycles make the ambient motion visible without becoming distracting.
     val motion = rememberInfiniteTransition(label = "vosi-html-ambient")
@@ -409,7 +411,8 @@ private fun CHERRY AIAmbientBackground() {
 private fun HomeScreen(
     onSearch: (String) -> Unit,
     onTalk: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenCallAssistant: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var connectorsOpen by remember { mutableStateOf(false) }
@@ -509,6 +512,26 @@ private fun HomeScreen(
                     ) {
                         Icon(Icons.Outlined.ArrowUpward, "Send to CHERRY AI", modifier = Modifier.size(19.dp))
                     }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenCallAssistant),
+                color = Color(0xCC19131F),
+                shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x66FF55B7))
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Call, contentDescription = null, tint = Color(0xFFFF70C5), modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("AI Call Receptionist", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Set up incoming SIM-call assistance", color = Muted, fontSize = 11.sp)
+                    }
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Muted)
                 }
             }
         }
@@ -911,14 +934,14 @@ object AccountSessionStore {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val encrypted = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
-        CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()
+        VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()
             ?.putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             ?.putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP))
             ?.putString("email", email)?.apply()
     }
     fun load(): String? {
         return try {
-            val prefs = CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0) ?: return null
+            val prefs = VosiSessionContext.app?.getSharedPreferences(Prefs, 0) ?: return null
             val ivText = prefs.getString("iv", null) ?: return null
             val dataText = prefs.getString("data", null) ?: return null
             val iv = Base64.decode(ivText, Base64.NO_WRAP)
@@ -928,8 +951,8 @@ object AccountSessionStore {
             String(cipher.doFinal(data), Charsets.UTF_8)
         } catch (_: Exception) { null }
     }
-    fun email(): String? = CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)
-    fun clear() { CHERRY AISessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
+    fun email(): String? = VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.getString("email", null)
+    fun clear() { VosiSessionContext.app?.getSharedPreferences(Prefs, 0)?.edit()?.clear()?.apply() }
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (store.getKey(Alias, null) as? SecretKey)?.let { return it }
@@ -940,4 +963,4 @@ object AccountSessionStore {
     }
 }
 
-private object CHERRY AISessionContext { var app: android.content.Context? = null }
+private object VosiSessionContext { var app: android.content.Context? = null }
