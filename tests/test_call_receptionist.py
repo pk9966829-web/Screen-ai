@@ -57,6 +57,8 @@ def test_live_prompt_identifies_ai_and_gathers_caller_details():
     session = call_receptionist.live_session_start("gpt-live-1.1", "marin", "+911234567890", "+918765432100")
     instructions = session["session"]["instructions"]
     assert "Identify yourself clearly as an AI assistant" in instructions
+    assert "ask whether they consent to continue" in instructions
+    assert "Do not collect a message or personal details unless they agree" in instructions
     assert "Ask the caller's name" in instructions
     assert "do not promise" in instructions.lower()
     assert session["session"]["audio"]["format"]["rate"] == 16000
