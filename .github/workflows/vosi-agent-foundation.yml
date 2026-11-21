@@ -23,6 +23,7 @@ on:
       - feature/vosi-android-dashboard-shell
       - feature/vosi-chatgpt-mobile-shell
       - feature/vosi-production-backup-recovery
+      - feature/cherry-ai-receptionist
   pull_request:
     branches:
       - main
