@@ -1,6 +1,8 @@
 import base64
 import os
 import sys
+import pytest
+from starlette.websockets import WebSocketDisconnect
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,18 +16,20 @@ import call_receptionist
 
 def test_status_does_not_expose_secrets(monkeypatch):
     monkeypatch.setenv("CHERRY_CALL_RECEPTIONIST_ENABLED", "true")
-    monkeypatch.setenv("CHERRY_EXOTEL_STREAM_TOKEN", "x" * 40)
+    monkeypatch.setenv("CHERRY_EXOTEL_STREAM_USER", "cherry")
+    monkeypatch.setenv("CHERRY_EXOTEL_STREAM_PASSWORD", "p" * 40)
     monkeypatch.setenv("CHERRY_LIVE_API_KEY", "private-api-key")
     result = call_receptionist.receptionist_status()
     assert result["configured"] is True
     assert result["call_recording"] is False
     assert "private-api-key" not in str(result)
-    assert "x" * 40 not in str(result)
+    assert "p" * 40 not in str(result)
 
 
 def test_status_is_disabled_by_default(monkeypatch):
     monkeypatch.delenv("CHERRY_CALL_RECEPTIONIST_ENABLED", raising=False)
-    monkeypatch.delenv("CHERRY_EXOTEL_STREAM_TOKEN", raising=False)
+    monkeypatch.delenv("CHERRY_EXOTEL_STREAM_USER", raising=False)
+    monkeypatch.delenv("CHERRY_EXOTEL_STREAM_PASSWORD", raising=False)
     monkeypatch.delenv("CHERRY_LIVE_API_KEY", raising=False)
     assert call_receptionist.receptionist_status()["configured"] is False
 
@@ -66,5 +70,6 @@ def make_client():
 
 def test_websocket_rejects_when_feature_disabled(monkeypatch):
     monkeypatch.delenv("CHERRY_CALL_RECEPTIONIST_ENABLED", raising=False)
-    with make_client().websocket_connect("/call-receptionist/exotel/media/" + "x" * 40) as ws:
-        pass
+    with pytest.raises(WebSocketDisconnect):
+        with make_client().websocket_connect("/call-receptionist/exotel/media"):
+            pass
