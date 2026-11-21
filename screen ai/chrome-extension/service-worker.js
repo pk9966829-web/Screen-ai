@@ -182,7 +182,7 @@ async function executeAvailableAgentTasks() {
   }
 }
 
-async function checkForCHERRY AICommand() {
+async function checkForCherryAICommand() {
   if (checking) return;
   checking = true;
   try {
@@ -232,7 +232,7 @@ async function forwardProductResults(message, sender) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "CHERRY AI_DEVICE_UPDATED") {
     void sendHeartbeat();
-    void checkForCHERRY AICommand();
+    void checkForCherryAICommand();
     return false;
   }
   if (message?.type === "CHERRY AI_BROWSER_RESULTS") {
@@ -250,17 +250,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-function startCHERRY AIAlarms() {
+function startCherryAIAlarms() {
   chrome.alarms.create("vosi-poll", { periodInMinutes: 0.5 });
   chrome.alarms.create("vosi-device-heartbeat", { periodInMinutes: 1 });
   void sendHeartbeat();
-  void checkForCHERRY AICommand();
+  void checkForCherryAICommand();
 }
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === "vosi-poll") void checkForCHERRY AICommand();
+  if (alarm.name === "vosi-poll") void checkForCherryAICommand();
   if (alarm.name === "vosi-device-heartbeat") void sendHeartbeat();
 });
-chrome.runtime.onInstalled.addListener(startCHERRY AIAlarms);
-chrome.runtime.onStartup.addListener(startCHERRY AIAlarms);
-startCHERRY AIAlarms();
+chrome.runtime.onInstalled.addListener(startCherryAIAlarms);
+chrome.runtime.onStartup.addListener(startCherryAIAlarms);
+startCherryAIAlarms();
