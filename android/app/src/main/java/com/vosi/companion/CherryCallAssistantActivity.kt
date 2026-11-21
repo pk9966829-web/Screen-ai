@@ -61,7 +61,7 @@ class CherryCallAssistantActivity : Activity() {
             }
         })
         root.addView(TextView(this).apply {
-            text = "Important: this first stage only detects incoming calls and displays a notification. It does not answer, record, or listen to calls. The AI receptionist conversation needs a separate call-forwarding/audio service and your explicit setup."
+            text = "Call detection does not answer, record, or listen to calls. The AI receptionist uses a separate Exotel/PSTN audio connection and stays inactive until its public backend, provider credentials, and caller-consent flow are configured."
             textSize = 14f
             setPadding(0, 28, 0, 0)
         })
@@ -73,9 +73,9 @@ class CherryCallAssistantActivity : Activity() {
         val hasRole = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
         } else false
-        status.text = "Android call-screening permission: " + if (hasRole) "Granted" else "Not granted" +
+        status.text = "Android call-screening permission: " + (if (hasRole) "Granted" else "Not granted") +
             "\nIncoming-call detection: " +
-            if (prefs.getBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false)) "On" else "Off"
+            (if (prefs.getBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false)) "On" else "Off")
     }
 
     private fun requestScreeningRole() {
