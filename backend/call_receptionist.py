@@ -51,6 +51,15 @@ def _exotel_stream_id(message: dict[str, Any]) -> str:
     return str(message.get("stream_sid") or message.get("stream sid") or "")
 
 
+def has_caller_consent(start: dict[str, Any]) -> bool:
+    """Require the Exotel call flow to collect DTMF consent before opening AI audio."""
+    custom = start.get("custom_parameters") or start.get("custom parameters") or {}
+    if not isinstance(custom, dict):
+        return False
+    consent = custom.get("consent")
+    return isinstance(consent, str) and consent.strip().lower() == "granted"
+
+
 def decode_exotel_media(message: dict[str, Any]) -> bytes:
     media = message.get("media")
     if not isinstance(media, dict):
@@ -170,6 +179,9 @@ async def exotel_media_bridge(websocket: WebSocket):
                 break
         if start is None:
             await websocket.close(code=4400)
+            return
+        if not has_caller_consent(start):
+            await websocket.close(code=4403)
             return
         media_format = start.get("media_format") or start.get("media format") or {}
         sample_rate = int(media_format.get("sample_rate") or media_format.get("sample rate") or 0)
