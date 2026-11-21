@@ -57,8 +57,7 @@ def test_live_prompt_identifies_ai_and_gathers_caller_details():
     session = call_receptionist.live_session_start("gpt-live-1.1", "marin", "+911234567890", "+918765432100")
     instructions = session["session"]["instructions"]
     assert "Identify yourself clearly as an AI assistant" in instructions
-    assert "ask whether they consent to continue" in instructions
-    assert "Do not collect a message or personal details unless they agree" in instructions
+    assert "pressed 1 to consent" in instructions
     assert "ask the caller's name" in instructions
     assert "do not promise" in instructions.lower()
     assert session["session"]["audio"]["format"]["rate"] == 16000
@@ -75,3 +74,10 @@ def test_websocket_rejects_when_feature_disabled(monkeypatch):
     with pytest.raises(WebSocketDisconnect):
         with make_client().websocket_connect("/call-receptionist/exotel/media"):
             pass
+
+
+def test_caller_consent_requires_exotel_flow_grant():
+    assert call_receptionist.has_caller_consent({"custom_parameters": {"consent": "granted"}})
+    assert call_receptionist.has_caller_consent({"custom parameters": {"consent": "GRANTED"}})
+    assert not call_receptionist.has_caller_consent({"custom_parameters": {"consent": "denied"}})
+    assert not call_receptionist.has_caller_consent({})
