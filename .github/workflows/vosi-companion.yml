@@ -3,7 +3,7 @@ name: VOSI Companion checks
 on:
   push:
     branches:
-      - feature/whatsapp-personal-android
+      - feature/whatsapp-personal-android\n      - feature/cherry-ai-receptionist
   pull_request:
     branches:
       - feature/whatsapp-personal-android
