@@ -270,13 +270,12 @@ async def exotel_media_bridge(websocket: WebSocket):
                 exception = task.exception()
                 if exception:
                     raise exception
-            if output_buffer and len(output_buffer) >= 320:
-                # Pad the final partial packet to a whole 320-byte boundary.
-                remainder = (len(output_buffer) + 319) // 320 * 320
-                output_buffer.extend(b"\x00" * (remainder - len(output_buffer)))
-                while len(output_buffer) >= 3200:
-                    chunk = bytes(output_buffer[:3200])
-                    del output_buffer[:3200]
+            if output_buffer:
+                # Exotel's voicebot stream expects at least 100 ms (3.2 KB) per frame.
+                output_buffer.extend(b"\x00" * (EXOTEL_FRAME_BYTES - len(output_buffer) % EXOTEL_FRAME_BYTES))
+                while output_buffer:
+                    chunk = bytes(output_buffer[:EXOTEL_FRAME_BYTES])
+                    del output_buffer[:EXOTEL_FRAME_BYTES]
                     await websocket.send_text(json.dumps({
                         "event": "media", "sequence_number": sequence, "stream_sid": stream_sid,
                         "media": {"chunk": sequence, "timestamp": (sequence - 1) * 100,
