@@ -228,7 +228,7 @@ async def exotel_media_bridge(websocket: WebSocket):
             sequence = 1
 
             async def caller_to_model():
-                nonlocal stream_sid
+                nonlocal stream_sid, call_outcome
                 while True:
                     incoming = json.loads(await websocket.receive_text())
                     event_type = incoming.get("event")
