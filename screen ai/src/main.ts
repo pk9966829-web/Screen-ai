@@ -331,7 +331,7 @@ async function loadOfflineKnowledge() {
 void loadOfflineKnowledge();
 
 function normalizeKnowledgeText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\\s+/g, " ");
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 function findOfflineAnswer(question: string): string | null {
   if (!offlineKnowledgeReady || !offlineKnowledge) return null;
@@ -354,14 +354,14 @@ function findOfflineAnswer(question: string): string | null {
   const qTokens = new Set(query.split(" ").filter(t => t.length > 2));
   for (const item of candidates) {
     const key = normalizeKnowledgeText(item.question);
-    if (key.length >= 4 && (query.includes(key) || key.includes(query))) {
+    if (qTokens.size >= 2 && key.split(" ").filter(t => t.length > 2).length >= 2 && (query.includes(key) || key.includes(query))) {
       const score = Math.min(query.length,key.length)/Math.max(query.length,key.length);
       if (score > bestScore) { bestScore = score; bestAnswer = item.answer; }
       continue;
     }
     const tokens = key.split(" ").filter(t => t.length > 2);
     const overlap = tokens.filter(t => qTokens.has(t)).length;
-    const score = overlap / Math.max(1, Math.min(tokens.length,qTokens.size));
+    const score = overlap / Math.max(1, tokens.length, qTokens.size);
     if (score > bestScore) { bestScore = score; bestAnswer = item.answer; }
   }
   return bestScore >= 0.78 ? bestAnswer : null;
