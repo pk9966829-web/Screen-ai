@@ -12,6 +12,7 @@ import hmac
 import json
 import os
 from typing import Any
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -203,6 +204,9 @@ async def exotel_media_bridge(websocket: WebSocket):
         ) as live:
             caller = str(start.get("from") or start.get("callfrom") or "")
             destination = str(start.get("to") or start.get("callto") or "")
+            call_started = datetime.now(timezone.utc)
+            call_outcome = "completed"
+            transcript_parts: list[str] = []
             await live.send(json.dumps(live_session_start(model, voice, caller, destination)))
             ready = False
             for _ in range(12):
@@ -233,6 +237,7 @@ async def exotel_media_bridge(websocket: WebSocket):
                     incoming = json.loads(await websocket.receive_text())
                     event_type = incoming.get("event")
                     if event_type == "stop":
+                        call_outcome = "completed"
                         return
                     if event_type == "media":
                         audio = decode_exotel_media(incoming)
@@ -250,6 +255,17 @@ async def exotel_media_bridge(websocket: WebSocket):
                 while True:
                     message = json.loads(await live.recv())
                     event_type = message.get("type")
+                    # Collect text-only transcript events for the call record; never save audio.
+                    transcript = message.get("transcript")
+                    if isinstance(transcript, str) and transcript.strip() and event_type in {
+                        "session.input_audio.transcription.completed",
+                        "session.input_audio.transcription.done",
+                        "session.output_audio_transcription.done",
+                        "session.output_audio.transcription.done",
+                        "session.output_text.done",
+                    }:
+                        speaker = "Caller" if event_type.startswith("session.input_audio") else "CHERRY AI"
+                        transcript_parts.append(f"{speaker}: {transcript.strip()}")
                     if event_type == "session.output_audio.delta":
                         try:
                             output_buffer.extend(base64.b64decode(message.get("delta", ""), validate=True))
