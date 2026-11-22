@@ -31,6 +31,51 @@ private val ChatPanel = Color(0xB9151119)
 private val ChatAccent = Color(0xFFFF70C5)
 private val ChatMuted = Color(0xFF9BA5BC)
 
+
+private fun normalizeOfflineText(value: String): String =
+    value.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim().replace(Regex("\\s+"), " ")
+
+private fun findOfflineAnswer(context: Context, question: String): String? {
+    val query = normalizeOfflineText(question)
+    if (query.isBlank()) return null
+    return try {
+        val raw = context.assets.open("cherry-ai-knowledge.json").bufferedReader().use { it.readText() }
+        val root = JSONObject(raw)
+        val candidates = mutableListOf<Pair<String, String>>()
+        val facts = root.optJSONArray("facts")
+        if (facts != null) for (i in 0 until facts.length()) {
+            val item = facts.optJSONObject(i) ?: continue
+            val q = item.optString("q").trim(); val a = item.optString("a").trim()
+            if (q.isNotEmpty() && a.isNotEmpty()) candidates.add(q to a)
+        }
+        val greetings = root.optJSONArray("greetings")
+        if (greetings != null) for (i in 0 until greetings.length()) {
+            val group = greetings.optJSONObject(i) ?: continue
+            val triggers = group.optJSONArray("t") ?: continue
+            val responses = group.optJSONArray("r") ?: continue
+            if (responses.length() == 0) continue
+            val answer = responses.optString((0 until responses.length()).random())
+            for (j in 0 until triggers.length()) {
+                val trigger = triggers.optString(j).trim()
+                if (trigger.isNotEmpty()) candidates.add(trigger to answer)
+            }
+        }
+        candidates.firstOrNull { normalizeOfflineText(it.first) == query }?.second
+            ?: candidates.map { pair ->
+                val key = normalizeOfflineText(pair.first)
+                val queryTokens = query.split(" ").filter { it.length > 2 }.toSet()
+                val tokens = key.split(" ").filter { it.length > 2 }
+                val overlap = tokens.count { it in queryTokens }
+                val score = overlap.toDouble() / maxOf(1, minOf(tokens.size, queryTokens.size))
+                Triple(pair.second, score, key)
+            }.filter { (answer, score, key) ->
+                key.length >= 4 && (query.contains(key) || key.contains(query) || score >= 0.78)
+            }.maxByOrNull { (_, score, key) -> if (query.contains(key) || key.contains(query)) 1.0 else score }?.first
+    } catch (_: Exception) {
+        null
+    }
+}
+
 private data class CompanionChatMessage(val text: String, val fromUser: Boolean)
 
 @Composable
@@ -181,6 +226,13 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                     }
                     if (accountToken.isNullOrBlank()) {
                         status = "Sign in to your CHERRY AI account in Profile before sending a private message."
+                        return@FilledIconButton
+                    }
+                    val offlineAnswer = findOfflineAnswer(context, message)
+                    if (offlineAnswer != null) {
+                        messages = messages + CompanionChatMessage(message, true) + CompanionChatMessage(offlineAnswer, false)
+                        draft = ""
+                        status = "Answered from offline knowledge."
                         return@FilledIconButton
                     }
                     messages = messages + CompanionChatMessage(message, true)
