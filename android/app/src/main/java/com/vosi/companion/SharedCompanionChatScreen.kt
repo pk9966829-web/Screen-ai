@@ -31,6 +31,51 @@ private val ChatPanel = Color(0xB9151119)
 private val ChatAccent = Color(0xFFFF70C5)
 private val ChatMuted = Color(0xFF9BA5BC)
 
+
+private fun normalizeOfflineText(value: String): String =
+    value.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim().replace(Regex("\\s+"), " ")
+
+private fun findOfflineAnswer(context: Context, question: String): String? {
+    val query = normalizeOfflineText(question)
+    if (query.isBlank()) return null
+    val queryTokens = query.split(" ").filter { it.length > 2 }.toSet()
+    return try {
+        val raw = context.assets.open("cherry-ai-knowledge.json").bufferedReader().use { it.readText() }
+        val root = JSONObject(raw)
+        val candidates = mutableListOf<Pair<String, String>>()
+        val facts = root.optJSONArray("facts")
+        if (facts != null) for (i in 0 until facts.length()) {
+            val item = facts.optJSONObject(i) ?: continue
+            val q = item.optString("q").trim(); val a = item.optString("a").trim()
+            if (q.isNotEmpty() && a.isNotEmpty()) candidates.add(q to a)
+        }
+        val greetings = root.optJSONArray("greetings")
+        if (greetings != null) for (i in 0 until greetings.length()) {
+            val group = greetings.optJSONObject(i) ?: continue
+            val triggers = group.optJSONArray("t") ?: continue
+            val responses = group.optJSONArray("r") ?: continue
+            if (responses.length() == 0) continue
+            val answer = responses.optString((0 until responses.length()).random())
+            for (j in 0 until triggers.length()) {
+                val trigger = triggers.optString(j).trim()
+                if (trigger.isNotEmpty()) candidates.add(trigger to answer)
+            }
+        }
+        candidates.firstOrNull { normalizeOfflineText(it.first) == query }?.second
+            ?: candidates.map { pair ->
+                val key = normalizeOfflineText(pair.first)
+                val tokens = key.split(" ").filter { it.length > 2 }
+                val overlap = tokens.count { it in queryTokens }
+                val score = overlap.toDouble() / maxOf(1, tokens.size, queryTokens.size)
+                Triple(pair.second, score, key)
+            }.filter { (answer, score, key) ->
+                queryTokens.size >= 2 && key.split(" ").count { it.length > 2 } >= 2 && (query.contains(key) || key.contains(query) || score >= 0.78)
+            }.maxByOrNull { (_, score, key) -> if (query.contains(key) || key.contains(query)) 1.0 else score }?.first
+    } catch (_: Exception) {
+        null
+    }
+}
+
 private data class CompanionChatMessage(val text: String, val fromUser: Boolean)
 
 @Composable
@@ -50,9 +95,9 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
         val credential = DeviceCredentialStore.load(context)
         val accountToken = AccountSessionStore.load()
         if (credential == null) {
-            status = "Pair this phone with CHERRY AI in the device workspace to start shared chat."
+            status = "Offline knowledge is ready. Pair this phone to use private shared chat."
         } else if (accountToken.isNullOrBlank()) {
-            status = "Sign in to your CHERRY AI account in Profile to use private shared chat."
+            status = "Offline knowledge is ready. Sign in to Profile to use private shared chat."
         } else {
             status = "Loading your private shared conversation…"
             thread {
@@ -173,14 +218,25 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                 onClick = {
                     val message = draft.trim()
                     if (message.isEmpty() || busy) return@FilledIconButton
+                    // Always try bundled offline knowledge first. Local answers must not require
+                    // device pairing, account sign-in, an API key, or an internet connection.
+                    val offlineAnswer = findOfflineAnswer(context, message)
+                    if (offlineAnswer != null) {
+                        messages = messages + CompanionChatMessage(message, true) + CompanionChatMessage(offlineAnswer, false)
+                        draft = ""
+                        status = "Answered from offline knowledge."
+                        return@FilledIconButton
+                    }
+
+                    // Only unknown questions continue to private, paired backend chat.
                     val credential = DeviceCredentialStore.load(context)
                     val accountToken = AccountSessionStore.load()
                     if (credential == null) {
-                        status = "Pair this phone with CHERRY AI before sending a message."
+                        status = "I couldn't find that in offline knowledge. Pair this phone to use private AI chat."
                         return@FilledIconButton
                     }
                     if (accountToken.isNullOrBlank()) {
-                        status = "Sign in to your CHERRY AI account in Profile before sending a private message."
+                        status = "I couldn't find that in offline knowledge. Sign in to Profile to use private AI chat."
                         return@FilledIconButton
                     }
                     messages = messages + CompanionChatMessage(message, true)

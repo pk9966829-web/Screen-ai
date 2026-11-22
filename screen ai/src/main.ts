@@ -310,6 +310,63 @@ function addTimelineItem(
 }
 
 
+
+// =========================================================
+// CHERRY AI OFFLINE KNOWLEDGE
+// =========================================================
+type OfflineKnowledge = { facts?: Array<{q:string;a:string}>; greetings?: Array<{t:string[];r:string[]}> };
+let offlineKnowledge: OfflineKnowledge | null = null;
+let offlineKnowledgeReady = false;
+
+async function loadOfflineKnowledge() {
+  try {
+    const response = await fetch("/cherry-ai-knowledge.json", { cache: "no-cache" });
+    if (!response.ok) throw new Error("Offline knowledge asset not found");
+    offlineKnowledge = await response.json();
+    offlineKnowledgeReady = true;
+  } catch (error) {
+    console.warn("CHERRY AI offline knowledge unavailable:", error);
+  }
+}
+void loadOfflineKnowledge();
+
+function normalizeKnowledgeText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+function findOfflineAnswer(question: string): string | null {
+  if (!offlineKnowledgeReady || !offlineKnowledge) return null;
+  const query = normalizeKnowledgeText(question);
+  if (!query) return null;
+  const candidates: Array<{question:string; answer:string}> = [];
+  for (const fact of offlineKnowledge.facts ?? []) {
+    if (fact.q && fact.a) candidates.push({question:fact.q,answer:fact.a});
+  }
+  for (const group of offlineKnowledge.greetings ?? []) {
+    for (const trigger of group.t ?? []) {
+      const responses = group.r ?? [];
+      if (trigger && responses.length) candidates.push({question:trigger,answer:responses[Math.floor(Math.random()*responses.length)]});
+    }
+  }
+  for (const item of candidates) {
+    if (normalizeKnowledgeText(item.question) === query) return item.answer;
+  }
+  let bestAnswer: string | null = null, bestScore = 0;
+  const qTokens = new Set(query.split(" ").filter(t => t.length > 2));
+  for (const item of candidates) {
+    const key = normalizeKnowledgeText(item.question);
+    if (qTokens.size >= 2 && key.split(" ").filter(t => t.length > 2).length >= 2 && (query.includes(key) || key.includes(query))) {
+      const score = Math.min(query.length,key.length)/Math.max(query.length,key.length);
+      if (score > bestScore) { bestScore = score; bestAnswer = item.answer; }
+      continue;
+    }
+    const tokens = key.split(" ").filter(t => t.length > 2);
+    const overlap = tokens.filter(t => qTokens.has(t)).length;
+    const score = overlap / Math.max(1, tokens.length, qTokens.size);
+    if (score > bestScore) { bestScore = score; bestAnswer = item.answer; }
+  }
+  return bestScore >= 0.78 ? bestAnswer : null;
+}
+
 // =========================================================
 // ASK SCREEN AI
 // =========================================================
@@ -318,6 +375,15 @@ async function askScreenAI(message?: string) {
   const question = (message ?? askInput?.value ?? "").trim();
   if (!question) {
     askInput?.focus();
+    return;
+  }
+
+  const localAnswer = findOfflineAnswer(question);
+  if (localAnswer) {
+    setStatus("OFFLINE KNOWLEDGE");
+    mascot?.classList.remove("thinking");
+    addTimelineItem("CHERRY AI (offline knowledge)", localAnswer, "cyan");
+    setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
     return;
   }
 
