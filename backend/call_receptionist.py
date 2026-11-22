@@ -124,6 +124,7 @@ def live_session_start(model: str, voice: str, caller: str, destination: str) ->
             "model": model,
             "instructions": instructions,
             "audio": {
+                "input": {"transcription": {"model": "gpt-4o-mini-transcribe"}},
                 "format": {"type": "audio/pcm", "rate": EXOTEL_SAMPLE_RATE},
                 "output": {"voice": voice},
             },
