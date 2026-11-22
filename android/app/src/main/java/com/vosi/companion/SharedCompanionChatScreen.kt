@@ -38,6 +38,7 @@ private fun normalizeOfflineText(value: String): String =
 private fun findOfflineAnswer(context: Context, question: String): String? {
     val query = normalizeOfflineText(question)
     if (query.isBlank()) return null
+    val queryTokens = query.split(" ").filter { it.length > 2 }.toSet()
     return try {
         val raw = context.assets.open("cherry-ai-knowledge.json").bufferedReader().use { it.readText() }
         val root = JSONObject(raw)
@@ -63,7 +64,6 @@ private fun findOfflineAnswer(context: Context, question: String): String? {
         candidates.firstOrNull { normalizeOfflineText(it.first) == query }?.second
             ?: candidates.map { pair ->
                 val key = normalizeOfflineText(pair.first)
-                val queryTokens = query.split(" ").filter { it.length > 2 }.toSet()
                 val tokens = key.split(" ").filter { it.length > 2 }
                 val overlap = tokens.count { it in queryTokens }
                 val score = overlap.toDouble() / maxOf(1, tokens.size, queryTokens.size)
