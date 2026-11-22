@@ -95,9 +95,9 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
         val credential = DeviceCredentialStore.load(context)
         val accountToken = AccountSessionStore.load()
         if (credential == null) {
-            status = "Pair this phone with CHERRY AI in the device workspace to start shared chat."
+            status = "Offline knowledge is ready. Pair this phone to use private shared chat."
         } else if (accountToken.isNullOrBlank()) {
-            status = "Sign in to your CHERRY AI account in Profile to use private shared chat."
+            status = "Offline knowledge is ready. Sign in to Profile to use private shared chat."
         } else {
             status = "Loading your private shared conversation…"
             thread {
@@ -218,21 +218,25 @@ fun SharedCompanionChatScreen(initialDraft: String = "") {
                 onClick = {
                     val message = draft.trim()
                     if (message.isEmpty() || busy) return@FilledIconButton
-                    val credential = DeviceCredentialStore.load(context)
-                    val accountToken = AccountSessionStore.load()
-                    if (credential == null) {
-                        status = "Pair this phone with CHERRY AI before sending a message."
-                        return@FilledIconButton
-                    }
-                    if (accountToken.isNullOrBlank()) {
-                        status = "Sign in to your CHERRY AI account in Profile before sending a private message."
-                        return@FilledIconButton
-                    }
+                    // Always try bundled offline knowledge first. Local answers must not require
+                    // device pairing, account sign-in, an API key, or an internet connection.
                     val offlineAnswer = findOfflineAnswer(context, message)
                     if (offlineAnswer != null) {
                         messages = messages + CompanionChatMessage(message, true) + CompanionChatMessage(offlineAnswer, false)
                         draft = ""
                         status = "Answered from offline knowledge."
+                        return@FilledIconButton
+                    }
+
+                    // Only unknown questions continue to private, paired backend chat.
+                    val credential = DeviceCredentialStore.load(context)
+                    val accountToken = AccountSessionStore.load()
+                    if (credential == null) {
+                        status = "I couldn't find that in offline knowledge. Pair this phone to use private AI chat."
+                        return@FilledIconButton
+                    }
+                    if (accountToken.isNullOrBlank()) {
+                        status = "I couldn't find that in offline knowledge. Sign in to Profile to use private AI chat."
                         return@FilledIconButton
                     }
                     messages = messages + CompanionChatMessage(message, true)
