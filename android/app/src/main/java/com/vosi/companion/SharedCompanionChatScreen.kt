@@ -66,10 +66,10 @@ private fun findOfflineAnswer(context: Context, question: String): String? {
                 val queryTokens = query.split(" ").filter { it.length > 2 }.toSet()
                 val tokens = key.split(" ").filter { it.length > 2 }
                 val overlap = tokens.count { it in queryTokens }
-                val score = overlap.toDouble() / maxOf(1, minOf(tokens.size, queryTokens.size))
+                val score = overlap.toDouble() / maxOf(1, tokens.size, queryTokens.size)
                 Triple(pair.second, score, key)
             }.filter { (answer, score, key) ->
-                key.length >= 4 && (query.contains(key) || key.contains(query) || score >= 0.78)
+                queryTokens.size >= 2 && key.split(" ").count { it.length > 2 } >= 2 && (query.contains(key) || key.contains(query) || score >= 0.78)
             }.maxByOrNull { (_, score, key) -> if (query.contains(key) || key.contains(query)) 1.0 else score }?.first
     } catch (_: Exception) {
         null
