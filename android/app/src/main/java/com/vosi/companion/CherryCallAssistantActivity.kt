@@ -20,6 +20,7 @@ import android.widget.Toast
 class CherryCallAssistantActivity : Activity() {
     private val prefs by lazy { getSharedPreferences(CherryCallScreeningService.PREFS, Context.MODE_PRIVATE) }
     private lateinit var status: TextView
+    private lateinit var enableButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +43,7 @@ class CherryCallAssistantActivity : Activity() {
             textSize = 24f
         })
         root.addView(TextView(this).apply {
-            text = "Set up optional incoming-call detection for your normal SIM calls. Android requires you to grant the Call Screening role."
+            text = "Set up optional incoming-call detection for your normal SIM calls. Tap Enable and approve CHERRY AI in Android's call-screening prompt. Android returns you here automatically."
             textSize = 16f
             setPadding(0, 24, 0, 24)
         })
@@ -52,16 +53,17 @@ class CherryCallAssistantActivity : Activity() {
             text = "Open call history and summaries"
             setOnClickListener { startActivity(Intent(this@CherryCallAssistantActivity, CherryCallHistoryActivity::class.java)) }
         })
-        root.addView(Button(this).apply {
+        enableButton = Button(this).apply {
             text = "Enable call detection"
             setOnClickListener { requestScreeningRole() }
-        })
+        }
+        root.addView(enableButton)
         root.addView(Button(this).apply {
-            text = if (prefs.getBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false)) "Turn detection off" else "Turn detection on"
+            text = "Turn detection off"
             setOnClickListener {
-                val enabled = !prefs.getBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false)
-                prefs.edit().putBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, enabled).apply()
-                render()
+                prefs.edit().putBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false).apply()
+                updateStatus()
+                Toast.makeText(this@CherryCallAssistantActivity, "Incoming-call detection turned off.", Toast.LENGTH_SHORT).show()
             }
         })
         root.addView(TextView(this).apply {
@@ -73,13 +75,22 @@ class CherryCallAssistantActivity : Activity() {
         updateStatus()
     }
 
-    private fun updateStatus() {
-        val hasRole = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    private fun hasScreeningRole(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
             getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
-        } else false
+    }
+
+    private fun updateStatus() {
+        val hasRole = hasScreeningRole()
+        // Granting the Android role completes the user's opt-in: enable detection automatically.
+        if (hasRole) {
+            prefs.edit().putBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, true).apply()
+        }
+        val enabled = prefs.getBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false) && hasRole
         status.text = "Android call-screening permission: " + (if (hasRole) "Granted" else "Not granted") +
-            "\nIncoming-call detection: " +
-            (if (prefs.getBoolean(CherryCallScreeningService.KEY_SCREENING_ENABLED, false)) "On" else "Off")
+            "\nIncoming-call detection: " + (if (enabled) "On" else "Off")
+        enableButton.text = if (hasRole) "Call-screening permission granted" else "Enable call detection"
+        enableButton.isEnabled = !hasRole
     }
 
     private fun requestScreeningRole() {
@@ -93,9 +104,11 @@ class CherryCallAssistantActivity : Activity() {
             return
         }
         if (roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
-            Toast.makeText(this, "CHERRY AI already has call-screening access.", Toast.LENGTH_SHORT).show()
+            updateStatus()
             return
         }
+        // Android displays its own role approval screen. When the user returns,
+        // onResume() rechecks the role and updates the app automatically.
         startActivityForResult(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING), REQUEST_ROLE)
     }
 
@@ -104,7 +117,11 @@ class CherryCallAssistantActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_ROLE) {
             updateStatus()
-            Toast.makeText(this, if (resultCode == RESULT_OK) "Call-screening access granted." else "Permission not granted.", Toast.LENGTH_SHORT).show()
+            if (hasScreeningRole()) {
+                Toast.makeText(this, "Call-screening access granted. Detection is now on.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Call-screening access was not granted. You can try again.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
