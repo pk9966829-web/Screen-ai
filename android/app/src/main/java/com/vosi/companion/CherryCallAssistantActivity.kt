@@ -49,6 +49,10 @@ class CherryCallAssistantActivity : Activity() {
         status = TextView(this).apply { textSize = 16f }
         root.addView(status)
         root.addView(Button(this).apply {
+            text = "Open call history and summaries"
+            setOnClickListener { startActivity(Intent(this@CherryCallAssistantActivity, CherryCallHistoryActivity::class.java)) }
+        })
+        root.addView(Button(this).apply {
             text = "Enable call detection"
             setOnClickListener { requestScreeningRole() }
         })
