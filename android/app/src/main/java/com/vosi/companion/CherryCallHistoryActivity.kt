@@ -52,9 +52,12 @@ class CherryCallHistoryActivity : Activity() {
         status.text="Connecting to CHERRY AI backend…"
         thread {
             try {
-                val conn=URL("$backendBase/call-receptionist/calls?limit=50").openConnection() as HttpURLConnection
-                conn.connectTimeout=8000; conn.readTimeout=10000; conn.requestMethod="GET"
-                val response=conn.inputStream.bufferedReader().use { it.readText() }; conn.disconnect()
+                val conn=authenticatedConnection("/call-receptionist/calls?limit=50")
+                val code=conn.responseCode
+                val stream=if(code in 200..299) conn.inputStream else conn.errorStream
+                val response=stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                conn.disconnect()
+                if(code !in 200..299) throw IllegalStateException("Call history request failed (HTTP $code)")
                 val calls=JSONObject(response).optJSONArray("calls") ?: JSONArray()
                 runOnUiThread {
                     list.removeAllViews()
@@ -99,10 +102,13 @@ class CherryCallHistoryActivity : Activity() {
     private fun loadDetail(id:Int) {
         thread {
             try {
-                val conn=URL("$backendBase/call-receptionist/calls/$id").openConnection() as HttpURLConnection
-                conn.connectTimeout=8000; conn.readTimeout=10000
-                val data=JSONObject(conn.inputStream.bufferedReader().use { it.readText() }).getJSONObject("call")
+                val conn=authenticatedConnection("/call-receptionist/calls/$id")
+                val code=conn.responseCode
+                val stream=if(code in 200..299) conn.inputStream else conn.errorStream
+                val raw=stream?.bufferedReader()?.use { it.readText() } ?: "{}"
                 conn.disconnect()
+                if(code !in 200..299) throw IllegalStateException("Call detail request failed (HTTP $code)")
+                val data=JSONObject(raw).getJSONObject("call")
                 runOnUiThread {
                     val transcript=data.optString("transcript").ifBlank { "No transcript was captured for this call." }
                     AlertDialog.Builder(this)
@@ -117,9 +123,12 @@ class CherryCallHistoryActivity : Activity() {
     private fun updateStatus(id:Int,value:String) {
         thread {
             try {
-                val conn=URL("$backendBase/call-receptionist/calls/$id/status?status=$value").openConnection() as HttpURLConnection
-                conn.requestMethod="PATCH"; conn.connectTimeout=8000; conn.readTimeout=8000
-                conn.inputStream.close(); conn.disconnect()
+                val conn=authenticatedConnection("/call-receptionist/calls/$id/status?status=$value", "PATCH")
+                val code=conn.responseCode
+                val stream=if(code in 200..299) conn.inputStream else conn.errorStream
+                stream?.close()
+                conn.disconnect()
+                if(code !in 200..299) throw IllegalStateException("Call update failed (HTTP $code)")
                 runOnUiThread { Toast.makeText(this,"Call updated",Toast.LENGTH_SHORT).show(); loadCalls() }
             } catch(e:Exception) { runOnUiThread { Toast.makeText(this,"Could not update call status.",Toast.LENGTH_SHORT).show() } }
         }
