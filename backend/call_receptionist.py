@@ -10,11 +10,14 @@ import base64
 import binascii
 import hmac
 import json
+import logging
 import os
 from typing import Any
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptionist"])
 EXOTEL_SAMPLE_RATE = 16000
@@ -306,7 +309,8 @@ async def exotel_media_bridge(websocket: WebSocket):
                 call_ended = datetime.now(timezone.utc)
                 store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination, call_outcome, int((call_ended-call_started).total_seconds()), '\n'.join(transcript_parts))
             except Exception:
-                pass
+                # Keep the live call running, but make persistence failures visible to the operator.
+                logger.exception("CHERRY AI could not persist the call summary.")
             if output_buffer:
                 # Exotel's voicebot stream expects at least 100 ms (3.2 KB) per frame.
                 output_buffer.extend(b"\x00" * (EXOTEL_FRAME_BYTES - len(output_buffer) % EXOTEL_FRAME_BYTES))
