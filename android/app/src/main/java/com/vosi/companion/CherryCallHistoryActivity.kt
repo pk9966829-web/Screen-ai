@@ -80,8 +80,7 @@ class CherryCallHistoryActivity : Activity() {
                     }
                 }
             } catch(e:Exception) {
-                runOnUiThread { status.text="Could not load call history. Check backend URL and connection.
-${e.message ?: "Network error"}" }
+                runOnUiThread { status.text="Could not load call history. Check backend URL and connection.\n${e.message ?: "Network error"}" }
             }
         }
     }
@@ -125,17 +124,7 @@ ${e.message ?: "Network error"}" }
                     val transcript=data.optString("transcript").ifBlank { "No transcript was captured for this call." }
                     AlertDialog.Builder(this)
                         .setTitle("Call details • #$id")
-                        .setMessage("Caller: ${data.optString("caller_number")}
-Outcome: ${data.optString("outcome")}
-Duration: ${data.optInt("duration_seconds")} sec
-Urgency: ${data.optString("urgency")}
-Callback requested: ${data.optBoolean("callback_requested")}
-
-SUMMARY
-${data.optString("summary")}
-
-TRANSCRIPT
-$transcript")
+                        .setMessage("Caller: ${data.optString("caller_number")}\nOutcome: ${data.optString("outcome")}\nDuration: ${data.optInt("duration_seconds")} sec\nUrgency: ${data.optString("urgency")}\nCallback requested: ${data.optBoolean("callback_requested")}\n\nSUMMARY\n${data.optString("summary")}\n\nTRANSCRIPT\n$transcript")
                         .setPositiveButton("Close",null).show()
                 }
             } catch(e:Exception) { runOnUiThread { Toast.makeText(this,"Could not load call details.",Toast.LENGTH_SHORT).show() } }
