@@ -24,7 +24,18 @@ class CherryCallHistoryActivity : Activity() {
     private lateinit var list: LinearLayout
     private lateinit var status: TextView
     private val prefs by lazy { getSharedPreferences("vosi_companion_settings", Context.MODE_PRIVATE) }
-    private val backendBase by lazy { prefs.getString("device_backend_url", "http://127.0.0.1:8001")!!.trimEnd('/') }\n\n    private fun authenticatedConnection(path: String, method: String = "GET"): HttpURLConnection {\n        val token = AccountSessionStore.load() ?: throw IllegalStateException("Sign in to your CHERRY AI account to view call history.")\n        val conn = URL("$backendBase$path").openConnection() as HttpURLConnection\n        conn.connectTimeout = 8000\n        conn.readTimeout = 10000\n        conn.requestMethod = method\n        conn.setRequestProperty("Accept", "application/json")\n        conn.setRequestProperty("Authorization", "Bearer $token")\n        return conn\n    }
+    private val backendBase by lazy { prefs.getString("device_backend_url", "http://127.0.0.1:8001")!!.trimEnd('/') }
+
+    private fun authenticatedConnection(path: String, method: String = "GET"): HttpURLConnection {
+        val token = AccountSessionStore.load() ?: throw IllegalStateException("Sign in to your CHERRY AI account to view call history.")
+        val conn = URL("$backendBase$path").openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000
+        conn.readTimeout = 10000
+        conn.requestMethod = method
+        conn.setRequestProperty("Accept", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        return conn
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,7 +80,8 @@ class CherryCallHistoryActivity : Activity() {
                     }
                 }
             } catch(e:Exception) {
-                runOnUiThread { status.text="Could not load call history. Check backend URL and connection.\n${e.message ?: "Network error"}" }
+                runOnUiThread { status.text="Could not load call history. Check backend URL and connection.
+${e.message ?: "Network error"}" }
             }
         }
     }
@@ -113,7 +125,17 @@ class CherryCallHistoryActivity : Activity() {
                     val transcript=data.optString("transcript").ifBlank { "No transcript was captured for this call." }
                     AlertDialog.Builder(this)
                         .setTitle("Call details • #$id")
-                        .setMessage("Caller: ${data.optString("caller_number")}\nOutcome: ${data.optString("outcome")}\nDuration: ${data.optInt("duration_seconds")} sec\nUrgency: ${data.optString("urgency")}\nCallback requested: ${data.optBoolean("callback_requested")}\n\nSUMMARY\n${data.optString("summary")}\n\nTRANSCRIPT\n$transcript")
+                        .setMessage("Caller: ${data.optString("caller_number")}
+Outcome: ${data.optString("outcome")}
+Duration: ${data.optInt("duration_seconds")} sec
+Urgency: ${data.optString("urgency")}
+Callback requested: ${data.optBoolean("callback_requested")}
+
+SUMMARY
+${data.optString("summary")}
+
+TRANSCRIPT
+$transcript")
                         .setPositiveButton("Close",null).show()
                 }
             } catch(e:Exception) { runOnUiThread { Toast.makeText(this,"Could not load call details.",Toast.LENGTH_SHORT).show() } }
