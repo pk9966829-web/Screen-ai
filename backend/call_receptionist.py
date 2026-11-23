@@ -10,10 +10,14 @@ import base64
 import binascii
 import hmac
 import json
+import logging
 import os
 from typing import Any
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptionist"])
 EXOTEL_SAMPLE_RATE = 16000
@@ -124,6 +128,7 @@ def live_session_start(model: str, voice: str, caller: str, destination: str) ->
             "model": model,
             "instructions": instructions,
             "audio": {
+                "input": {"transcription": {"model": "gpt-4o-mini-transcribe"}},
                 "format": {"type": "audio/pcm", "rate": EXOTEL_SAMPLE_RATE},
                 "output": {"voice": voice},
             },
@@ -202,6 +207,9 @@ async def exotel_media_bridge(websocket: WebSocket):
         ) as live:
             caller = str(start.get("from") or start.get("callfrom") or "")
             destination = str(start.get("to") or start.get("callto") or "")
+            call_started = datetime.now(timezone.utc)
+            call_outcome = "completed"
+            transcript_parts: list[str] = []
             await live.send(json.dumps(live_session_start(model, voice, caller, destination)))
             ready = False
             for _ in range(12):
@@ -227,11 +235,12 @@ async def exotel_media_bridge(websocket: WebSocket):
             sequence = 1
 
             async def caller_to_model():
-                nonlocal stream_sid
+                nonlocal stream_sid, call_outcome
                 while True:
                     incoming = json.loads(await websocket.receive_text())
                     event_type = incoming.get("event")
                     if event_type == "stop":
+                        call_outcome = "completed"
                         return
                     if event_type == "media":
                         audio = decode_exotel_media(incoming)
@@ -249,6 +258,17 @@ async def exotel_media_bridge(websocket: WebSocket):
                 while True:
                     message = json.loads(await live.recv())
                     event_type = message.get("type")
+                    # Collect text-only transcript events for the call record; never save audio.
+                    transcript = message.get("transcript")
+                    if isinstance(transcript, str) and transcript.strip() and event_type in {
+                        "session.input_audio.transcription.completed",
+                        "session.input_audio.transcription.done",
+                        "session.output_audio_transcription.done",
+                        "session.output_audio.transcription.done",
+                        "session.output_text.done",
+                    }:
+                        speaker = "Caller" if event_type.startswith("session.input_audio") else "CHERRY AI"
+                        transcript_parts.append(f"{speaker}: {transcript.strip()}")
                     if event_type == "session.output_audio.delta":
                         try:
                             output_buffer.extend(base64.b64decode(message.get("delta", ""), validate=True))
@@ -284,6 +304,13 @@ async def exotel_media_bridge(websocket: WebSocket):
                 exception = task.exception()
                 if exception:
                     raise exception
+            try:
+                from call_summary_store import store_call
+                call_ended = datetime.now(timezone.utc)
+                store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination, call_outcome, int((call_ended-call_started).total_seconds()), '\n'.join(transcript_parts))
+            except Exception:
+                # Keep the live call running, but make persistence failures visible to the operator.
+                logger.exception("CHERRY AI could not persist the call summary.")
             if output_buffer:
                 # Exotel's voicebot stream expects at least 100 ms (3.2 KB) per frame.
                 output_buffer.extend(b"\x00" * (EXOTEL_FRAME_BYTES - len(output_buffer) % EXOTEL_FRAME_BYTES))
