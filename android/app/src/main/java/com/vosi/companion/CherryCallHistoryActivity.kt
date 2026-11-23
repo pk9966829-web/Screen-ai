@@ -24,7 +24,7 @@ class CherryCallHistoryActivity : Activity() {
     private lateinit var list: LinearLayout
     private lateinit var status: TextView
     private val prefs by lazy { getSharedPreferences("vosi_companion_settings", Context.MODE_PRIVATE) }
-    private val backendBase by lazy { prefs.getString("device_backend_url", "http://127.0.0.1:8001")!!.trimEnd('/') }
+    private val backendBase by lazy { prefs.getString("device_backend_url", "http://127.0.0.1:8001")!!.trimEnd('/') }\n\n    private fun authenticatedConnection(path: String, method: String = "GET"): HttpURLConnection {\n        val token = AccountSessionStore.load() ?: throw IllegalStateException("Sign in to your CHERRY AI account to view call history.")\n        val conn = URL("$backendBase$path").openConnection() as HttpURLConnection\n        conn.connectTimeout = 8000\n        conn.readTimeout = 10000\n        conn.requestMethod = method\n        conn.setRequestProperty("Accept", "application/json")\n        conn.setRequestProperty("Authorization", "Bearer $token")\n        return conn\n    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
