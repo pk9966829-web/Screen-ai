@@ -6,6 +6,7 @@
     <title>CHERRY AI - Your Screen Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -734,7 +735,31 @@
                             Start screen sharing
                         </button>
                     </div>
-                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4"><div class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">One-time Android pairing code</div><div class="mt-2 flex items-center gap-2"><code id="phone-pair-code" class="min-w-0 flex-1 break-all rounded-lg bg-black/40 p-3 text-sm text-cyan-200"></code><button id="phone-pair-copy" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-200">Copy</button></div><p id="phone-pair-expiry" class="mt-2 text-[11px] text-slate-400"></p></div><p id="phone-pair-status" class="mt-2 w-full max-w-xl text-center text-xs text-slate-400" role="status">Connect your Android phone to CHERRY AI.</p>
+                    <div id="phone-pair-code-wrap" class="mt-3 hidden w-full max-w-xl rounded-2xl border border-cyan-400/20 bg-slate-950/80 p-4 shadow-xl">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-cyan-200">Secure account connection</div>
+                        <p class="mt-2 text-xs leading-relaxed text-slate-300">Sign in to your CHERRY AI account, show this QR code, then scan it from Android. A confirmation email must be approved before the phone is linked.</p>
+                        <div class="mt-4">
+                            <label for="pair-backend-url" class="block text-[11px] text-slate-400 mb-1">CHERRY AI API URL</label>
+                            <div class="flex gap-2"><input id="pair-backend-url" type="url" class="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-xs text-white" placeholder="https://your-api-domain"><button id="pair-backend-save" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-white">Use URL</button></div>
+                        </div>
+                        <div id="pair-auth-area" class="mt-4 space-y-2">
+                            <select id="pair-auth-mode" class="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-sm text-white"><option>Sign in</option><option>Create account</option><option>Verify email</option></select>
+                            <input id="pair-auth-email" type="email" autocomplete="email" placeholder="Account email" class="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white">
+                            <input id="pair-auth-password" type="password" autocomplete="current-password" placeholder="Password (10+ characters)" class="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white">
+                            <input id="pair-auth-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit email verification code" class="hidden w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white">
+                            <button id="pair-auth-submit" type="button" class="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white">Sign in</button>
+                            <p id="pair-auth-status" class="text-xs text-slate-400" role="status">Use the account that should own this Android phone.</p>
+                        </div>
+                        <div id="pair-account-ready" class="hidden mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-3">
+                            <div class="text-sm text-emerald-200">Signed in as <span id="pair-account-email"></span></div>
+                            <div class="mt-3 flex gap-2"><button id="pair-qr-create" type="button" class="flex-1 rounded-lg bg-cyan-600 px-3 py-3 text-sm font-semibold text-white">Generate 2-minute QR</button><button id="pair-auth-logout" type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-300">Sign out</button></div>
+                        </div>
+                        <div id="pair-qr-area" class="hidden mt-4 rounded-xl border border-cyan-400/20 bg-black/30 p-4 text-center">
+                            <div id="phone-pair-qr" class="mx-auto flex min-h-56 items-center justify-center"></div>
+                            <p id="phone-pair-expiry" class="mt-3 text-xs text-cyan-200"></p>
+                            <p id="phone-pair-status" class="mt-2 text-xs text-slate-300" role="status">Waiting for your Android phone to scan…</p>
+                        </div>
+                    </div>
                 </div>
                 <div id="tab-overlay" class="tab-overlay">
                     <div id="tab-page-home" class="tab-card"><h2>Home</h2><p>Your CHERRY AI dashboard is ready. Ask a question, start screen awareness, or use the companion.</p><div class="tab-row"><div><div class="tab-label">System</div><div class="tab-value">Local CHERRY AI mode</div></div><span class="task-state">READY</span></div></div>
@@ -771,7 +796,12 @@
     </div>
 
 <script>
-        const API_BASE = "http://127.0.0.1:8001";
+        let API_BASE = (() => {
+            try {
+                const configured = window.CHERRY_API_BASE || localStorage.getItem("cherry_api_base") || "http://127.0.0.1:8001";
+                return String(configured).trim().replace(/\/+$/, "");
+            } catch (_) { return "http://127.0.0.1:8001"; }
+        })();
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
