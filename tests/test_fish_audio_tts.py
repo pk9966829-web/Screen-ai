@@ -38,6 +38,7 @@ def test_fish_tts_is_opt_in_and_requires_key_and_voice(monkeypatch):
 def test_fish_tts_requests_raw_pcm16_at_16khz(monkeypatch):
     monkeypatch.setenv("CHERRY_FISH_API_KEY", "test-key")
     monkeypatch.setenv("CHERRY_FISH_VOICE_ID", "voice-123")
+    monkeypatch.setenv("CHERRY_FISH_EMOTION_TAGS", "true")
     captured = {}
 
     def fake_urlopen(request, timeout):
@@ -51,6 +52,7 @@ def test_fish_tts_requests_raw_pcm16_at_16khz(monkeypatch):
     audio = fish_audio_tts.synthesize_pcm("Hello caller.")
     assert len(audio) == 320
     assert captured["url"] == "https://api.fish.audio/v1/tts"
+    assert captured["payload"]["text"] == "[warm and professional] Hello caller."
     assert captured["payload"]["format"] == "pcm"
     assert captured["payload"]["sample_rate"] == 16000
     assert captured["payload"]["reference_id"] == "voice-123"
