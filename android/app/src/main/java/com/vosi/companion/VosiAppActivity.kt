@@ -166,6 +166,17 @@ class VosiAppActivity : ComponentActivity() {
                                 .put("label", device.optString("label", "Android phone"))
                                 .put("capabilities", device.optJSONArray("capabilities") ?: org.json.JSONArray())
                                 .put("paired_at", device.optString("paired_at"))
+                            val previous = DeviceCredentialStore.load(this@VosiAppActivity)
+                            if (previous != null && previous.optString("backend_url").trimEnd('/') == base) {
+                                try {
+                                    identityRequest(
+                                        base, "/agent/devices/me", "DELETE",
+                                        previous.optString("device_token"), JSONObject()
+                                    )
+                                } catch (_: Exception) {
+                                    // The old credential may already have been revoked; do not block the new approved link.
+                                }
+                            }
                             DeviceCredentialStore.save(this@VosiAppActivity, credential.toString())
                             runOnUiThread { qrPairingStatus = "Connected! This phone is now linked to your approved CHERRY AI account." }
                             return@Thread
