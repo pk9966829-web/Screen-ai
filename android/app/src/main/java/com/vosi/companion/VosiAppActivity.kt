@@ -141,7 +141,7 @@ class VosiAppActivity : ComponentActivity() {
         }
         AlertDialog.Builder(this)
             .setTitle("Confirm CHERRY AI server")
-            .setMessage("This QR code will send a one-time pairing request to:\\n\\n$host\\n\\nContinue only if you recognize this server as your CHERRY AI backend.")
+            .setMessage("This QR code will send a one-time pairing request to:\n\n$host\n\nContinue only if you recognize this server as your CHERRY AI backend.")
             .setNegativeButton("Cancel") { _, _ ->
                 qrPairingStatus = "Connection cancelled. No pairing request was sent."
             }
