@@ -10,6 +10,7 @@ import base64
 import binascii
 import hmac
 import json
+import logging
 import os
 from typing import Any
 from datetime import datetime, timezone
@@ -17,6 +18,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptionist"])
+logger = logging.getLogger(__name__)
 EXOTEL_SAMPLE_RATE = 16000
 EXOTEL_FRAME_BYTES = 3200  # 100 ms of mono PCM16 at 16 kHz.
 MAX_MEDIA_BYTES = 128_000
@@ -46,6 +48,12 @@ def _authorized_websocket(websocket: WebSocket) -> bool:
     supplied = websocket.headers.get("authorization", "")
     expected = "Basic " + base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
     return bool(username and password) and hmac.compare_digest(supplied, expected)
+
+
+def normalize_call_outcome(value: str) -> str:
+    """Return one of the stable outcomes used by call history."""
+    allowed = {"completed", "caller_disconnected", "ai_ended", "ai_error", "bridge_error"}
+    return value if value in allowed else "bridge_error"
 
 
 def _exotel_stream_id(message: dict[str, Any]) -> str:
@@ -234,7 +242,11 @@ async def exotel_media_bridge(websocket: WebSocket):
             async def caller_to_model():
                 nonlocal stream_sid, call_outcome
                 while True:
-                    incoming = json.loads(await websocket.receive_text())
+                    try:
+                        incoming = json.loads(await websocket.receive_text())
+                    except WebSocketDisconnect:
+                        call_outcome = "caller_disconnected"
+                        return
                     event_type = incoming.get("event")
                     if event_type == "stop":
                         call_outcome = "completed"
@@ -288,7 +300,11 @@ async def exotel_media_bridge(websocket: WebSocket):
                             sequence += 1
                     elif event_type == "session.input_audio.speech_started":
                         await websocket.send_text(json.dumps({"event": "clear", "stream_sid": stream_sid}))
-                    elif event_type in {"session.closed", "error"}:
+                    elif event_type == "session.closed":
+                        call_outcome = "ai_ended"
+                        return
+                    elif event_type == "error":
+                        call_outcome = "ai_error"
                         return
 
             inbound = asyncio.create_task(caller_to_model())
