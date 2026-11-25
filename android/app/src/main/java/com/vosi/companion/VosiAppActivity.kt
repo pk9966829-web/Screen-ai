@@ -78,6 +78,11 @@ class VosiAppActivity : ComponentActivity() {
             }
         }
         VosiSessionContext.app = applicationContext
+        qrPairingStatus = if (DeviceCredentialStore.load(this) != null) {
+            "This phone already has a secure CHERRY AI device connection. Scan a new QR only if you want to replace it."
+        } else {
+            "Ready to scan a CHERRY AI web QR code."
+        }
         window.statusBarColor = android.graphics.Color.rgb(11, 11, 15)
         window.navigationBarColor = android.graphics.Color.rgb(11, 11, 15)
         setContent {
