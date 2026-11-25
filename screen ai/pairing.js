@@ -3,6 +3,7 @@
     const trigger = document.getElementById("phone-pair-generate");
     const panel = document.getElementById("phone-pair-code-wrap");
     const statusNode = document.getElementById("phone-pair-status");
+    const panelStatus = document.getElementById("pair-panel-status");
     const expiryNode = document.getElementById("phone-pair-expiry");
     const qrNode = document.getElementById("phone-pair-qr");
     const authArea = document.getElementById("pair-auth-area");
@@ -33,6 +34,7 @@
 
     function setStatus(message) {
         if (statusNode) statusNode.textContent = message;
+        if (panelStatus) panelStatus.textContent = message;
     }
 
     function renderAccount() {
