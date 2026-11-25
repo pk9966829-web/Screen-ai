@@ -1,6 +1,7 @@
 """Account-protected SQLite call history for the CHERRY AI receptionist."""
 from __future__ import annotations
 import os
+import re
 import sqlite3
 from pathlib import Path
 from fastapi import APIRouter, Header, HTTPException
@@ -45,23 +46,121 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS idx_cherry_calls_started ON call_summaries(started_at DESC)")
 
 
+def extract_call_details(transcript: str) -> dict[str, str | int]:
+    """Extract cautious structured fields from caller speech only; never infer a name."""
+    text = " ".join((transcript or "").split())
+    caller_parts = re.findall(r"Caller:\s*(.*?)(?=CHERRY AI:|Caller:|$)", text, flags=re.I)
+    caller_text = " ".join(caller_parts).strip()
+    caller_low = caller_text.lower()
+
+    name = ""
+    name_patterns = (
+        r"\bmy name is\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bthis is\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bI am\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bI'm\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+    )
+    for pattern in name_patterns:
+        match = re.search(pattern, caller_text, flags=re.I)
+        if match:
+            candidate = match.group(1).strip(" .,!?:;")
+            if candidate.lower() not in {"calling", "call", "looking", "here", "just", "trying"}:
+                name = candidate[:80]
+                break
+
+    callback_match = re.search(
+        r"\b(call(?:\s+me)?\s+back|callback|return(?:\s+the)?\s+call|reach\s+me)\b",
+        caller_low,
+    )
+    callback_requested = 0
+    if callback_match:
+        before_callback = caller_low[max(0, callback_match.start() - 40):callback_match.start()]
+        # Avoid treating explicit refusals as callback requests.
+        negated_callback = re.search(r"\b(?:don't|do not|never|no|not|without)\s*$", before_callback) or re.search(
+            r"\b(?:don't|do not|doesn't|does not)\s+(?:want|need)\s+(?:a\s+)?$",
+            before_callback,
+        )
+        callback_requested = int(not bool(negated_callback))
+    time_text = ""
+    if callback_requested:
+        time_patterns = (
+            r"\b(?:call(?:\s+me)?\s+back|callback|return(?:\s+the)?\s+call|reach\s+me)\s+(?:at|around|after|before|in)\s+([^,.!?;]{1,50})",
+            r"\b(?:call(?:\s+me)?\s+back|callback|return(?:\s+the)?\s+call|reach\s+me)\s+(tomorrow(?:\s+(?:morning|afternoon|evening))?|today(?:\s+(?:morning|afternoon|evening))?|(?:this|next)\s+(?:morning|afternoon|evening|week|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))",
+        )
+        for pattern in time_patterns:
+            match = re.search(pattern, caller_text, flags=re.I)
+            if match:
+                time_text = re.sub(r"\s+", " ", match.group(1)).strip()[:80]
+                break
+
+    urgency = "unknown" if not caller_text else "normal"
+    urgent_match = re.search(r"\b(urgent|emergency|immediately|as soon as possible)\b", caller_low)
+    if urgent_match:
+        before = caller_low[max(0, urgent_match.start() - 18):urgent_match.start()]
+        if not re.search(r"\b(not|no|isn't|is not)\s*$", before):
+            urgency = "urgent"
+
+    purpose = ""
+    purpose_patterns = (
+        r"\b(?:I'm|I am)\s+calling\s+(?:about|regarding)\s+([^.!?]{3,180})",
+        r"\bcalling\s+(?:about|regarding)\s+([^.!?]{3,180})",
+        r"\b(?:need help with|would like to discuss|the reason is|regarding)\s+([^.!?]{3,180})",
+    )
+    for pattern in purpose_patterns:
+        match = re.search(pattern, caller_text, flags=re.I)
+        if match:
+            purpose = re.sub(r"\s+", " ", match.group(1)).strip(" ,;:")[:180]
+            break
+    if not purpose:
+        # Use a short caller sentence as a fallback, excluding greeting/name-only phrases.
+        sentences = re.split(r"(?<=[.!?])\s+", caller_text)
+        for sentence in sentences:
+            candidate = sentence.strip()
+            if candidate and not re.search(r"\b(?:hello|hi|my name is|this is|call me back|callback)\b", candidate, flags=re.I):
+                purpose = candidate[:180]
+                break
+
+    return {
+        "caller_name": name,
+        "purpose": purpose,
+        "urgency": urgency,
+        "callback_requested": callback_requested,
+        "callback_time": time_text,
+    }
+
+
 def store_call(started_at, ended_at, caller, destination, outcome, duration, transcript):
     owner = _owner_id()
     if not owner:
         raise RuntimeError("Set CHERRY_CALL_OWNER_USER_ID before accepting receptionist calls.")
     init_db()
     clean = " ".join((transcript or "").split())
-    low = clean.lower()
-    urgency = "urgent" if any(k in low for k in ("urgent", "emergency", "immediately", "as soon as possible")) else ("normal" if clean else "unknown")
-    callback = int(any(k in low for k in ("call back", "callback", "call me", "return the call")))
-    summary = clean[:1200] if clean else "No transcript captured; caller details need manual review."
+    details = extract_call_details(transcript or "")
+    parts = []
+    if details["caller_name"]:
+        parts.append(f"Caller {details['caller_name']}")
+    if details["purpose"]:
+        parts.append(f"called about {details['purpose']}")
+    if details["urgency"] == "urgent":
+        parts.append("marked urgent")
+    if details["callback_requested"]:
+        callback_text = "requested a callback"
+        if details["callback_time"]:
+            callback_text += f" ({details['callback_time']})"
+        parts.append(callback_text)
+    summary = ". ".join(parts).strip()
+    if summary:
+        summary += "."
+    else:
+        summary = clean[:1200] if clean else "No transcript captured; caller details need manual review."
     with sqlite3.connect(DB_PATH) as db:
         cur = db.execute("""INSERT INTO call_summaries
             (started_at,ended_at,caller_number,destination_number,outcome,duration_seconds,
-             transcript,summary,purpose,urgency,callback_requested,status,owner_user_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?)""",
+             transcript,summary,caller_name,purpose,urgency,callback_requested,callback_time,status,owner_user_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?)""",
             (started_at, ended_at, caller, destination, outcome, max(0, int(duration)),
-             transcript or "", summary, clean[:500], urgency, callback, owner))
+             transcript or "", summary, details["caller_name"], details["purpose"], details["urgency"],
+             details["callback_requested"], details["callback_time"], owner))
         return cur.lastrowid
 
 
