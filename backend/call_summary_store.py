@@ -94,7 +94,9 @@ def store_call(started_at, ended_at, caller, destination, outcome, duration, tra
         caller_name = ai.get("caller_name", "")
         purpose = ai.get("purpose") or purpose
         urgency = ai.get("urgency", urgency)
-        callback = int(ai.get("callback_requested", bool(callback)))
+        callback_value = ai.get("callback_requested")
+        if isinstance(callback_value, bool):
+            callback = int(callback_value)
         callback_time = ai.get("callback_time", "")
     with sqlite3.connect(DB_PATH) as db:
         cur = db.execute("""INSERT INTO call_summaries
