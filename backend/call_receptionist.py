@@ -151,6 +151,7 @@ def receptionist_status():
         "configured": _configured(),
         "telephony_provider": "exotel",
         "voice_provider": "gpt-live",
+        "tts_provider": "fish-audio" if os.getenv("CHERRY_TTS_PROVIDER", "gpt-live").strip().lower() == "fish" else "gpt-live",
         "call_summary_ai_enabled": os.getenv("CHERRY_CALL_SUMMARY_AI_ENABLED", "").strip().lower() in {"1", "true", "yes"},
         "call_summary_ai_provider_routing": "VOSI_PROVIDER_CHAIN",
         "missing": [
@@ -214,6 +215,8 @@ async def exotel_media_bridge(websocket: WebSocket):
         # Imported lazily so backend text/API features work without the optional
         # telephony dependency being loaded at module import time.
         from websockets.asyncio.client import connect as websocket_connect
+        from fish_audio_tts import fish_tts_configured, synthesize_pcm
+        fish_tts_enabled = fish_tts_configured()
 
         async with websocket_connect(
             "wss://api.openai.com/v1/live/sessions",
@@ -274,9 +277,38 @@ async def exotel_media_bridge(websocket: WebSocket):
 
             async def model_to_caller():
                 nonlocal sequence
+                fish_tts_handled = False
+
+                async def send_pcm_audio(pcm: bytes):
+                    nonlocal sequence
+                    if not pcm:
+                        return
+                    padded = bytearray(pcm)
+                    remainder = len(padded) % EXOTEL_FRAME_BYTES
+                    if remainder:
+                        padded.extend(b"\x00" * (EXOTEL_FRAME_BYTES - remainder))
+                    while padded:
+                        chunk = bytes(padded[:EXOTEL_FRAME_BYTES])
+                        del padded[:EXOTEL_FRAME_BYTES]
+                        outgoing = {
+                            "event": "media",
+                            "sequence_number": sequence,
+                            "stream_sid": stream_sid,
+                            "media": {
+                                "chunk": sequence,
+                                "timestamp": (sequence - 1) * 100,
+                                "payload": base64.b64encode(chunk).decode("ascii"),
+                            },
+                        }
+                        await websocket.send_text(json.dumps(outgoing))
+                        sequence += 1
+
                 while True:
                     message = json.loads(await live.recv())
                     event_type = message.get("type")
+                    if event_type == "response.created":
+                        fish_tts_handled = False
+
                     # Collect text-only transcript events for the call record; never save audio.
                     transcript = message.get("transcript")
                     if isinstance(transcript, str) and transcript.strip() and event_type in {
@@ -288,26 +320,49 @@ async def exotel_media_bridge(websocket: WebSocket):
                     }:
                         speaker = "Caller" if event_type.startswith("session.input_audio") else "CHERRY AI"
                         transcript_parts.append(f"{speaker}: {transcript.strip()}")
+
                     if event_type == "session.output_audio.delta":
                         try:
-                            output_buffer.extend(base64.b64decode(message.get("delta", ""), validate=True))
+                            audio_delta = base64.b64decode(message.get("delta", ""), validate=True)
                         except (binascii.Error, ValueError):
                             continue
-                        while len(output_buffer) >= EXOTEL_FRAME_BYTES:
-                            chunk = bytes(output_buffer[:EXOTEL_FRAME_BYTES])
-                            del output_buffer[:EXOTEL_FRAME_BYTES]
-                            outgoing = {
-                                "event": "media",
-                                "sequence_number": sequence,
-                                "stream_sid": stream_sid,
-                                "media": {
-                                    "chunk": sequence,
-                                    "timestamp": (sequence - 1) * 100,
-                                    "payload": base64.b64encode(chunk).decode("ascii"),
-                                },
-                            }
-                            await websocket.send_text(json.dumps(outgoing))
-                            sequence += 1
+                        if fish_tts_enabled:
+                            # Hold GPT-Live audio as a fallback while Fish Audio renders.
+                            if not fish_tts_handled and len(output_buffer) < 2_000_000:
+                                output_buffer.extend(audio_delta[:2_000_000 - len(output_buffer)])
+                        else:
+                            output_buffer.extend(audio_delta)
+                            while len(output_buffer) >= EXOTEL_FRAME_BYTES:
+                                chunk = bytes(output_buffer[:EXOTEL_FRAME_BYTES])
+                                del output_buffer[:EXOTEL_FRAME_BYTES]
+                                outgoing = {
+                                    "event": "media",
+                                    "sequence_number": sequence,
+                                    "stream_sid": stream_sid,
+                                    "media": {
+                                        "chunk": sequence,
+                                        "timestamp": (sequence - 1) * 100,
+                                        "payload": base64.b64encode(chunk).decode("ascii"),
+                                    },
+                                }
+                                await websocket.send_text(json.dumps(outgoing))
+                                sequence += 1
+
+                    elif event_type == "session.output_audio_transcription.done" and fish_tts_enabled:
+                        spoken_text = str(transcript or "").strip()
+                        if spoken_text and not fish_tts_handled:
+                            fish_tts_handled = True
+                            try:
+                                fish_pcm = await asyncio.to_thread(synthesize_pcm, spoken_text)
+                                if fish_pcm:
+                                    await send_pcm_audio(fish_pcm)
+                                    output_buffer.clear()
+                            except Exception:
+                                logger.warning("Fish Audio TTS failed; falling back to GPT-Live audio")
+                                if output_buffer:
+                                    await send_pcm_audio(bytes(output_buffer))
+                                    output_buffer.clear()
+
                     elif event_type == "session.input_audio.speech_started":
                         await websocket.send_text(json.dumps({"event": "clear", "stream_sid": stream_sid}))
                     elif event_type == "session.closed":
