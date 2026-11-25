@@ -22,6 +22,8 @@ def test_status_does_not_expose_secrets(monkeypatch):
     result = call_receptionist.receptionist_status()
     assert result["configured"] is True
     assert result["call_recording"] is False
+    assert result["call_summary_ai_enabled"] is False
+    assert result["call_summary_ai_provider_routing"] == "VOSI_PROVIDER_CHAIN"
     assert "private-api-key" not in str(result)
     assert "p" * 40 not in str(result)
 
@@ -31,7 +33,10 @@ def test_status_is_disabled_by_default(monkeypatch):
     monkeypatch.delenv("CHERRY_EXOTEL_STREAM_USER", raising=False)
     monkeypatch.delenv("CHERRY_EXOTEL_STREAM_PASSWORD", raising=False)
     monkeypatch.delenv("CHERRY_LIVE_API_KEY", raising=False)
-    assert call_receptionist.receptionist_status()["configured"] is False
+    monkeypatch.delenv("CHERRY_CALL_SUMMARY_AI_ENABLED", raising=False)
+    result = call_receptionist.receptionist_status()
+    assert result["configured"] is False
+    assert result["call_summary_ai_enabled"] is False
 
 
 def test_exotel_media_parser_rejects_invalid_and_oversized_payloads():
