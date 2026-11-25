@@ -52,7 +52,7 @@ def test_fish_tts_requests_raw_pcm16_at_16khz(monkeypatch):
     audio = fish_audio_tts.synthesize_pcm("Hello caller.")
     assert len(audio) == 320
     assert captured["url"] == "https://api.fish.audio/v1/tts"
-    assert captured["payload"]["text"] == "[warm and professional] Hello caller."
+    assert captured["payload"]["text"] == "[friendly] Hello caller."
     assert captured["payload"]["format"] == "pcm"
     assert captured["payload"]["sample_rate"] == 16000
     assert captured["payload"]["reference_id"] == "voice-123"
