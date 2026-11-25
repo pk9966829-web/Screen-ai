@@ -35,7 +35,7 @@ def _ai_summary(caller_text):
             d=json.loads(r.choices[0].message.content or '{}')
             urgency=str(d.get('urgency','unknown')).lower()
             if urgency not in {'urgent','normal','unknown'}: urgency='unknown'
-            cb=d.get('callback_requested') if isinstance(d.get('callback_requested'),bool) else False
+            cb=d.get('callback_requested') if isinstance(d.get('callback_requested'),bool) else None
             return {'summary':str(d.get('summary') or '')[:500],'caller_name':str(d.get('caller_name') or '')[:100],'purpose':str(d.get('purpose') or '')[:300],'urgency':urgency,'callback_requested':cb,'callback_time':str(d.get('callback_time') or '')[:120]}
         except Exception: continue
     return None
