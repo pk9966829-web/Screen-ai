@@ -9,6 +9,9 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.RepeatMode
@@ -61,8 +64,19 @@ private val Muted = Color(0xFF9BA5BC)
 private val BorderGlow = Color(0x334E5E9B)
 
 class VosiAppActivity : ComponentActivity() {
+    private var qrPairingStatus by mutableStateOf("Ready to scan a CHERRY AI web QR code.")
+    private lateinit var qrScanLauncher: ActivityResultLauncher<ScanOptions>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
+            val contents = result.contents
+            if (contents.isNullOrBlank()) {
+                qrPairingStatus = "QR scan cancelled. Your account has not been changed."
+            } else {
+                beginQrPairing(contents)
+            }
+        }
         VosiSessionContext.app = applicationContext
         window.statusBarColor = android.graphics.Color.rgb(11, 11, 15)
         window.navigationBarColor = android.graphics.Color.rgb(11, 11, 15)
@@ -77,17 +91,131 @@ class VosiAppActivity : ComponentActivity() {
                 CherryMobileRoot(
                     onOpenCompanion = { startActivity(Intent(this, MainActivity::class.java)) },
                     onOpenProfileSetup = { startActivity(Intent(this, PersonalIdentityActivity::class.java)) },
-                    onOpenCallAssistant = { startActivity(Intent(this, CherryCallAssistantActivity::class.java)) }
+                    onOpenCallAssistant = { startActivity(Intent(this, CherryCallAssistantActivity::class.java)) },
+                    onScanQr = {
+                        qrScanLauncher.launch(
+                            ScanOptions().apply {
+                                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                setPrompt("Scan the QR code shown on CHERRY AI web")
+                                setBeepEnabled(false)
+                                setOrientationLocked(false)
+                            }
+                        )
+                    },
+                    qrPairingStatus = qrPairingStatus
                 )
             }
         }
+    }
+
+    private fun beginQrPairing(raw: String) {
+        val payload = try { JSONObject(raw) } catch (_: Exception) {
+            qrPairingStatus = "This is not a valid CHERRY AI pairing QR code."
+            return
+        }
+        if (payload.optInt("version") != 1) {
+            qrPairingStatus = "This CHERRY AI QR code version is not supported. Refresh the code on the web."
+            return
+        }
+        val base = payload.optString("api").trim().trimEnd('/')
+        val requestId = payload.optString("request_id")
+        val qrToken = payload.optString("qr_token")
+        val uri = Uri.parse(base)
+        val host = uri.host.orEmpty().lowercase()
+        val localHttp = uri.scheme == "http" && (
+            host == "localhost" || host == "127.0.0.1" ||
+            host.startsWith("192.168.") || host.startsWith("10.") ||
+            Regex("^172\\.(1[6-9]|2[0-9]|3[01])\\.").containsMatchIn(host)
+        )
+        if ((uri.scheme != "https" && !localHttp) || host.isBlank() ||
+            requestId.length != 32 || qrToken.length < 32) {
+            qrPairingStatus = "The QR code has an invalid or insecure backend address. Production pairing requires HTTPS."
+            return
+        }
+        qrPairingStatus = "QR code scanned. Requesting approval from your account email…"
+        Thread {
+            try {
+                val scan = pairingHttpRequest(
+                    base, "/identity/pairing/scan", "POST",
+                    JSONObject().put("request_id", requestId).put("qr_token", qrToken)
+                        .put("platform", "android").put("label", "Android phone")
+                )
+                val pollToken = scan.getString("poll_token")
+                val deadline = System.currentTimeMillis() + 300_000L
+                while (System.currentTimeMillis() < deadline) {
+                    val stateResponse = pairingHttpRequest(
+                        base, "/identity/pairing/requests/$requestId/mobile-status",
+                        "GET", JSONObject(), pollToken
+                    )
+                    when (stateResponse.optString("state")) {
+                        "approved" -> {
+                            val exchanged = pairingHttpRequest(
+                                base, "/identity/pairing/exchange", "POST",
+                                JSONObject().put("request_id", requestId).put("poll_token", pollToken)
+                            )
+                            val device = exchanged.getJSONObject("device")
+                            val credential = JSONObject()
+                                .put("backend_url", base)
+                                .put("device_id", device.getString("device_id"))
+                                .put("device_token", device.getString("device_token"))
+                                .put("platform", device.optString("platform", "android"))
+                                .put("label", device.optString("label", "Android phone"))
+                                .put("capabilities", device.optJSONArray("capabilities") ?: org.json.JSONArray())
+                                .put("paired_at", device.optString("paired_at"))
+                            DeviceCredentialStore.save(this@VosiAppActivity, credential.toString())
+                            runOnUiThread { qrPairingStatus = "Connected! This phone is now linked to your approved CHERRY AI account." }
+                            return@Thread
+                        }
+                        "denied" -> {
+                            runOnUiThread { qrPairingStatus = "The account owner denied this connection. No device was linked." }
+                            return@Thread
+                        }
+                        "expired", "email_failed" -> {
+                            runOnUiThread { qrPairingStatus = "This pairing request expired or the approval email could not be sent. Generate a new QR code." }
+                            return@Thread
+                        }
+                        "pending_approval" -> runOnUiThread { qrPairingStatus = "Approval email sent. Open it and tap Approve device to finish connecting." }
+                        else -> runOnUiThread { qrPairingStatus = "Waiting for CHERRY AI account approval…" }
+                    }
+                    Thread.sleep(2000L)
+                }
+                runOnUiThread { qrPairingStatus = "Approval timed out. Generate a new QR code on the web and scan again." }
+            } catch (error: Exception) {
+                runOnUiThread { qrPairingStatus = "Could not connect this phone: " + (error.message ?: "backend unavailable") }
+            }
+        }.start()
+    }
+
+    private fun pairingHttpRequest(
+        base: String, path: String, method: String, body: JSONObject,
+        pollToken: String? = null
+    ): JSONObject {
+        val connection = (URL(base + path).openConnection() as HttpURLConnection)
+        try {
+            connection.requestMethod = method
+            connection.connectTimeout = 10000
+            connection.readTimeout = 15000
+            connection.setRequestProperty("Accept", "application/json")
+            if (!pollToken.isNullOrBlank()) connection.setRequestProperty("X-VOSI-Pairing-Poll-Token", pollToken)
+            if (method != "GET") {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val raw = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+            val result = JSONObject(raw)
+            if (code !in 200..299) throw IllegalStateException(result.optString("detail", "Pairing request failed (HTTP $code)."))
+            return result
+        } finally { connection.disconnect() }
     }
 }
 
 private enum class CherryTab(val label: String) { HOME("Home"), CHAT("Chat"), TASKS("Tasks"), DEVICES("Devices"), PROFILE("Profile") }
 
 @Composable
-private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit, onOpenCallAssistant: () -> Unit) {
+private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit, onOpenCallAssistant: () -> Unit, onScanQr: () -> Unit, qrPairingStatus: String) {
     var tab by remember { mutableStateOf(CherryTab.HOME) }
     var backend by remember {
         mutableStateOf(
@@ -131,7 +259,7 @@ private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: ()
                     )
                     CherryTab.CHAT -> SharedCompanionChatScreen(initialDraft = chatDraft)
                     CherryTab.TASKS -> TasksScreen()
-                    CherryTab.DEVICES -> DevicesScreen(onOpenCompanion)
+                    CherryTab.DEVICES -> DevicesScreen(onOpenCompanion, onScanQr, qrPairingStatus)
                     CherryTab.PROFILE -> ProfileScreen(
                         loggedIn, accountEmail, accountStatus, accountBusy, authMode, password,
                         verificationCode, backend, showServerSettings,
@@ -805,10 +933,14 @@ private fun TasksScreen() {
 }
 
 @Composable
-private fun DevicesScreen(onOpenCompanion: () -> Unit) {
+private fun DevicesScreen(onOpenCompanion: () -> Unit, onScanQr: () -> Unit, qrPairingStatus: String) {
     Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PageHeader("Your devices", "Bring your digital world together.")
-        InfoTile(Icons.Outlined.PhoneAndroid, "This Android phone", "Pair this phone securely with your CHERRY AI backend.")
+        InfoTile(Icons.Outlined.PhoneAndroid, "This Android phone", "Scan the QR code shown on your signed-in CHERRY AI web account. Email approval is required before this phone is linked.")
+        Button(onClick = onScanQr, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {
+            Icon(Icons.Outlined.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan web QR code")
+        }
+        Text(qrPairingStatus, color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
         InfoTile(Icons.Outlined.Computer, "Windows computer", "Send tasks to your paired desktop and receive completion updates.")
         InfoTile(Icons.Outlined.Language, "Browser", "Connect the CHERRY AI browser companion for supported page and product tasks.")
         Button(onClick = onOpenCompanion, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {
