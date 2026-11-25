@@ -13,7 +13,7 @@ router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptioni
 
 # Optional provider-chain enrichment, disabled by default for call privacy.
 def _caller_only(text):
-    matches = re.findall(r'(?:^|\\n)Caller:\\s*(.*?)(?=\\nCHERRY AI:|\\nCaller:|$)', text or '', flags=re.I)
+    matches = re.findall(r'(?:^|\n)Caller:\s*(.*?)(?=\nCHERRY AI:|\nCaller:|$)', text or '', flags=re.I)
     return ' '.join(part.strip() for part in matches if part.strip())[:6000]
 
 def _ai_summary(caller_text):
