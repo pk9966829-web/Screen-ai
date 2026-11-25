@@ -316,13 +316,15 @@ async def exotel_media_bridge(websocket: WebSocket):
             for task in done:
                 exception = task.exception()
                 if exception:
-                    raise exception
+                    call_outcome = "bridge_error"
+                    logger.warning("Call bridge task failed; saving call outcome without exception details")
+            call_outcome = normalize_call_outcome(call_outcome)
             try:
                 from call_summary_store import store_call
                 call_ended = datetime.now(timezone.utc)
-                store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination, call_outcome, int((call_ended-call_started).total_seconds()), '\n'.join(transcript_parts))
+                store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination, call_outcome, int((call_ended-call_started).total_seconds()), '\\n'.join(transcript_parts))
             except Exception:
-                pass
+                logger.warning("Call summary could not be persisted; error details intentionally omitted")
             if output_buffer:
                 # Exotel's voicebot stream expects at least 100 ms (3.2 KB) per frame.
                 output_buffer.extend(b"\x00" * (EXOTEL_FRAME_BYTES - len(output_buffer) % EXOTEL_FRAME_BYTES))
