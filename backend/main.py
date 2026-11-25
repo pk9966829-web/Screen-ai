@@ -40,12 +40,14 @@ from call_summary_store import router as call_summary_router
 from cloud_worker import router as cloud_worker_router
 import identity_api
 from identity_api import router as identity_router
+from pairing_api import router as pairing_router
 app.include_router(agent_router)
 app.include_router(voice_router)
 app.include_router(call_receptionist_router)
 app.include_router(call_summary_router)
 app.include_router(cloud_worker_router)
 app.include_router(identity_router)
+app.include_router(pairing_router)
 GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 GMAIL_SCOPES = [GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
