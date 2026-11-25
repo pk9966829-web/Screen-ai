@@ -16,6 +16,7 @@ import smtplib
 import sqlite3
 import ssl
 import uuid
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
@@ -68,7 +69,7 @@ def _db() -> sqlite3.Connection:
 
 def _init_schema() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with _db() as db:
+    with closing(_db()) as db:
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS identity_qr_pairings (
@@ -183,7 +184,7 @@ def create_pairing_request(
     request_id = uuid.uuid4().hex
     qr_token = secrets.token_urlsafe(32)
     expires = now + timedelta(seconds=QR_TTL_SECONDS)
-    with _db() as db:
+    with closing(_db()) as db:
         db.execute("BEGIN IMMEDIATE")
         db.execute(
             """UPDATE identity_qr_pairings SET state = 'expired'
@@ -230,7 +231,7 @@ def scan_pairing_qr(payload: ScanPairingRequest):
     approval_token = secrets.token_urlsafe(32)
     poll_token = secrets.token_urlsafe(32)
     approval_expires = now + timedelta(seconds=APPROVAL_TTL_SECONDS)
-    with _db() as db:
+    with closing(_db()) as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute(
             "SELECT * FROM identity_qr_pairings WHERE request_id = ?",
@@ -272,7 +273,7 @@ def scan_pairing_qr(payload: ScanPairingRequest):
         base = ""
     if not base:
         # The server's own deployment URL must be set for email links to work reliably behind a proxy.
-        with _db() as db:
+        with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'email_failed' WHERE request_id = ? AND state = 'pending_approval'",
                 (payload.request_id,),
@@ -285,7 +286,7 @@ def scan_pairing_qr(payload: ScanPairingRequest):
     try:
         _send_approval_email(account_row["email"], payload.label.strip(), approval_url)
     except HTTPException:
-        with _db() as db:
+        with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'email_failed' WHERE request_id = ? AND state = 'pending_approval'",
                 (payload.request_id,),
@@ -304,7 +305,7 @@ def scan_pairing_qr(payload: ScanPairingRequest):
 def get_web_pairing_status(request_id: str, authorization: str | None = Header(default=None)):
     account = _account(authorization)
     now = _now()
-    with _db() as db:
+    with closing(_db()) as db:
         row = db.execute(
             "SELECT user_id, state, qr_expires_at, approval_expires_at, device_id FROM identity_qr_pairings WHERE request_id = ?",
             (request_id,),
@@ -330,7 +331,7 @@ def get_mobile_pairing_status(
     x_vosi_pairing_poll_token: str | None = Header(default=None),
 ):
     now = _now()
-    with _db() as db:
+    with closing(_db()) as db:
         row = db.execute(
             "SELECT state, approval_expires_at, poll_token_hash FROM identity_qr_pairings WHERE request_id = ?",
             (request_id,),
@@ -346,7 +347,7 @@ def get_mobile_pairing_status(
 @router.post("/exchange")
 def exchange_approved_pairing(payload: PairingExchangeRequest):
     now = _now()
-    with _db() as db:
+    with closing(_db()) as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute(
             "SELECT * FROM identity_qr_pairings WHERE request_id = ?",
@@ -372,7 +373,7 @@ def exchange_approved_pairing(payload: PairingExchangeRequest):
         device = devices.complete_pairing(pairing["pairing_code"], ANDROID_CAPABILITIES)
         store.link_device(row["user_id"], device["device_id"])
     except (AgentRuntimeError, IdentityError) as exc:
-        with _db() as db:
+        with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'approved' WHERE request_id = ? AND state = 'exchanging'",
                 (payload.request_id,),
@@ -380,13 +381,13 @@ def exchange_approved_pairing(payload: PairingExchangeRequest):
         status = getattr(exc, "status_code", 422)
         raise HTTPException(status_code=status, detail=str(exc)) from exc
     except Exception:
-        with _db() as db:
+        with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'approved' WHERE request_id = ? AND state = 'exchanging'",
                 (payload.request_id,),
             )
         raise
-    with _db() as db:
+    with closing(_db()) as db:
         db.execute(
             """UPDATE identity_qr_pairings SET state = 'exchanged', consumed_at = ?, device_id = ?,
                poll_token_hash = NULL, approval_token_hash = NULL
@@ -412,7 +413,7 @@ def approval_page(request_id: str, token: str):
     if len(request_id) != 32 or len(token) < 32 or len(token) > 128:
         raise HTTPException(status_code=404, detail="Approval link is invalid.")
     # GET is intentionally read-only. The browser must send an explicit POST after a button click.
-    with _db() as db:
+    with closing(_db()) as db:
         row = db.execute(
             "SELECT state, approval_expires_at FROM identity_qr_pairings WHERE request_id = ?",
             (request_id,),
@@ -462,7 +463,7 @@ document.getElementById("deny").addEventListener("click",()=>decide("deny"));
 @router.post("/approval/decision")
 def decide_pairing_approval(payload: ApprovalDecisionRequest):
     now = _now()
-    with _db() as db:
+    with closing(_db()) as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute(
             "SELECT state, approval_token_hash, approval_expires_at FROM identity_qr_pairings WHERE request_id = ?",
