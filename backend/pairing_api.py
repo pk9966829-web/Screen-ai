@@ -86,10 +86,14 @@ def _init_schema() -> None:
                 scanned_at TEXT,
                 approved_at TEXT,
                 consumed_at TEXT,
-                device_id TEXT
+                device_id TEXT,
+                api_base TEXT
             )
             """
         )
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(identity_qr_pairings)").fetchall()}
+        if "api_base" not in columns:
+            db.execute("ALTER TABLE identity_qr_pairings ADD COLUMN api_base TEXT")
         db.execute(
             "CREATE INDEX IF NOT EXISTS idx_identity_qr_user_created "
             "ON identity_qr_pairings(user_id, created_at)"
@@ -184,6 +188,7 @@ def create_pairing_request(
     request_id = uuid.uuid4().hex
     qr_token = secrets.token_urlsafe(32)
     expires = now + timedelta(seconds=QR_TTL_SECONDS)
+    base = _api_base(request)
     with closing(_db()) as db:
         db.execute("BEGIN IMMEDIATE")
         db.execute(
@@ -203,12 +208,11 @@ def create_pairing_request(
             raise HTTPException(status_code=429, detail="You already have several active pairing requests. Wait for them to expire or finish.")
         db.execute(
             """INSERT INTO identity_qr_pairings
-               (request_id, user_id, qr_token_hash, qr_expires_at, state, device_label, created_at)
-               VALUES (?, ?, ?, ?, 'pending_scan', ?, ?)""",
-            (request_id, account["user_id"], _digest(qr_token), _iso(expires), payload.label.strip(), _iso(now)),
+               (request_id, user_id, qr_token_hash, qr_expires_at, state, device_label, created_at, api_base)
+               VALUES (?, ?, ?, ?, 'pending_scan', ?, ?, ?)""",
+            (request_id, account["user_id"], _digest(qr_token), _iso(expires), payload.label.strip(), _iso(now), base),
         )
         db.commit()
-    base = _api_base(request)
     return {
         "success": True,
         "request_id": request_id,
@@ -264,15 +268,8 @@ def scan_pairing_qr(payload: ScanPairingRequest):
     if not account_row:
         raise HTTPException(status_code=404, detail="The CHERRY AI account for this pairing request no longer exists.")
     # Use a configured public backend origin in production; request data never supplies this URL.
-    base = os.getenv("VOSI_PUBLIC_API_URL", "").strip().rstrip("/")
+    base = os.getenv("VOSI_PUBLIC_API_URL", "").strip().rstrip("/") or (row["api_base"] or "").rstrip("/")
     if not base:
-        base = os.getenv("VOSI_PAIRING_EMAIL_BASE_URL", "").strip().rstrip("/")
-    if not base:
-        # For local development the email link uses the API host configured in the QR payload.
-        # Android passes only the request's API origin through the QR data; the server stores no client URL.
-        base = ""
-    if not base:
-        # The server's own deployment URL must be set for email links to work reliably behind a proxy.
         with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'email_failed' WHERE request_id = ? AND state = 'pending_approval'",
