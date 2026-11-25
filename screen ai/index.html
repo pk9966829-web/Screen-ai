@@ -2751,7 +2751,7 @@
 
 <script>
 (() => {
-    const DEVICE_API = "http://127.0.0.1:8001";
+    const DEVICE_API = API_BASE;
     const invoke = (name, args) => {
         const bridge = window.__TAURI__?.core?.invoke;
         if (!bridge) throw new Error("Open CHERRY AI in the Windows desktop app to use secure device pairing.");
@@ -2763,50 +2763,6 @@
     const disconnectButton = document.getElementById("desktop-disconnect-button");
     let polling = false;
     const promptedApprovals = new Set();
-
-    const phoneGenerateButton = document.getElementById("phone-pair-generate");
-    const phoneCodeWrap = document.getElementById("phone-pair-code-wrap");
-    const phoneCode = document.getElementById("phone-pair-code");
-    const phoneExpiry = document.getElementById("phone-pair-expiry");
-    const phoneStatus = document.getElementById("phone-pair-status");
-    const phoneCopyButton = document.getElementById("phone-pair-copy");
-    phoneGenerateButton?.addEventListener("click", async () => {
-        phoneGenerateButton.disabled = true;
-        phoneGenerateButton.textContent = "Generating secure code…";
-        if (phoneStatus) phoneStatus.textContent = "Contacting the local CHERRY AI backend…";
-        if (phoneCodeWrap) phoneCodeWrap.classList.add("hidden");
-        try {
-            const response = await fetch(DEVICE_API + "/agent/devices/pairing/local", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({})
-            });
-            const data = await response.json();
-            if (!response.ok || !data.success || !data.pairing?.pairing_code) {
-                throw new Error(data.detail || "Could not generate a phone pairing code. Check that the local backend is running.");
-            }
-            phoneCode.textContent = data.pairing.pairing_code;
-            const expiry = new Date(data.pairing.expires_at);
-            phoneExpiry.textContent = "Expires at " + expiry.toLocaleTimeString() + ". Generate a new code if this one expires.";
-            phoneCodeWrap?.classList.remove("hidden");
-            if (phoneStatus) phoneStatus.textContent = "Code ready. Enter it in the Android CHERRY AI app under Pair This Phone With CHERRY AI.";
-        } catch (error) {
-            if (phoneStatus) phoneStatus.textContent = String(error?.message || error);
-        } finally {
-            phoneGenerateButton.disabled = false;
-            phoneGenerateButton.textContent = "Connect your phone";
-        }
-    });
-    phoneCopyButton?.addEventListener("click", async () => {
-        const value = phoneCode?.textContent || "";
-        if (!value) return;
-        try {
-            await navigator.clipboard.writeText(value);
-            if (phoneStatus) phoneStatus.textContent = "Pairing code copied. Paste it into the Android CHERRY AI app.";
-        } catch (_) {
-            if (phoneStatus) phoneStatus.textContent = "Copy is unavailable here. Select and copy the code manually.";
-        }
-    });
 
     function setDeviceStatus(message) {
         if (status) status.textContent = message;
@@ -3024,3 +2980,5 @@
     window.setInterval(() => { void pollDesktopTasks(); }, 15000);
 })();
 </script>
+<script src="/pairing.js"></script>
+
