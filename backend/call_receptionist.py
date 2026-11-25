@@ -143,6 +143,8 @@ def receptionist_status():
         "configured": _configured(),
         "telephony_provider": "exotel",
         "voice_provider": "gpt-live",
+        "call_summary_ai_enabled": os.getenv("CHERRY_CALL_SUMMARY_AI_ENABLED", "").strip().lower() in {"1", "true", "yes"},
+        "call_summary_ai_provider_routing": "VOSI_PROVIDER_CHAIN",
         "missing": [
             name for name, ready in (
                 ("CHERRY_CALL_RECEPTIONIST_ENABLED", _enabled()),
