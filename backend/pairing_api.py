@@ -365,11 +365,17 @@ def exchange_approved_pairing(payload: PairingExchangeRequest):
             raise HTTPException(status_code=410, detail="The email approval expired. Generate a new QR code.")
         db.execute("UPDATE identity_qr_pairings SET state = 'exchanging' WHERE request_id = ?", (payload.request_id,))
         db.commit()
+    device = None
     try:
         pairing = devices.create_pairing("android", row["device_label"] or "Android phone")
         device = devices.complete_pairing(pairing["pairing_code"], ANDROID_CAPABILITIES)
         store.link_device(row["user_id"], device["device_id"])
     except (AgentRuntimeError, IdentityError) as exc:
+        if device:
+            try:
+                devices.revoke_device(device["device_id"])
+            except AgentRuntimeError:
+                pass
         with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'approved' WHERE request_id = ? AND state = 'exchanging'",
@@ -378,6 +384,11 @@ def exchange_approved_pairing(payload: PairingExchangeRequest):
         status = getattr(exc, "status_code", 422)
         raise HTTPException(status_code=status, detail=str(exc)) from exc
     except Exception:
+        if device:
+            try:
+                devices.revoke_device(device["device_id"])
+            except AgentRuntimeError:
+                pass
         with closing(_db()) as db:
             db.execute(
                 "UPDATE identity_qr_pairings SET state = 'approved' WHERE request_id = ? AND state = 'exchanging'",
