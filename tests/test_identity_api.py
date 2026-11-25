@@ -10,6 +10,7 @@ BACKEND = Path(__file__).resolve().parents[1] / "backend"
 sys.path.insert(0, str(BACKEND))
 
 import identity_api  # noqa: E402
+import email_delivery  # noqa: E402
 from device_registry import DeviceRegistry  # noqa: E402
 from agent_runtime import AgentRuntimeError  # noqa: E402
 from identity_store import IdentityStore  # noqa: E402
@@ -43,13 +44,23 @@ def client(monkeypatch, tmp_path):
     identity_api.store = IdentityStore(db)
     identity_api.devices = DeviceRegistry(db)
     monkeypatch.setenv("VOSI_IDENTITY_CHALLENGE_SECRET", "test-identity-challenge-secret-32")
+    monkeypatch.setenv("VOSI_EMAIL_PROVIDER", "smtp")
     monkeypatch.setenv("VOSI_SMTP_HOST", "smtp.example.test")
     monkeypatch.setenv("VOSI_SMTP_PORT", "587")
     monkeypatch.setenv("VOSI_SMTP_USERNAME", "vosi@example.test")
     monkeypatch.setenv("VOSI_SMTP_PASSWORD", "test-password")
     monkeypatch.setenv("VOSI_SMTP_FROM", "vosi@example.test")
     FakeSMTP.sent = []
-    monkeypatch.setattr(identity_api.smtplib, "SMTP", FakeSMTP)
+    def fake_send_email(subject, recipient, body):
+        from email.message import EmailMessage
+        message = EmailMessage()
+        message["Subject"] = subject
+        message["From"] = "vosi@example.test"
+        message["To"] = recipient
+        message.set_content(body)
+        FakeSMTP.sent.append(message)
+
+    monkeypatch.setattr(email_delivery, "send_email", fake_send_email)
     app = FastAPI()
     app.include_router(identity_api.router)
     return TestClient(app)
