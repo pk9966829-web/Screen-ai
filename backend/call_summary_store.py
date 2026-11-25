@@ -12,7 +12,13 @@ router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptioni
 
 # Optional provider-chain enrichment, disabled by default for call privacy.
 def _caller_only(text):
-    return ' '.join(line.split(':',1)[1].strip() for line in (text or '').splitlines() if line.strip().lower().startswith('caller:'))[:6000]
+    caller_parts = []
+    for line in (text or '').splitlines():
+        if line.strip().lower().startswith('caller:'):
+            part = line.split(':', 1)[1].split('CHERRY AI:', 1)[0].strip()
+            if part:
+                caller_parts.append(part)
+    return ' '.join(caller_parts)[:6000]
 
 def _ai_summary(caller_text):
     if os.getenv('CHERRY_CALL_SUMMARY_AI_ENABLED','').strip().lower() not in {'1','true','yes'} or not caller_text: return None
