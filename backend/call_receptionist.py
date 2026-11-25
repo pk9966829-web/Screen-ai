@@ -358,7 +358,7 @@ async def exotel_media_bridge(websocket: WebSocket):
                 call_ended = datetime.now(timezone.utc)
                 store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination,
                            normalize_call_outcome(call_outcome), int((call_ended-call_started).total_seconds()),
-                           '\\n'.join(transcript_parts))
+                           '\n'.join(transcript_parts))
                 summary_saved = True
             except Exception:
                 logger.warning("Call summary could not be persisted; error details intentionally omitted")
