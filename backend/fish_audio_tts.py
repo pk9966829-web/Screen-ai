@@ -10,6 +10,8 @@ import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from voice_expression import apply_fish_emotion_cues
+
 FISH_TTS_URL = "https://api.fish.audio/v1/tts"
 DEFAULT_SAMPLE_RATE = 16000
 MAX_TTS_TEXT_CHARS = 4000
@@ -26,13 +28,14 @@ def fish_tts_configured() -> bool:
     )
 
 
-def synthesize_pcm(text: str) -> bytes:
+def synthesize_pcm(text: str, caller_context: str = "") -> bytes:
     """Synthesize text as raw mono PCM16 at the configured bridge sample rate."""
     text = (text or "").strip()
     if not text:
         return b""
     if len(text) > MAX_TTS_TEXT_CHARS:
         text = text[:MAX_TTS_TEXT_CHARS]
+    text = apply_fish_emotion_cues(text, caller_context)
 
     api_key = os.getenv("CHERRY_FISH_API_KEY", "").strip()
     voice_id = os.getenv("CHERRY_FISH_VOICE_ID", "").strip()
