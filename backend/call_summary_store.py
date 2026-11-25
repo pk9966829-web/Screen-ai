@@ -61,7 +61,7 @@ def extract_call_details(transcript: str) -> dict[str, str | int]:
         r"\bI'm\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
     )
     for pattern in name_patterns:
-        match = re.search(pattern, caller_text)
+        match = re.search(pattern, caller_text, flags=re.I)
         if match:
             candidate = match.group(1).strip(" .,!?:;")
             if candidate.lower() not in {"calling", "call", "looking", "here", "just", "trying"}:
