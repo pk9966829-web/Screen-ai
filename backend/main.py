@@ -27,6 +27,8 @@ from googleapiclient.discovery import build
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
+import email_delivery
+
 from companion import router as companion_router
 app.include_router(companion_router)
 from companion_core_api import router as companion_core_router
@@ -720,10 +722,8 @@ def health_ready():
             raise HTTPException(status_code=503, detail="VOSI_AGENT_TOKEN must contain at least 32 characters in multi-tenant mode.")
         if len(os.getenv("VOSI_IDENTITY_CHALLENGE_SECRET", "").strip()) < 32:
             raise HTTPException(status_code=503, detail="VOSI_IDENTITY_CHALLENGE_SECRET must contain at least 32 characters.")
-        if not all(os.getenv(key, "").strip() for key in (
-            "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD", "VOSI_SMTP_FROM",
-        )):
-            raise HTTPException(status_code=503, detail="SMTP verification delivery must be configured in multi-tenant mode.")
+        if not email_delivery.is_email_delivery_configured():
+            raise HTTPException(status_code=503, detail="A supported transactional email provider must be configured in multi-tenant mode.")
         allowed_native_origins = {"tauri://localhost", "http://localhost", "http://127.0.0.1"}
         if "*" in _cors_origins or any(
             not origin.startswith("https://") and origin not in allowed_native_origins
