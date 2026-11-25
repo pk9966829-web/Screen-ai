@@ -27,6 +27,8 @@ from identity_store import IdentityStore
 class QrPairingTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.original_store = pairing_api.store
+        self.original_devices = pairing_api.devices
         self.db_path = os.path.join(self.temp_dir.name, "pairing-test.sqlite3")
         self.db_path_patch = patch.object(pairing_api, "DB_PATH", Path(self.db_path))
         self.db_path_patch.start()
@@ -56,6 +58,8 @@ class QrPairingTests(unittest.TestCase):
         })
 
     def tearDown(self):
+        pairing_api.store = self.original_store
+        pairing_api.devices = self.original_devices
         self.db_path_patch.stop()
         self.temp_dir.cleanup()
 
