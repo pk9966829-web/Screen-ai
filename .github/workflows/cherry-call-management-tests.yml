@@ -1,6 +1,7 @@
 name: CHERRY call-management tests
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - integration/cherry-call-management
