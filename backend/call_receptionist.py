@@ -173,6 +173,12 @@ async def exotel_media_bridge(websocket: WebSocket):
         return
 
     await websocket.accept()
+    call_started: datetime | None = None
+    start: dict[str, Any] | None = None
+    caller = destination = ""
+    transcript_parts: list[str] = []
+    call_outcome = "bridge_error"
+    summary_saved = False
     try:
         # Exotel sends connected and then start before media. Do not open a model
         # session until the call metadata and configured media format are known.
@@ -192,6 +198,10 @@ async def exotel_media_bridge(websocket: WebSocket):
         if not has_caller_consent(start):
             await websocket.close(code=4403)
             return
+        caller = str(start.get("from") or start.get("callfrom") or "")
+        destination = str(start.get("to") or start.get("callto") or "")
+        call_started = datetime.now(timezone.utc)
+        call_outcome = "completed"
         media_format = start.get("media_format") or start.get("media format") or {}
         sample_rate = int(media_format.get("sample_rate") or media_format.get("sample rate") or 0)
         encoding = str(media_format.get("encoding") or "").lower()
@@ -210,11 +220,6 @@ async def exotel_media_bridge(websocket: WebSocket):
             open_timeout=15,
             close_timeout=3,
         ) as live:
-            caller = str(start.get("from") or start.get("callfrom") or "")
-            destination = str(start.get("to") or start.get("callto") or "")
-            call_started = datetime.now(timezone.utc)
-            call_outcome = "completed"
-            transcript_parts: list[str] = []
             await live.send(json.dumps(live_session_start(model, voice, caller, destination)))
             ready = False
             for _ in range(12):
@@ -337,11 +342,26 @@ async def exotel_media_bridge(websocket: WebSocket):
                                   "payload": base64.b64encode(chunk).decode("ascii")},
                     }))
                     sequence += 1
-    except (WebSocketDisconnect, asyncio.TimeoutError, json.JSONDecodeError, ValueError):
-        return
+    except WebSocketDisconnect:
+        call_outcome = "caller_disconnected"
+    except (asyncio.TimeoutError, json.JSONDecodeError, ValueError):
+        call_outcome = "bridge_error"
     except Exception:
         # Do not leak provider keys, caller audio, or exception text to the phone.
+        call_outcome = "bridge_error"
         try:
             await websocket.close(code=1011)
         except Exception:
             pass
+    finally:
+        # Save a summary even if the bridge fails before a live session starts.
+        if call_started is not None and not summary_saved:
+            try:
+                from call_summary_store import store_call
+                call_ended = datetime.now(timezone.utc)
+                store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination,
+                           normalize_call_outcome(call_outcome), int((call_ended-call_started).total_seconds()),
+                           '\\n'.join(transcript_parts))
+                summary_saved = True
+            except Exception:
+                logger.warning("Call summary could not be persisted; error details intentionally omitted")
