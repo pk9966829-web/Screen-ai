@@ -81,3 +81,11 @@ def test_caller_consent_requires_exotel_flow_grant():
     assert call_receptionist.has_caller_consent({"custom parameters": {"consent": "GRANTED"}})
     assert not call_receptionist.has_caller_consent({"custom_parameters": {"consent": "denied"}})
     assert not call_receptionist.has_caller_consent({})
+
+
+def test_call_outcomes_are_normalized_to_stable_values():
+    assert call_receptionist.normalize_call_outcome("completed") == "completed"
+    assert call_receptionist.normalize_call_outcome("caller_disconnected") == "caller_disconnected"
+    assert call_receptionist.normalize_call_outcome("ai_ended") == "ai_ended"
+    assert call_receptionist.normalize_call_outcome("ai_error") == "ai_error"
+    assert call_receptionist.normalize_call_outcome("unexpected-provider-status") == "bridge_error"
