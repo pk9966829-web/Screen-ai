@@ -1,5 +1,6 @@
 package com.vosi.companion
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -132,10 +133,25 @@ class VosiAppActivity : ComponentActivity() {
             Regex("^172\\.(1[6-9]|2[0-9]|3[01])\\.").containsMatchIn(host)
         )
         if ((uri.scheme != "https" && !localHttp) || host.isBlank() ||
+            uri.userInfo != null || !uri.query.isNullOrBlank() || !uri.fragment.isNullOrBlank() ||
+            (!uri.path.isNullOrBlank() && uri.path != "/") ||
             requestId.length != 32 || qrToken.length < 32) {
             qrPairingStatus = "The QR code has an invalid or insecure backend address. Production pairing requires HTTPS."
             return
         }
+        AlertDialog.Builder(this)
+            .setTitle("Confirm CHERRY AI server")
+            .setMessage("This QR code will send a one-time pairing request to:\\n\\n$host\\n\\nContinue only if you recognize this server as your CHERRY AI backend.")
+            .setNegativeButton("Cancel") { _, _ ->
+                qrPairingStatus = "Connection cancelled. No pairing request was sent."
+            }
+            .setPositiveButton("Continue") { _, _ ->
+                runQrPairing(base, requestId, qrToken)
+            }
+            .show()
+    }
+
+    private fun runQrPairing(base: String, requestId: String, qrToken: String) {
         qrPairingStatus = "QR code scanned. Requesting approval from your account email…"
         Thread {
             try {
