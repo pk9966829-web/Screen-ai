@@ -60,3 +60,6 @@ jobs:
       - name: Build web application
         working-directory: screen ai
         run: npm run build
+      - name: Verify QR pairing client is included in production output
+        working-directory: screen ai
+        run: test -f dist/pairing.js
