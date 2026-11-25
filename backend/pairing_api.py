@@ -12,13 +12,10 @@ import html
 import json
 import os
 import secrets
-import smtplib
 import sqlite3
-import ssl
 import uuid
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +27,7 @@ from agent_runtime import AgentRuntimeError
 from device_registry import DeviceRegistry
 from identity_api import store
 from identity_store import IdentityError
+import email_delivery
 
 router = APIRouter(prefix="/identity/pairing", tags=["VOSI QR Account Pairing"])
 DB_PATH = Path(os.getenv("VOSI_AGENT_DB_PATH", str(Path(__file__).with_name("vosi_agent.db"))))
@@ -143,24 +141,7 @@ def _api_base(request: Request) -> str:
 
 
 def _send_approval_email(email: str, label: str, approval_url: str) -> None:
-    host = os.getenv("VOSI_SMTP_HOST", "").strip()
-    username = os.getenv("VOSI_SMTP_USERNAME", "").strip()
-    password = os.getenv("VOSI_SMTP_PASSWORD", "")
-    sender = os.getenv("VOSI_SMTP_FROM", username).strip()
-    try:
-        port = int(os.getenv("VOSI_SMTP_PORT", "587"))
-    except ValueError as exc:
-        raise HTTPException(status_code=503, detail="VOSI_SMTP_PORT must be a valid port number.") from exc
-    if not host or not username or not password or not sender:
-        raise HTTPException(
-            status_code=503,
-            detail="Email delivery is not configured. Set VOSI_SMTP_HOST, VOSI_SMTP_PORT, VOSI_SMTP_USERNAME, VOSI_SMTP_PASSWORD and VOSI_SMTP_FROM.",
-        )
-    message = EmailMessage()
-    message["Subject"] = "Approve a new CHERRY AI device connection"
-    message["From"] = sender
-    message["To"] = email
-    message.set_content(
+    body = (
         "A request was made to connect " + label + " to your CHERRY AI account.\n\n"
         "To approve or deny this request, open this secure page and choose an action: "
         + approval_url
@@ -168,13 +149,11 @@ def _send_approval_email(email: str, label: str, approval_url: str) -> None:
         "You must press Approve or Deny. This link expires in 5 minutes. "
         "If you did not start this connection, choose Deny or ignore this email."
     )
-    try:
-        with smtplib.SMTP(host, port, timeout=15) as server:
-            server.starttls(context=ssl.create_default_context())
-            server.login(username, password)
-            server.send_message(message)
-    except (OSError, smtplib.SMTPException) as exc:
-        raise HTTPException(status_code=502, detail="CHERRY AI could not send the device approval email. Check SMTP settings.") from exc
+    email_delivery.send_email(
+        "Approve a new CHERRY AI device connection",
+        email,
+        body,
+    )
 
 
 @router.post("/requests")
