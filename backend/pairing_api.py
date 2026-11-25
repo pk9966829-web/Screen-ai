@@ -423,10 +423,10 @@ def approval_page(request_id: str, token: str):
     # GET is intentionally read-only. The browser must send an explicit POST after a button click.
     with closing(_db()) as db:
         row = db.execute(
-            "SELECT state, approval_expires_at FROM identity_qr_pairings WHERE request_id = ?",
+            "SELECT state, approval_expires_at, approval_token_hash FROM identity_qr_pairings WHERE request_id = ?",
             (request_id,),
         ).fetchone()
-    if not row or row["state"] != "pending_approval" or not row["approval_expires_at"] or datetime.fromisoformat(row["approval_expires_at"]) <= _now():
+    if not row or row["state"] != "pending_approval" or not row["approval_token_hash"] or not hmac.compare_digest(row["approval_token_hash"], _digest(token)) or not row["approval_expires_at"] or datetime.fromisoformat(row["approval_expires_at"]) <= _now():
         return HTMLResponse(
             "<!doctype html><html><meta name='viewport' content='width=device-width'><title>CHERRY AI approval</title>"
             "<body style='font:16px system-ui;max-width:520px;margin:12vh auto;padding:24px;background:#10121c;color:white'>"
@@ -465,7 +465,12 @@ async function decide(decision) {{
 document.getElementById("approve").addEventListener("click",()=>decide("approve"));
 document.getElementById("deny").addEventListener("click",()=>decide("deny"));
 </script></body></html>"""
-    return HTMLResponse(page, headers={"Cache-Control": "no-store, max-age=0", "Referrer-Policy": "no-referrer"})
+    return HTMLResponse(page, headers={
+        "Cache-Control": "no-store, max-age=0",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+    })
 
 
 @router.post("/approval/decision")
