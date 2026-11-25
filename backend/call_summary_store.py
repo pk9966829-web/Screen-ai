@@ -49,16 +49,16 @@ def init_db():
 def extract_call_details(transcript: str) -> dict[str, str | int]:
     """Extract cautious structured fields from caller speech only; never infer a name."""
     text = " ".join((transcript or "").split())
-    caller_parts = re.findall(r"Caller:\\s*(.*?)(?=CHERRY AI:|Caller:|$)", text, flags=re.I)
+    caller_parts = re.findall(r"Caller:\s*(.*?)(?=CHERRY AI:|Caller:|$)", text, flags=re.I)
     caller_text = " ".join(caller_parts).strip()
     caller_low = caller_text.lower()
 
     name = ""
     name_patterns = (
-        r"\\bmy name is\\s+([A-Z][a-zA-Z'’-]{1,40}(?:\\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
-        r"\\bthis is\\s+([A-Z][a-zA-Z'’-]{1,40}(?:\\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
-        r"\\bI am\\s+([A-Z][a-zA-Z'’-]{1,40}(?:\\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
-        r"\\bI'm\\s+([A-Z][a-zA-Z'’-]{1,40}(?:\\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bmy name is\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bthis is\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bI am\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bI'm\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
     )
     for pattern in name_patterns:
         match = re.search(pattern, caller_text)
@@ -69,45 +69,45 @@ def extract_call_details(transcript: str) -> dict[str, str | int]:
                 break
 
     callback_requested = int(bool(re.search(
-        r"\\b(call(?:\\s+me)?\\s+back|callback|return(?:\\s+the)?\\s+call|reach\\s+me)\\b",
+        r"\b(call(?:\s+me)?\s+back|callback|return(?:\s+the)?\s+call|reach\s+me)\b",
         caller_low,
     )))
     time_text = ""
     if callback_requested:
         time_patterns = (
-            r"\\b(?:call(?:\\s+me)?\\s+back|callback|return(?:\\s+the)?\\s+call|reach\\s+me)\\s+(?:at|around|after|before|in)\\s+([^,.!?;]{1,50})",
-            r"\\b(?:call(?:\\s+me)?\\s+back|callback|return(?:\\s+the)?\\s+call|reach\\s+me)\\s+(tomorrow(?:\\s+(?:morning|afternoon|evening))?|today(?:\\s+(?:morning|afternoon|evening))?|(?:this|next)\\s+(?:morning|afternoon|evening|week|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))",
+            r"\b(?:call(?:\s+me)?\s+back|callback|return(?:\s+the)?\s+call|reach\s+me)\s+(?:at|around|after|before|in)\s+([^,.!?;]{1,50})",
+            r"\b(?:call(?:\s+me)?\s+back|callback|return(?:\s+the)?\s+call|reach\s+me)\s+(tomorrow(?:\s+(?:morning|afternoon|evening))?|today(?:\s+(?:morning|afternoon|evening))?|(?:this|next)\s+(?:morning|afternoon|evening|week|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))",
         )
         for pattern in time_patterns:
             match = re.search(pattern, caller_text, flags=re.I)
             if match:
-                time_text = re.sub(r"\\s+", " ", match.group(1)).strip()[:80]
+                time_text = re.sub(r"\s+", " ", match.group(1)).strip()[:80]
                 break
 
     urgency = "unknown" if not caller_text else "normal"
-    urgent_match = re.search(r"\\b(urgent|emergency|immediately|as soon as possible)\\b", caller_low)
+    urgent_match = re.search(r"\b(urgent|emergency|immediately|as soon as possible)\b", caller_low)
     if urgent_match:
         before = caller_low[max(0, urgent_match.start() - 18):urgent_match.start()]
-        if not re.search(r"\\b(not|no|isn't|is not)\\s*$", before):
+        if not re.search(r"\b(not|no|isn't|is not)\s*$", before):
             urgency = "urgent"
 
     purpose = ""
     purpose_patterns = (
-        r"\\b(?:I'm|I am)\\s+calling\\s+(?:about|regarding)\\s+([^.!?]{3,180})",
-        r"\\bcalling\\s+(?:about|regarding)\\s+([^.!?]{3,180})",
-        r"\\b(?:need help with|would like to discuss|the reason is|regarding)\\s+([^.!?]{3,180})",
+        r"\b(?:I'm|I am)\s+calling\s+(?:about|regarding)\s+([^.!?]{3,180})",
+        r"\bcalling\s+(?:about|regarding)\s+([^.!?]{3,180})",
+        r"\b(?:need help with|would like to discuss|the reason is|regarding)\s+([^.!?]{3,180})",
     )
     for pattern in purpose_patterns:
         match = re.search(pattern, caller_text, flags=re.I)
         if match:
-            purpose = re.sub(r"\\s+", " ", match.group(1)).strip(" ,;:")[:180]
+            purpose = re.sub(r"\s+", " ", match.group(1)).strip(" ,;:")[:180]
             break
     if not purpose:
         # Use a short caller sentence as a fallback, excluding greeting/name-only phrases.
-        sentences = re.split(r"(?<=[.!?])\\s+", caller_text)
+        sentences = re.split(r"(?<=[.!?])\s+", caller_text)
         for sentence in sentences:
             candidate = sentence.strip()
-            if candidate and not re.search(r"\\b(?:hello|hi|my name is|this is|call me back|callback)\\b", candidate, flags=re.I):
+            if candidate and not re.search(r"\b(?:hello|hi|my name is|this is|call me back|callback)\b", candidate, flags=re.I):
                 purpose = candidate[:180]
                 break
 
