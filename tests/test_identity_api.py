@@ -82,6 +82,26 @@ def login(client, email="person@example.test", password="correct horse battery")
     return {"Authorization": "Bearer " + response.json()["access_token"]}
 
 
+def test_registration_accepts_configured_gmail_oauth_without_smtp(client, monkeypatch, tmp_path):
+    client_file = tmp_path / "gmail-client.json"
+    token_file = tmp_path / "gmail-token.json"
+    client_file.write_text("{}", encoding="utf-8")
+    token_file.write_text(
+        '{"refresh_token":"test-refresh-token","scopes":["https://www.googleapis.com/auth/gmail.send"]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VOSI_EMAIL_PROVIDER", "gmail_oauth")
+    monkeypatch.setenv("VOSI_GMAIL_OAUTH_CLIENT_FILE", str(client_file))
+    monkeypatch.setenv("VOSI_GMAIL_OAUTH_TOKEN_FILE", str(token_file))
+    monkeypatch.setenv("VOSI_GMAIL_FROM", "vosi@example.test")
+    response = client.post(
+        "/identity/register",
+        json={"email": "gmail-person@example.test", "password": "correct horse battery"},
+    )
+    assert response.status_code == 200
+    assert FakeSMTP.sent[-1]["To"] == "gmail-person@example.test"
+
+
 def test_register_requires_email_verification_before_login(client):
     response = client.post("/identity/register", json={"email": "person@example.test", "password": "correct horse battery"})
     assert response.status_code == 200
