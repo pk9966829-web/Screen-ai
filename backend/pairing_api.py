@@ -312,7 +312,7 @@ def get_web_pairing_status(request_id: str, authorization: str | None = Header(d
         if row["state"] == "pending_scan" and datetime.fromisoformat(row["qr_expires_at"]) <= now:
             db.execute("UPDATE identity_qr_pairings SET state = 'expired' WHERE request_id = ?", (request_id,))
             return {"success": True, "state": "expired"}
-        if row["state"] == "pending_approval" and row["approval_expires_at"] and datetime.fromisoformat(row["approval_expires_at"]) <= now:
+        if row["state"] in {"pending_approval", "approved"} and row["approval_expires_at"] and datetime.fromisoformat(row["approval_expires_at"]) <= now:
             db.execute("UPDATE identity_qr_pairings SET state = 'expired' WHERE request_id = ?", (request_id,))
             return {"success": True, "state": "expired"}
         return {
@@ -335,7 +335,7 @@ def get_mobile_pairing_status(
         ).fetchone()
         if not row or not x_vosi_pairing_poll_token or not row["poll_token_hash"] or not hmac.compare_digest(row["poll_token_hash"], _digest(x_vosi_pairing_poll_token)):
             raise HTTPException(status_code=401, detail="Invalid pairing status credential.")
-        if row["state"] == "pending_approval" and row["approval_expires_at"] and datetime.fromisoformat(row["approval_expires_at"]) <= now:
+        if row["state"] in {"pending_approval", "approved"} and row["approval_expires_at"] and datetime.fromisoformat(row["approval_expires_at"]) <= now:
             db.execute("UPDATE identity_qr_pairings SET state = 'expired' WHERE request_id = ?", (request_id,))
             return {"success": True, "state": "expired"}
         return {"success": True, "state": row["state"]}
