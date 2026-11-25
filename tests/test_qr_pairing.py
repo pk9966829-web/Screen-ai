@@ -9,6 +9,7 @@ import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
@@ -24,7 +25,7 @@ class QrPairingTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "pairing-test.sqlite3")
-        self.db_path_patch = patch.object(pairing_api, "DB_PATH", self.db_path)
+        self.db_path_patch = patch.object(pairing_api, "DB_PATH", Path(self.db_path))
         self.db_path_patch.start()
         pairing_api.store = IdentityStore(self.db_path)
         pairing_api.devices = DeviceRegistry(self.db_path)
