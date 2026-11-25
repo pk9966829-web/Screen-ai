@@ -41,6 +41,7 @@ def test_call_history_is_scoped_to_owner(tmp_path, monkeypatch):
 def test_owner_can_list_detail_and_update_status(tmp_path, monkeypatch):
     monkeypatch.setattr(call_summary_store, "DB_PATH", tmp_path / "calls.db")
     monkeypatch.setenv("CHERRY_CALL_OWNER_USER_ID", "owner-1")
+    monkeypatch.delenv("CHERRY_CALL_SUMMARY_AI_ENABLED", raising=False)
     auth(monkeypatch)
     call_id = call_summary_store.store_call(
         "2026-01-01T10:00:00Z", "2026-01-01T10:02:00Z",
@@ -79,7 +80,7 @@ def test_ai_call_summary_enrichment_is_disabled_by_default(monkeypatch):
 
 
 def test_caller_transcript_excludes_ai_voice():
-    transcript = 'Caller: I need an urgent callback.\\nCHERRY AI: I will call back urgently.'
+    transcript = 'Caller: I need an urgent callback.\nCHERRY AI: I will call back urgently.'
     assert call_summary_store._caller_only(transcript) == 'I need an urgent callback.'
 
 
