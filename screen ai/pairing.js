@@ -195,6 +195,8 @@
                         currentRequestId = null;
                     } else if (result.state === "pending_approval") {
                         setStatus("Phone scanned. Check your email and explicitly approve the connection.");
+                    } else if (result.state === "approved" || result.state === "exchanging") {
+                        setStatus("Approved. CHERRY AI is finishing the secure phone connection…");
                     } else if (result.state === "denied" || result.state === "expired" || result.state === "email_failed") {
                         setStatus(result.state === "denied" ? "The connection was denied. No device was linked." : "This QR or approval request expired. Generate a new QR code.");
                         stopTimers();
