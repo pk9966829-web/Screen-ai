@@ -154,6 +154,23 @@ class QrPairingTests(unittest.TestCase):
             )
         self.assertEqual(pairing_api.store.list_devices(self.account["user_id"]), [])
 
+    def test_email_approval_expires_after_five_minutes(self):
+        created = self.create_qr()
+        scanned, approval_token = self.scan(created)
+        future = datetime.now(timezone.utc) + timedelta(seconds=301)
+        with patch.object(pairing_api, "_now", return_value=future):
+            with self.assertRaises(HTTPException) as error:
+                pairing_api.decide_pairing_approval(
+                    pairing_api.ApprovalDecisionRequest(
+                        request_id=created["request_id"],
+                        token=approval_token,
+                        decision="approve",
+                    )
+                )
+        self.assertEqual(error.exception.status_code, 410)
+        status = pairing_api.get_web_pairing_status(created["request_id"], self.authorization)
+        self.assertEqual(status["state"], "expired")
+
     def test_qr_is_single_use_and_expires_after_two_minutes(self):
         created = self.create_qr()
         self.scan(created)
