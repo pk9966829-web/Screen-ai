@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 import os
-import smtplib
-import ssl
-from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from device_registry import DeviceRegistry
 from identity_store import IdentityError, IdentityStore
+import email_delivery
 
 router = APIRouter(prefix="/identity", tags=["VOSI Personal Identity"])
 _db_path = Path(os.getenv("VOSI_AGENT_DB_PATH", str(Path(__file__).with_name("vosi_agent.db"))))
@@ -59,28 +57,12 @@ def _account(authorization: str | None) -> dict[str, Any]:
 
 
 def _send_verification_email(email: str, code: str) -> None:
-    host = os.getenv("VOSI_SMTP_HOST", "").strip()
-    username = os.getenv("VOSI_SMTP_USERNAME", "").strip()
-    password = os.getenv("VOSI_SMTP_PASSWORD", "")
-    sender = os.getenv("VOSI_SMTP_FROM", username).strip()
-    port = int(os.getenv("VOSI_SMTP_PORT", "587"))
-    if not host or not username or not password or not sender:
-        raise HTTPException(status_code=503, detail="Email delivery is not configured. Set VOSI_SMTP_HOST, VOSI_SMTP_PORT, VOSI_SMTP_USERNAME, VOSI_SMTP_PASSWORD and VOSI_SMTP_FROM.")
-    message = EmailMessage()
-    message["Subject"] = "Verify your VOSI account"
-    message["From"] = sender
-    message["To"] = email
-    message.set_content(
+    email_delivery.send_email(
+        "Verify your VOSI account",
+        email,
         "Your VOSI verification code is: " + code +
-        "\n\nThis code expires in 10 minutes. If you did not create a VOSI account, ignore this email."
+        "\n\nThis code expires in 10 minutes. If you did not create a VOSI account, ignore this email.",
     )
-    try:
-        with smtplib.SMTP(host, port, timeout=15) as server:
-            server.starttls(context=ssl.create_default_context())
-            server.login(username, password)
-            server.send_message(message)
-    except (OSError, smtplib.SMTPException) as exc:
-        raise HTTPException(status_code=502, detail="VOSI could not send the verification email. Check the SMTP configuration.") from exc
 
 
 def _raise_identity(exc: IdentityError):
@@ -91,11 +73,8 @@ def _raise_identity(exc: IdentityError):
 def register_account(request: RegisterRequest):
     try:
         challenge_secret = _challenge_secret()
-        if not all(os.getenv(key, "").strip() for key in (
-            "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD",
-            "VOSI_SMTP_FROM",
-        )):
-            raise HTTPException(status_code=503, detail="VOSI email delivery is not configured.")
+        if not email_delivery.is_email_delivery_configured():
+            raise HTTPException(status_code=503, detail="VOSI email delivery is not configured. Configure the selected email provider and authorize it if required.")
         user, code = store.create_account(request.email, request.password, challenge_secret)
         try:
             _send_verification_email(user["email"], code)
