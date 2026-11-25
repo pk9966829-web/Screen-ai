@@ -45,7 +45,7 @@ def test_owner_can_list_detail_and_update_status(tmp_path, monkeypatch):
     call_id = call_summary_store.store_call(
         "2026-01-01T10:00:00Z", "2026-01-01T10:02:00Z",
         "+911234567890", "+919876543210", "completed", 120,
-        "Caller: I need an urgent callback. CHERRY AI: I will take a message."
+        "Caller: My name is Ramesh. I'm calling about the invoice. Please call me back tomorrow morning. CHERRY AI: I will take a message."
     )
     c = client()
     headers = {"Authorization": "Bearer valid-session"}
@@ -53,8 +53,12 @@ def test_owner_can_list_detail_and_update_status(tmp_path, monkeypatch):
     assert listed.status_code == 200
     item = listed.json()["calls"][0]
     assert item["id"] == call_id
-    assert item["urgency"] == "urgent"
+    assert item["caller_name"] == "Ramesh"
+    assert item["purpose"] == "the invoice"
+    assert item["urgency"] == "normal"
     assert item["callback_requested"] == 1
+    assert item["callback_time"] == "tomorrow morning"
+    assert "Ramesh" in item["summary"]
     detail = c.get(f"/call-receptionist/calls/{call_id}", headers=headers)
     assert detail.status_code == 200
     assert detail.json()["call"]["transcript"].startswith("Caller:")
@@ -68,3 +72,13 @@ def test_unconfigured_owner_fails_closed(tmp_path, monkeypatch):
     monkeypatch.delenv("CHERRY_CALL_OWNER_USER_ID", raising=False)
     response = client().get("/call-receptionist/calls", headers={"Authorization": "Bearer valid-session"})
     assert response.status_code == 503
+
+
+def test_extraction_ignores_ai_speech_and_negated_urgency():
+    extracted = call_summary_store.extract_call_details(
+        "Caller: I'm not urgent, but please call me back at 6 PM. CHERRY AI: This is Ramesh, call me."
+    )
+    assert extracted["caller_name"] == ""
+    assert extracted["urgency"] == "normal"
+    assert extracted["callback_requested"] == 1
+    assert extracted["callback_time"] == "6 PM"
