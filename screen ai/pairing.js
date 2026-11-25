@@ -157,8 +157,11 @@
         if (qrArea) qrArea.classList.add("hidden");
         try {
             const apiUrl = new URL(API_BASE);
-            if (apiUrl.hostname === "localhost" || apiUrl.hostname === "127.0.0.1") {
-                throw new Error("For Android scanning, set the API URL to your computer's LAN IP (for example http://192.168.1.10:8001) or your public HTTPS API URL. 127.0.0.1 only points to this computer.");
+            const host = apiUrl.hostname;
+            const privateLan = host.startsWith("192.168.") || host.startsWith("10.") ||
+                /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host);
+            if (apiUrl.protocol !== "https:" && !privateLan) {
+                throw new Error("Use a public HTTPS API URL, or your computer's private LAN IP for local Wi-Fi testing. Do not use 127.0.0.1 or public HTTP.");
             }
             const data = await api("/identity/pairing/requests", "POST", { label: "Android phone" }, true);
             if (!data.request_id || !data.qr_payload) throw new Error("The backend returned an incomplete QR pairing request.");
