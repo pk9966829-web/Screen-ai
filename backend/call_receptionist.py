@@ -145,13 +145,14 @@ def live_session_start(model: str, voice: str, caller: str, destination: str) ->
 @router.get("/status")
 def receptionist_status():
     username, password, api_key, model, voice = _configuration()
+    from fish_audio_tts import fish_tts_configured
     return {
         "success": True,
         "enabled": _enabled(),
         "configured": _configured(),
         "telephony_provider": "exotel",
         "voice_provider": "gpt-live",
-        "tts_provider": "fish-audio" if os.getenv("CHERRY_TTS_PROVIDER", "gpt-live").strip().lower() == "fish" else "gpt-live",
+        "tts_provider": "fish-audio" if fish_tts_configured() else "gpt-live",
         "call_summary_ai_enabled": os.getenv("CHERRY_CALL_SUMMARY_AI_ENABLED", "").strip().lower() in {"1", "true", "yes"},
         "call_summary_ai_provider_routing": "VOSI_PROVIDER_CHAIN",
         "missing": [
