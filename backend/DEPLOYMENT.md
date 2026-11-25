@@ -56,3 +56,17 @@ Keep one API replica. SQLite is the supported store in this deployment profile; 
 - Physical Android, Windows, Chrome and production-domain tests are still required.
 - This configuration does not deploy itself to a cloud provider; a VM, DNS name, secrets and SMTP account must be supplied by the operator.
 - A cloud worker adapter is a separately deployed process and is not included in this Compose stack. It must use a real browser automation adapter, validate receipts and store its account session securely. The API lease endpoint alone does not perform web actions.
+
+## Secure QR account pairing
+
+The web-to-Android QR flow is registered at `/identity/pairing` and requires an already verified CHERRY AI account on the web side.
+
+- Set `VOSI_PUBLIC_API_URL` to the public API origin (for example, `https://api.example.com`). It must be reachable from the Android phone and from the browser used to open the approval email.
+- Keep the existing SMTP variables configured. The API sends a device-approval email after the QR is scanned.
+- The frontend must be served from an origin listed in `VOSI_CORS_ORIGINS`. Configure its API URL in the web pairing panel; production deployments must use HTTPS.
+- The QR credential expires after 2 minutes and can be scanned once. The email approval expires after 5 minutes. Opening the approval page is read-only; the owner must press **Approve device** or **Deny**.
+- The Android app stores the returned device credential encrypted with Android Keystore. Device bearer tokens, QR tokens, email approval tokens and polling tokens are not stored in plaintext by the API.
+
+For local LAN testing, use the computer's LAN address (not `127.0.0.1`) as the web API URL so the Android phone can reach the backend. Set `VOSI_PUBLIC_API_URL` to that same LAN origin for the email approval link. Allow the backend port through the local firewall only on the trusted network. Do not use plain HTTP on public networks.
+
+The end-to-end test must use a real verified account, reachable SMTP inbox, a browser session signed into that account, and a physical Android device with camera permission. Verify both approval and denial paths, QR expiry, duplicate scans, and that the device appears under `GET /identity/devices` only after approval.
