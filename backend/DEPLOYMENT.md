@@ -16,7 +16,7 @@ This is the first production deployment profile for a **single API instance**. I
 
 1. Provision a Linux VM with Docker Engine and the Docker Compose plugin.
 2. Point the DNS A/AAAA record for `VOSI_DOMAIN` to the VM. Allow inbound TCP ports 80 and 443 (and UDP 443 for HTTP/3).
-3. Copy `.env.production.example` to `.env` in this directory and replace every placeholder. Use a long random `VOSI_AGENT_TOKEN`, a separate random `VOSI_IDENTITY_CHALLENGE_SECRET` of at least 32 characters, a real AI provider key, and SMTP credentials.
+3. Copy `.env.production.example` to `.env` in this directory and replace every placeholder. Use a long random `VOSI_AGENT_TOKEN`, a separate random `VOSI_IDENTITY_CHALLENGE_SECRET` of at least 32 characters, a real AI provider key, and a supported transactional email provider (SMTP is recommended for hosted production).
 4. Set `VOSI_DOMAIN` and `VOSI_CORS_ORIGINS` to your real API domain and exact frontend origins. Never use `*` in production.
 5. Ensure the desktop and mobile clients send `X-VOSI-Account-Token` when calling legacy `/ask`, `/screen`, `/history`, `/workflow`, `/state`, `/task`, `/awareness`, and companion-memory routes. Do not launch hosted multi-user traffic until this client integration has been tested.
 6. Start the stack:
@@ -57,12 +57,24 @@ Keep one API replica. SQLite is the supported store in this deployment profile; 
 - This configuration does not deploy itself to a cloud provider; a VM, DNS name, secrets and SMTP account must be supplied by the operator.
 - A cloud worker adapter is a separately deployed process and is not included in this Compose stack. It must use a real browser automation adapter, validate receipts and store its account session securely. The API lease endpoint alone does not perform web actions.
 
+## Local Gmail OAuth for transactional email
+
+For local development, the backend can send account-verification and QR device-approval emails through Gmail API without a Gmail App Password.
+
+1. In Google Cloud, enable the Gmail API and create an OAuth client with type **Desktop app**. Add your Google account as a test user if the OAuth app is in Testing mode.
+2. Put the downloaded client JSON in `backend/gmail_oauth_credentials.json`, or set `VOSI_GMAIL_OAUTH_CLIENT_FILE` to its local path. Never commit this file.
+3. In `backend/.env`, set `VOSI_EMAIL_PROVIDER=gmail_oauth`, `VOSI_GMAIL_FROM` to the authorized Gmail sender address, and optionally set the client/token file paths.
+4. From the backend directory, run `python authorize_gmail_email.py`. A browser opens for Google consent. The backend saves a send-only refresh token to `gmail_oauth_token.json`; keep it private and never commit it.
+5. Restart the backend and check `GET /health/ready`. Both account verification and QR approval now use the same configured provider.
+
+The transactional mailer requests only `https://www.googleapis.com/auth/gmail.send`. The existing interactive Gmail connector remains separate and keeps its own permissions and token. Google OAuth apps left in External/Testing mode can have refresh tokens expire after seven days; reauthorize when required or complete Google's production publishing/verification requirements before relying on this for long-running service. For hosted production, prefer a dedicated SMTP or transactional-email provider unless the Gmail OAuth client and refresh token are provisioned and managed securely on the server.
+
 ## Secure QR account pairing
 
 The web-to-Android QR flow is registered at `/identity/pairing` and requires an already verified CHERRY AI account on the web side.
 
 - Set `VOSI_PUBLIC_API_URL` to the public API origin (for example, `https://api.example.com`). It must be reachable from the Android phone and from the browser used to open the approval email.
-- Keep the existing SMTP variables configured. The API sends a device-approval email after the QR is scanned.
+- Configure the selected transactional email provider. The same provider sends account-verification and device-approval emails. SMTP remains supported; local Gmail OAuth uses the send-only Gmail scope.
 - The frontend must be served from an origin listed in `VOSI_CORS_ORIGINS`. Configure its API URL in the web pairing panel; production deployments must use HTTPS.
 - The QR credential expires after 2 minutes and can be scanned once. The email approval expires after 5 minutes. Opening the approval page is read-only; the owner must press **Approve device** or **Deny**.
 - The Android app stores the returned device credential encrypted with Android Keystore. Device bearer tokens, QR tokens, email approval tokens and polling tokens are not stored in plaintext by the API.
