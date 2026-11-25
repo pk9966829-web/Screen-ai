@@ -76,10 +76,10 @@ def extract_call_details(transcript: str) -> dict[str, str | int]:
     if callback_match:
         before_callback = caller_low[max(0, callback_match.start() - 40):callback_match.start()]
         # Avoid treating explicit refusals as callback requests.
-        negated_callback = re.search(
-            r"\b(?:don't|do not|never|no|not|without)\s+(?:need\s+(?:a\s+)?)?(?:want\s+(?:a\s+)?)?(?:please\s+)?$",
+        negated_callback = re.search(r"\b(?:don't|do not|never|no|not|without)\s*$", before_callback) or re.search(
+            r"\b(?:don't|do not|doesn't|does not)\s+(?:want|need)\s+(?:a\s+)?$",
             before_callback,
-        ) or re.search(r"\b(?:don't|do not|doesn't|does not)\s+(?:want|need)\s+(?:you\s+to\s+)?$", before_callback)
+        )
         callback_requested = int(not bool(negated_callback))
     time_text = ""
     if callback_requested:
