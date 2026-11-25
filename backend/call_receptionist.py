@@ -354,7 +354,10 @@ async def exotel_media_bridge(websocket: WebSocket):
                         if spoken_text and not fish_tts_handled:
                             fish_tts_handled = True
                             try:
-                                fish_pcm = await asyncio.to_thread(synthesize_pcm, spoken_text)
+                                caller_context = "\n".join(
+                                    part[7:] for part in transcript_parts if part.startswith("Caller:")
+                                )[-1500:]
+                                fish_pcm = await asyncio.to_thread(synthesize_pcm, spoken_text, caller_context)
                                 if fish_pcm:
                                     await send_pcm_audio(fish_pcm)
                                     output_buffer.clear()
