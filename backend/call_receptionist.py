@@ -228,15 +228,18 @@ async def exotel_media_bridge(websocket: WebSocket):
                     ready = True
                     break
                 if event.get("type") == "error":
+                    call_outcome = "ai_error"
                     await websocket.close(code=1011)
                     return
             if not ready:
+                call_outcome = "bridge_error"
                 await websocket.close(code=1011)
                 return
 
             if not stream_sid:
                 stream_sid = str(start.get("stream_sid") or start.get("stream sid") or "")
             if not stream_sid:
+                call_outcome = "bridge_error"
                 await websocket.close(code=4400)
                 return
 
