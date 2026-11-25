@@ -70,9 +70,15 @@
         try {
             const parsed = new URL(value);
             if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error();
+            const previous = API_BASE;
             API_BASE = value;
             localStorage.setItem("cherry_api_base", value);
-            setStatus("Backend URL saved for this browser.");
+            if (previous !== value) {
+                sessionStorage.removeItem("cherry_pairing_session");
+                sessionStorage.removeItem("cherry_pairing_email");
+                renderAccount();
+            }
+            setStatus("Backend URL saved. Sign in to the selected backend.");
         } catch (_) {
             setStatus("Enter a valid backend URL beginning with http:// or https://.");
         }
@@ -150,6 +156,10 @@
         if (qrNode) qrNode.innerHTML = "";
         if (qrArea) qrArea.classList.add("hidden");
         try {
+            const apiUrl = new URL(API_BASE);
+            if (apiUrl.hostname === "localhost" || apiUrl.hostname === "127.0.0.1") {
+                throw new Error("For Android scanning, set the API URL to your computer's LAN IP (for example http://192.168.1.10:8001) or your public HTTPS API URL. 127.0.0.1 only points to this computer.");
+            }
             const data = await api("/identity/pairing/requests", "POST", { label: "Android phone" }, true);
             if (!data.request_id || !data.qr_payload) throw new Error("The backend returned an incomplete QR pairing request.");
             if (typeof QRCode === "undefined") throw new Error("QR display library did not load. Refresh this page and try again.");
