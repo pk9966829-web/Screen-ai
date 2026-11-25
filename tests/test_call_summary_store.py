@@ -82,3 +82,20 @@ def test_extraction_ignores_ai_speech_and_negated_urgency():
     assert extracted["urgency"] == "normal"
     assert extracted["callback_requested"] == 1
     assert extracted["callback_time"] == "6 PM"
+
+
+def test_callback_extraction_respects_explicit_refusals():
+    refusals = (
+        "Caller: Please don't call me back.",
+        "Caller: No callback needed.",
+        "Caller: I don't want a callback.",
+        "Caller: I do not need a callback.",
+    )
+    for transcript in refusals:
+        assert call_summary_store.extract_call_details(transcript)["callback_requested"] == 0
+
+    accepted = call_summary_store.extract_call_details(
+        "Caller: Please call me back tomorrow morning."
+    )
+    assert accepted["callback_requested"] == 1
+    assert accepted["callback_time"] == "tomorrow morning"
