@@ -55,10 +55,10 @@ def extract_call_details(transcript: str) -> dict[str, str | int]:
 
     name = ""
     name_patterns = (
-        r"\bmy name is\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
-        r"\bthis is\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
-        r"\bI am\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
-        r"\bI'm\s+([A-Z][a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bmy name is\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bthis is\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bI am\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
+        r"\bI'm\s+((?-i:[A-Z])[a-zA-Z'’-]{1,40}(?:\s+[A-Z][a-zA-Z'’-]{1,40}){0,2})",
     )
     for pattern in name_patterns:
         match = re.search(pattern, caller_text, flags=re.I)
