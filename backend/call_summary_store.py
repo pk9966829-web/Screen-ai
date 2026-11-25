@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 import json
+import re
 import sqlite3
 from pathlib import Path
 from fastapi import APIRouter, Header, HTTPException
@@ -12,13 +13,8 @@ router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptioni
 
 # Optional provider-chain enrichment, disabled by default for call privacy.
 def _caller_only(text):
-    caller_parts = []
-    for line in (text or '').splitlines():
-        if line.strip().lower().startswith('caller:'):
-            part = line.split(':', 1)[1].split('CHERRY AI:', 1)[0].strip()
-            if part:
-                caller_parts.append(part)
-    return ' '.join(caller_parts)[:6000]
+    matches = re.findall(r'(?:^|\\n)Caller:\\s*(.*?)(?=\\nCHERRY AI:|\\nCaller:|$)', text or '', flags=re.I)
+    return ' '.join(part.strip() for part in matches if part.strip())[:6000]
 
 def _ai_summary(caller_text):
     if os.getenv('CHERRY_CALL_SUMMARY_AI_ENABLED','').strip().lower() not in {'1','true','yes'} or not caller_text: return None
@@ -93,7 +89,9 @@ def store_call(started_at, ended_at, caller, destination, outcome, duration, tra
         summary = ai.get("summary") or summary
         caller_name = ai.get("caller_name", "")
         purpose = ai.get("purpose") or purpose
-        urgency = ai.get("urgency", urgency)
+        ai_urgency = ai.get("urgency")
+        if ai_urgency in {"urgent", "normal"}:
+            urgency = ai_urgency
         callback_value = ai.get("callback_requested")
         if isinstance(callback_value, bool):
             callback = int(callback_value)
