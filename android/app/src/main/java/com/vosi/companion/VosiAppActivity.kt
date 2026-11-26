@@ -387,6 +387,21 @@ private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: ()
                                 }
                             }
                         },
+                        onGoogleSignIn = {
+                            if (accountBusy) return@ProfileScreen
+                            accountBusy = true
+                            accountStatus = "Opening Google sign-in…"
+                            signInWithGoogle(backend) { email, error ->
+                                accountBusy = false
+                                if (!email.isNullOrBlank()) {
+                                    accountEmail = email
+                                    loggedIn = true
+                                    accountStatus = "Signed in with Google."
+                                } else {
+                                    accountStatus = error ?: "Google sign-in failed."
+                                }
+                            }
+                        },
                         onLogout = {
                             val token = AccountSessionStore.load()
                             if (token != null) thread {
@@ -1060,7 +1075,8 @@ private fun ProfileScreen(
     code: String, backend: String, showServer: Boolean,
     onEmail: (String) -> Unit, onPassword: (String) -> Unit, onCode: (String) -> Unit,
     onBackend: (String) -> Unit, onMode: (String) -> Unit, onToggleServer: () -> Unit,
-    onProfileSetup: () -> Unit, onTestBackend: () -> Unit, onLogout: () -> Unit, onSubmit: () -> Unit
+    onProfileSetup: () -> Unit, onTestBackend: () -> Unit, onLogout: () -> Unit, onSubmit: () -> Unit,
+    onGoogleSignIn: () -> Unit
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(22.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item { PageHeader("Your CHERRY AI identity", "One account for your connected companion.") }
@@ -1090,6 +1106,12 @@ private fun ProfileScreen(
                         }
                         Button(onClick = onSubmit, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(15.dp)) {
                             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(mode)
+                        }
+                        if (mode != "Verify email") {
+                            Text("or", color = Muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            OutlinedButton(onClick = onGoogleSignIn, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(15.dp)) {
+                                Text("Continue with Google")
+                            }
                         }
                     } else {
                         Text("Your account session is stored encrypted on this phone.", color = Muted, fontSize = 12.sp)
