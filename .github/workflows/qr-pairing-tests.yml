@@ -33,6 +33,10 @@ jobs:
         run: python -m unittest discover -s tests -p "test_qr_pairing.py" -v
       - name: Run transactional email delivery tests
         run: python -m unittest discover -s tests -p "test_email_delivery.py" -v
+      - name: Run Fish Audio and emotion cue tests
+        env:
+          PYTHONPATH: backend
+        run: pytest -q tests/test_fish_audio_tts.py tests/test_voice_expression.py
 
   android-debug-build:
     runs-on: ubuntu-latest
