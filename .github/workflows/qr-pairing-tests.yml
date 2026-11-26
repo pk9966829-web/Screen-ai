@@ -68,6 +68,7 @@ jobs:
       - name: Build web application
         working-directory: screen ai
         run: npm run build
-      - name: Verify QR pairing client is included in production output
+      - name: Verify QR pairing and offline knowledge assets in production output
         working-directory: screen ai
-        run: test -f dist/pairing.js
+        run: |
+          node -e "const fs=require('fs'); const web=JSON.parse(fs.readFileSync('dist/cherry-ai-knowledge.json','utf8')); const mobile=JSON.parse(fs.readFileSync('../android/app/src/main/assets/cherry-ai-knowledge.json','utf8')); if(web.facts.length!==491||web.greetings.length!==17) throw new Error('Unexpected offline knowledge counts'); if(JSON.stringify(web)!==JSON.stringify(mobile)) throw new Error('Web and Android offline knowledge assets differ'); if(!fs.existsSync('dist/pairing.js')) throw new Error('QR pairing client missing from production build'); console.log('Verified 491 facts, 17 greeting groups, matching web/mobile assets, and QR pairing client');"
