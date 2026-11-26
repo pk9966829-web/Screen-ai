@@ -33,6 +33,10 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class GoogleLoginRequest(BaseModel):
+    credential: str = Field(min_length=20, max_length=8192)
+
+
 class EncryptedProfileRequest(BaseModel):
     expected_revision: int = Field(ge=0)
     encrypted_profile: dict[str, Any]
@@ -54,6 +58,25 @@ def _account(authorization: str | None) -> dict[str, Any]:
         return store.authenticate(_session_token(authorization))
     except IdentityError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+def _verify_google_credential(credential: str) -> dict[str, Any]:
+    client_id = os.getenv("VOSI_GOOGLE_CLIENT_ID", "").strip()
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured on this CHERRY AI backend.")
+    try:
+        from google.auth.transport.requests import Request
+        from google.oauth2 import id_token
+        payload = id_token.verify_o2_token(credential, Request(), audience=client_id)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Google sign-in token is invalid or expired. Try signing in again.") from exc
+    if payload.get("iss") not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise HTTPException(status_code=401, detail="Google sign-in issuer is invalid.")
+    if payload.get("email_verified") not in (True, "true"):
+        raise HTTPException(status_code=403, detail="Google must verify the email address before sign-in.")
+    if not payload.get("email") or not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Google sign-in did not return the required account details.")
+    return payload
 
 
 def _send_verification_email(email: str, code: str) -> None:
@@ -95,10 +118,26 @@ def verify_account_email(request: VerifyEmailRequest):
         _raise_identity(exc)
 
 
+@router.get("/config")
+def identity_config():
+    # The Google OAuth client ID is public by design; no client secret is returned.
+    return {"google_client_id": os.getenv("VOSI_GOOGLE_CLIENT_ID", "").strip()}
+
+
 @router.post("/login")
 def login_account(request: LoginRequest):
     try:
         account, token = store.login(request.email, request.password)
+        return {"success": True, "account": account, "access_token": token, "token_type": "bearer"}
+    except IdentityError as exc:
+        _raise_identity(exc)
+
+
+@router.post("/google-login")
+def login_google(request: GoogleLoginRequest):
+    payload = _verify_google_credential(request.credential)
+    try:
+        account, token = store.login_google(payload["email"], payload["sub"])
         return {"success": True, "account": account, "access_token": token, "token_type": "bearer"}
     except IdentityError as exc:
         _raise_identity(exc)
