@@ -92,6 +92,59 @@
         if (passwordNode) passwordNode.autocomplete = mode === "Create account" ? "new-password" : "current-password";
     });
 
+    async function initializeGoogleSignIn() {
+        const googleArea = document.getElementById("pair-google-signin");
+        if (!googleArea) return;
+        try {
+            const config = await api("/identity/config", "GET", null, false);
+            const clientId = String(config.google_client_id || "").trim();
+            if (!clientId) {
+                googleArea.textContent = "";
+                if (authStatus) authStatus.textContent = "Google sign-in is not configured on this backend yet. Email/password sign-in remains available.";
+                return;
+            }
+            for (let attempt = 0; attempt < 100 && !window.google?.accounts?.id; attempt += 1) {
+                await new Promise(resolve => window.setTimeout(resolve, 100));
+            }
+            if (!window.google?.accounts?.id) {
+                if (authStatus) authStatus.textContent = "Google sign-in library could not load. Check your internet connection and refresh.";
+                return;
+            }
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: async (response) => {
+                    if (!response?.credential) {
+                        if (authStatus) authStatus.textContent = "Google did not return a sign-in credential. Try again.";
+                        return;
+                    }
+                    if (authStatus) authStatus.textContent = "Verifying your Google account securely…";
+                    try {
+                        const data = await api("/identity/google-login", "POST", { credential: response.credential }, false);
+                        if (!data.access_token) throw new Error("The backend did not return an account session.");
+                        sessionStorage.setItem("cherry_pairing_session", data.access_token);
+                        sessionStorage.setItem("cherry_pairing_email", data.account?.email || "");
+                        renderAccount();
+                        if (authStatus) authStatus.textContent = "Signed in with Google.";
+                    } catch (error) {
+                        if (authStatus) authStatus.textContent = String(error.message || error);
+                    }
+                },
+                auto_select: false,
+                cancel_on_tap_outside: true
+            });
+            window.google.accounts.id.renderButton(googleArea, {
+                theme: "outline",
+                size: "large",
+                shape: "rectangular",
+                text: "signin_with",
+                width: 300
+            });
+        } catch (error) {
+            if (authStatus) authStatus.textContent = "Google sign-in configuration could not be loaded: " + String(error.message || error);
+        }
+    }
+    void initializeGoogleSignIn();
+
     authButton?.addEventListener("click", async () => {
         const mode = modeNode?.value || "Sign in";
         const email = (emailNode?.value || "").trim();
