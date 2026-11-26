@@ -357,8 +357,9 @@ async function findOfflineAnswer(question: string): Promise<string | null> {
     }
   }
 
-  const queryTokens = new Set(query.split(" ").filter((token) => token.length > 2));
-  if (queryTokens.size < 3) return null;
+  const stopwords = new Set(["what", "which", "who", "where", "when", "why", "how", "is", "are", "was", "were", "the", "a", "an", "of", "in", "on", "for", "to", "do", "does", "did", "tell", "me", "please", "can", "could", "would", "should", "about", "your", "my", "and", "or", "at", "with", "from"]);
+  const queryTokens = new Set(query.split(" ").filter((token) => token.length > 2 && !stopwords.has(token)));
+  if (queryTokens.size < 2) return null;
   let best: { answer: string; score: number } | null = null;
   for (const fact of facts) {
     const key = normalizeOfflineText(fact.q);
@@ -367,7 +368,7 @@ async function findOfflineAnswer(question: string): Promise<string | null> {
       if (score >= 0.82 && (!best || score > best.score)) best = { answer: fact.a, score };
       continue;
     }
-    const tokens = key.split(" ").filter((token) => token.length > 2);
+    const tokens = key.split(" ").filter((token) => token.length > 2 && !stopwords.has(token));
     const overlap = tokens.filter((token) => queryTokens.has(token)).length;
     const score = overlap / Math.max(1, tokens.length, queryTokens.size);
     if (score >= 0.82 && (!best || score > best.score)) best = { answer: fact.a, score };
