@@ -79,7 +79,7 @@ def test_windows_task_scheduler_alarm_command_is_encoded_and_shell_safe(monkeypa
     ok, detail = __import__("local_command")._schedule_windows_alarm(target, "Timer")
     assert ok and "Task Scheduler" in detail
     args, kwargs = captured[0]
-    assert kwargs["shell"] is not True
+    assert kwargs.get("shell", False) is False
     task_action = args[args.index("/TR") + 1]
     encoded = task_action.split("-EncodedCommand ", 1)[1]
     script = base64.b64decode(encoded).decode("utf-16le")
