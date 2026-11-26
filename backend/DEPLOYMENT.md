@@ -82,3 +82,16 @@ The web-to-Android QR flow is registered at `/identity/pairing` and requires an 
 For local LAN testing, start the backend with `--host 0.0.0.0`, use the computer's LAN address (not `127.0.0.1`) as the web API URL so the Android phone can reach the backend, and allow the backend port through the firewall only on the trusted network. If `VOSI_PUBLIC_API_URL` is unset, the approval link uses the API origin from the QR request. If you set it, use that same LAN origin. Do not use plain HTTP on public networks.
 
 The end-to-end test must use a real verified account, reachable SMTP inbox, a browser session signed into that account, and a physical Android device with camera permission. Verify both approval and denial paths, QR expiry, duplicate scans, and that the device appears under `GET /identity/devices` only after approval.
+
+
+## Google sign-in for CHERRY AI web accounts
+
+The web mobile-pairing panel supports both email/password accounts and Google sign-in. Google sign-in uses Google's verified ID token and does not require a Google client secret in the web app.
+
+1. In Google Cloud Console, create an OAuth client with type **Web application** (separate from the Gmail send-only Desktop OAuth client).
+2. Add authorized JavaScript origins for the exact frontend origins used during testing, such as `http://localhost:5173`, `http://localhost:1420`, and your deployed frontend origin. Add the exact LAN origin if signing in from a LAN-hosted browser; Google does not accept wildcard origins.
+3. Copy the Web client ID (not the client secret) to `VOSI_GOOGLE_CLIENT_ID` in `backend/.env`.
+4. Restart the backend. The web UI fetches the public client ID from `GET /identity/config` and renders Google's sign-in button when configured.
+5. Google sign-in verifies the ID token's signature, audience, issuer, and verified-email claim server-side. It creates or securely links a verified account, then issues the same CHERRY AI account session used by email/password login.
+
+Do not put a Google client secret in frontend code or Git. The Gmail send-only OAuth client remains separate and is only for transactional email delivery.
