@@ -1141,7 +1141,7 @@ private fun ProfileScreen(
                 Button(onClick = onTestBackend, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
                     Text(if (busy) "Checking backend…" else "Test backend connection")
                 }
-                Text("For USB development, keep http://127.0.0.1:8001 and run adb reverse tcp:8001 tcp:8001. For Wi-Fi, enter your computer LAN IP and run the backend with --host 0.0.0.0. Account registration also requires SMTP and identity secrets.", color = Muted, fontSize = 11.sp)
+                Text("For USB development, keep http://127.0.0.1:8001 and run adb reverse tcp:8001 tcp:8001. For Wi-Fi, enter your computer LAN IP and run the backend with --host 0.0.0.0. Email verification needs a configured transactional email provider; Google sign-in needs VOSI_GOOGLE_CLIENT_ID.", color = Muted, fontSize = 11.sp)
             }
         }
         item { Text("CHERRY AI never asks for merchant passwords, OTPs, UPI PINs or card security codes.", color = Muted, fontSize = 11.sp) }
