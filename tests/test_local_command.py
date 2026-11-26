@@ -85,3 +85,28 @@ def test_windows_task_scheduler_alarm_command_is_encoded_and_shell_safe(monkeypa
     script = base64.b64decode(encoded).decode("utf-16le")
     assert "Start-Sleep" in script and "CHERRY AI" in script
     assert args[args.index("/SD") + 1] == target.replace(second=0, microsecond=0).strftime("%x")
+
+def test_mute_and_unmute_restore_previous_volume(monkeypatch):
+    import local_command
+    current = {"value": 42000}
+    changed = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr(local_command, "_get_windows_volume", lambda: current["value"])
+    monkeypatch.setattr(local_command, "_set_windows_volume_raw", lambda value: changed.append(value) or current.update(value=value))
+    monkeypatch.setattr(local_command, "_last_nonzero_volume", None)
+    mute = route_local_command("mute")
+    assert mute["success"] and changed == [0]
+    current["value"] = 0
+    unmute = route_local_command("unmute")
+    assert unmute["success"] and changed[-1] == 42000
+
+
+def test_unmute_does_not_change_already_unmuted_volume(monkeypatch):
+    import local_command
+    changed = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr(local_command, "_get_windows_volume", lambda: 32000)
+    monkeypatch.setattr(local_command, "_set_windows_volume_raw", lambda value: changed.append(value))
+    result = route_local_command("unmute volume")
+    assert result["success"] and "already unmuted" in result["understanding"]
+    assert changed == []
