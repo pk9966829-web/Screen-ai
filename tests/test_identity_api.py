@@ -181,3 +181,61 @@ def test_account_can_link_only_a_valid_paired_device(client):
     assert client.get("/identity/devices", headers=headers).json()["devices"] == []
     with pytest.raises(AgentRuntimeError, match="Invalid or revoked"):
         identity_api.devices.authenticate(paired["device_token"])
+
+
+def test_google_signin_creates_verified_account_and_session(client, monkeypatch):
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "public-google-client-id")
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "google-user@example.test", "sub": "google-sub-123"},
+    )
+    response = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["account"]["email"] == "google-user@example.test"
+    assert data["account"]["email_verified"] is True
+    assert data["access_token"]
+    authenticated = client.get("/identity/me", headers={"Authorization": "Bearer " + data["access_token"]})
+    assert authenticated.status_code == 200
+    assert authenticated.json()["account"]["email"] == "google-user@example.test"
+    assert client.post("/identity/login", json={"email": "google-user@example.test", "password": "random-password"}).status_code == 401
+
+
+def test_google_signin_links_existing_verified_email_account(client, monkeypatch):
+    register_and_verify(client, email="linked-google@example.test")
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "linked-google@example.test", "sub": "google-sub-linked"},
+    )
+    response = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert response.status_code == 200
+    assert response.json()["account"]["email"] == "linked-google@example.test"
+    with identity_api.store._connect() as db:
+        row = db.execute("SELECT google_sub FROM identity_users WHERE email = ?", ("linked-google@example.test",)).fetchone()
+    assert row["google_sub"] == "google-sub-linked"
+
+
+def test_google_signin_rejects_conflicting_google_identity(client, monkeypatch):
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "conflict@example.test", "sub": "first-google-sub"},
+    )
+    first = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert first.status_code == 200
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "conflict@example.test", "sub": "second-google-sub"},
+    )
+    second = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert second.status_code == 409
+
+
+def test_identity_config_exposes_only_public_google_client_id(client, monkeypatch):
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "public-google-client-id")
+    response = client.get("/identity/config")
+    assert response.status_code == 200
+    assert response.json() == {"google_client_id": "public-google-client-id"}
