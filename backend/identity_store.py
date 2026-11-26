@@ -200,7 +200,7 @@ class IdentityStore:
     def login_google(self, email: str, google_sub: str) -> tuple[dict[str, Any], str]:
         email = email.strip().lower()
         google_sub = google_sub.strip()
-        if len(email) > 254 or not __import__("re").fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", email):
+        if len(email) > 254 or not __import__("re").fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
             raise IdentityError("Google returned an invalid email address.", 401)
         if not google_sub or len(google_sub) > 255:
             raise IdentityError("Google returned an invalid account identifier.", 401)
