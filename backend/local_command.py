@@ -141,7 +141,7 @@ def _schedule_windows_alarm(target: datetime, label: str) -> tuple[bool, str]:
             [
                 "schtasks", "/Create", "/TN", task_name, "/TR", task_command,
                 "/SC", "ONCE", "/ST", trigger_at.strftime("%H:%M"),
-                "/SD", trigger_at.strftime("%m/%d/%Y"), "/F", "/IT",
+                "/SD", trigger_at.strftime("%x"), "/F", "/IT",
             ],
             capture_output=True, text=True, timeout=15, check=False,
         )
