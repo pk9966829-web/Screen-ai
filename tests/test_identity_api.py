@@ -239,3 +239,39 @@ def test_identity_config_exposes_only_public_google_client_id(client, monkeypatc
     response = client.get("/identity/config")
     assert response.status_code == 200
     assert response.json() == {"google_client_id": "public-google-client-id"}
+
+def test_google_id_token_verifier_checks_configured_audience_and_issuer(client, monkeypatch):
+    import google.oauth2.id_token as google_id_token
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "configured-client-id")
+    calls = []
+    payload = {
+        "iss": "https://accounts.google.com",
+        "email": "verified@example.test",
+        "email_verified": True,
+        "sub": "google-sub-verified",
+    }
+    def fake_verify(token, request, audience):
+        calls.append((token, audience))
+        return payload
+    monkeypatch.setattr(google_id_token, "verify_oauth2_token", fake_verify)
+    result = identity_api._verify_google_credential("sample-id-token")
+    assert result == payload
+    assert calls == [("sample-id-token", "configured-client-id")]
+
+
+def test_google_id_token_verifier_rejects_unverified_email(client, monkeypatch):
+    import google.oauth2.id_token as google_id_token
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "configured-client-id")
+    monkeypatch.setattr(
+        google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, audience: {
+            "iss": "accounts.google.com",
+            "email": "unverified@example.test",
+            "email_verified": False,
+            "sub": "google-sub-unverified",
+        },
+    )
+    with pytest.raises(Exception) as exc:
+        identity_api._verify_google_credential("sample-id-token")
+    assert getattr(exc.value, "status_code", None) == 403
