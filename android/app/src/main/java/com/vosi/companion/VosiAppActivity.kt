@@ -14,7 +14,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.lifecycleScope
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -118,7 +118,8 @@ class VosiAppActivity : ComponentActivity() {
                             }
                         )
                     },
-                    qrPairingStatus = qrPairingStatus
+                    qrPairingStatus = qrPairingStatus,
+                    onGoogleSignIn = { backendUrl, callback -> signInWithGoogle(backendUrl, callback) }
                 )
             }
         }
@@ -305,7 +306,11 @@ class VosiAppActivity : ComponentActivity() {
 private enum class CherryTab(val label: String) { HOME("Home"), CHAT("Chat"), TASKS("Tasks"), DEVICES("Devices"), PROFILE("Profile") }
 
 @Composable
-private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit, onOpenCallAssistant: () -> Unit, onScanQr: () -> Unit, qrPairingStatus: String) {
+private fun CherryMobileRoot(
+    onOpenCompanion: () -> Unit, onOpenProfileSetup: () -> Unit, onOpenCallAssistant: () -> Unit,
+    onScanQr: () -> Unit, qrPairingStatus: String,
+    onGoogleSignIn: (String, (String?, String?) -> Unit) -> Unit
+) {
     var tab by remember { mutableStateOf(CherryTab.HOME) }
     var backend by remember {
         mutableStateOf(
@@ -391,7 +396,7 @@ private fun CherryMobileRoot(onOpenCompanion: () -> Unit, onOpenProfileSetup: ()
                             if (accountBusy) return@ProfileScreen
                             accountBusy = true
                             accountStatus = "Opening Google sign-in…"
-                            signInWithGoogle(backend) { email, error ->
+                            onGoogleSignIn(backend) { email, error ->
                                 accountBusy = false
                                 if (!email.isNullOrBlank()) {
                                     accountEmail = email
