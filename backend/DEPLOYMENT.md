@@ -95,3 +95,5 @@ The web mobile-pairing panel supports both email/password accounts and Google si
 5. Google sign-in verifies the ID token's signature, audience, issuer, and verified-email claim server-side. It creates or securely links a verified account, then issues the same CHERRY AI account session used by email/password login.
 
 Do not put a Google client secret in frontend code or Git. The Gmail send-only OAuth client remains separate and is only for transactional email delivery.
+
+For Android native Google sign-in, also register an Android OAuth client for package `com.vosi.companion` with the SHA-1 signing certificate for the debug build (and the release signing certificate when publishing). The Android Profile screen uses Credential Manager and the same Web client ID as its server audience. The backend verifies the ID token and returns the CHERRY AI account session; no Google client secret is embedded in the APK.
