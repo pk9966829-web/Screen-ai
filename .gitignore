@@ -9,4 +9,7 @@ screen ai/src-tauri/target/
 *.pyc
 .env
 backend/gmail_token.json
+backend/gmail_oauth_credentials.json
+backend/gmail_oauth_token.json
+backend/tests/client_secret_*.json
 backend/vosi_companion.sqlite3

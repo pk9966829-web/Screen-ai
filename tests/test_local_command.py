@@ -39,3 +39,74 @@ def test_unknown_message_falls_through():
 def test_shutdown_requires_confirmation():
     result = route_local_command("shutdown my pc")
     assert result["requires_confirmation"] is True
+
+def test_timer_schedules_real_windows_timer(monkeypatch):
+    import datetime
+    scheduled = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr("local_command._schedule_windows_alarm", lambda target, label: scheduled.append((target, label)) or (True, "scheduled"))
+    result = route_local_command("set timer for 20 minutes")
+    assert result["success"] and result["local_command"]
+    assert "Timer set for 20 minutes" in result["understanding"]
+    assert scheduled[0][1] == "Timer"
+    assert 1190 <= (scheduled[0][0] - datetime.datetime.now().astimezone()).total_seconds() <= 1210
+
+
+def test_alarm_5pm_schedules_local_alarm(monkeypatch):
+    scheduled = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr("local_command._schedule_windows_alarm", lambda target, label: scheduled.append((target, label)) or (True, "scheduled"))
+    result = route_local_command("set alarm for 5 PM")
+    assert result["success"] and result["local_command"]
+    assert scheduled[0][0].hour == 17 and scheduled[0][0].minute == 0
+    assert scheduled[0][1] == "Alarm"
+
+
+def test_alarm_without_meridiem_asks_for_am_or_pm():
+    result = route_local_command("set alarm for 5")
+    assert result["success"] is False
+    assert "AM or PM" in result["understanding"]
+
+
+def test_windows_task_scheduler_alarm_command_is_encoded_and_shell_safe(monkeypatch):
+    import base64
+    import datetime
+    from types import SimpleNamespace
+    captured = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr("local_command.subprocess.run", lambda args, **kwargs: captured.append((args, kwargs)) or SimpleNamespace(returncode=0, stdout="", stderr=""))
+    target = datetime.datetime.now().astimezone() + datetime.timedelta(minutes=5)
+    ok, detail = __import__("local_command")._schedule_windows_alarm(target, "Timer")
+    assert ok and "Task Scheduler" in detail
+    args, kwargs = captured[0]
+    assert kwargs.get("shell", False) is False
+    task_action = args[args.index("/TR") + 1]
+    encoded = task_action.split("-EncodedCommand ", 1)[1]
+    script = base64.b64decode(encoded).decode("utf-16le")
+    assert "Start-Sleep" in script and "CHERRY AI" in script
+    assert args[args.index("/SD") + 1] == target.replace(second=0, microsecond=0).strftime("%x")
+
+def test_mute_and_unmute_restore_previous_volume(monkeypatch):
+    import local_command
+    current = {"value": 42000}
+    changed = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr(local_command, "_get_windows_volume", lambda: current["value"])
+    monkeypatch.setattr(local_command, "_set_windows_volume_raw", lambda value: changed.append(value) or current.update(value=value))
+    monkeypatch.setattr(local_command, "_last_nonzero_volume", None)
+    mute = route_local_command("mute")
+    assert mute["success"] and changed == [0]
+    current["value"] = 0
+    unmute = route_local_command("unmute")
+    assert unmute["success"] and changed[-1] == 42000
+
+
+def test_unmute_does_not_change_already_unmuted_volume(monkeypatch):
+    import local_command
+    changed = []
+    monkeypatch.setattr("local_command.platform.system", lambda: "Windows")
+    monkeypatch.setattr(local_command, "_get_windows_volume", lambda: 32000)
+    monkeypatch.setattr(local_command, "_set_windows_volume_raw", lambda value: changed.append(value))
+    result = route_local_command("unmute volume")
+    assert result["success"] and "already unmuted" in result["understanding"]
+    assert changed == []

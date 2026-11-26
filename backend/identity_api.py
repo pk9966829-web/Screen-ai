@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 import os
-import smtplib
-import ssl
-from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from device_registry import DeviceRegistry
 from identity_store import IdentityError, IdentityStore
+import email_delivery
 
 router = APIRouter(prefix="/identity", tags=["VOSI Personal Identity"])
 _db_path = Path(os.getenv("VOSI_AGENT_DB_PATH", str(Path(__file__).with_name("vosi_agent.db"))))
@@ -33,6 +31,10 @@ class VerifyEmailRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=1, max_length=256)
+
+
+class GoogleLoginRequest(BaseModel):
+    credential: str = Field(min_length=20, max_length=8192)
 
 
 class EncryptedProfileRequest(BaseModel):
@@ -58,29 +60,32 @@ def _account(authorization: str | None) -> dict[str, Any]:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
-def _send_verification_email(email: str, code: str) -> None:
-    host = os.getenv("VOSI_SMTP_HOST", "").strip()
-    username = os.getenv("VOSI_SMTP_USERNAME", "").strip()
-    password = os.getenv("VOSI_SMTP_PASSWORD", "")
-    sender = os.getenv("VOSI_SMTP_FROM", username).strip()
-    port = int(os.getenv("VOSI_SMTP_PORT", "587"))
-    if not host or not username or not password or not sender:
-        raise HTTPException(status_code=503, detail="Email delivery is not configured. Set VOSI_SMTP_HOST, VOSI_SMTP_PORT, VOSI_SMTP_USERNAME, VOSI_SMTP_PASSWORD and VOSI_SMTP_FROM.")
-    message = EmailMessage()
-    message["Subject"] = "Verify your VOSI account"
-    message["From"] = sender
-    message["To"] = email
-    message.set_content(
-        "Your VOSI verification code is: " + code +
-        "\n\nThis code expires in 10 minutes. If you did not create a VOSI account, ignore this email."
-    )
+def _verify_google_credential(credential: str) -> dict[str, Any]:
+    client_id = os.getenv("VOSI_GOOGLE_CLIENT_ID", "").strip()
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured on this CHERRY AI backend.")
     try:
-        with smtplib.SMTP(host, port, timeout=15) as server:
-            server.starttls(context=ssl.create_default_context())
-            server.login(username, password)
-            server.send_message(message)
-    except (OSError, smtplib.SMTPException) as exc:
-        raise HTTPException(status_code=502, detail="VOSI could not send the verification email. Check the SMTP configuration.") from exc
+        from google.auth.transport.requests import Request
+        from google.oauth2 import id_token
+        payload = id_token.verify_oauth2_token(credential, Request(), audience=client_id)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Google sign-in token is invalid or expired. Try signing in again.") from exc
+    if payload.get("iss") not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise HTTPException(status_code=401, detail="Google sign-in issuer is invalid.")
+    if payload.get("email_verified") not in (True, "true"):
+        raise HTTPException(status_code=403, detail="Google must verify the email address before sign-in.")
+    if not payload.get("email") or not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Google sign-in did not return the required account details.")
+    return payload
+
+
+def _send_verification_email(email: str, code: str) -> None:
+    email_delivery.send_email(
+        "Verify your VOSI account",
+        email,
+        "Your VOSI verification code is: " + code +
+        "\n\nThis code expires in 10 minutes. If you did not create a VOSI account, ignore this email.",
+    )
 
 
 def _raise_identity(exc: IdentityError):
@@ -91,11 +96,8 @@ def _raise_identity(exc: IdentityError):
 def register_account(request: RegisterRequest):
     try:
         challenge_secret = _challenge_secret()
-        if not all(os.getenv(key, "").strip() for key in (
-            "VOSI_SMTP_HOST", "VOSI_SMTP_USERNAME", "VOSI_SMTP_PASSWORD",
-            "VOSI_SMTP_FROM",
-        )):
-            raise HTTPException(status_code=503, detail="VOSI email delivery is not configured.")
+        if not email_delivery.is_email_delivery_configured():
+            raise HTTPException(status_code=503, detail="VOSI email delivery is not configured. Configure the selected email provider and authorize it if required.")
         user, code = store.create_account(request.email, request.password, challenge_secret)
         try:
             _send_verification_email(user["email"], code)
@@ -116,10 +118,26 @@ def verify_account_email(request: VerifyEmailRequest):
         _raise_identity(exc)
 
 
+@router.get("/config")
+def identity_config():
+    # The Google OAuth client ID is public by design; no client secret is returned.
+    return {"google_client_id": os.getenv("VOSI_GOOGLE_CLIENT_ID", "").strip()}
+
+
 @router.post("/login")
 def login_account(request: LoginRequest):
     try:
         account, token = store.login(request.email, request.password)
+        return {"success": True, "account": account, "access_token": token, "token_type": "bearer"}
+    except IdentityError as exc:
+        _raise_identity(exc)
+
+
+@router.post("/google-login")
+def login_google(request: GoogleLoginRequest):
+    payload = _verify_google_credential(request.credential)
+    try:
+        account, token = store.login_google(payload["email"], payload["sub"])
         return {"success": True, "account": account, "access_token": token, "token_type": "bearer"}
     except IdentityError as exc:
         _raise_identity(exc)

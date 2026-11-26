@@ -1,0 +1,88 @@
+name: QR account pairing tests
+
+on:
+  push:
+    branches:
+      - feat/secure-qr-account-pairing
+  pull_request:
+    branches:
+      - integration/cherry-call-management
+
+permissions:
+  contents: read
+
+jobs:
+  backend-pairing-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest
+      - name: Run Google account identity tests
+        env:
+          PYTHONPATH: backend
+        run: pytest -q tests/test_identity_api.py
+      - name: Run QR pairing security tests
+        run: python -m unittest discover -s tests -p "test_qr_pairing.py" -v
+      - name: Run transactional email delivery tests
+        run: python -m unittest discover -s tests -p "test_email_delivery.py" -v
+      - name: Run Fish Audio and emotion cue tests
+        env:
+          PYTHONPATH: backend
+        run: pytest -q tests/test_fish_audio_tts.py tests/test_voice_expression.py
+      - name: Run API-free local command tests
+        env:
+          PYTHONPATH: backend
+        run: pytest -q tests/test_local_command.py
+
+  android-debug-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Assemble Android debug app
+        run: gradle -p android --no-daemon :app:assembleDebug
+      - name: Upload installable CHERRY AI debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cherry-ai-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: "screen ai/package-lock.json"
+      - name: Install web dependencies
+        working-directory: screen ai
+        run: npm ci
+      - name: Build web application
+        working-directory: screen ai
+        run: npm run build
+      - name: Verify QR pairing and offline knowledge assets in production output
+        working-directory: screen ai
+        run: |
+          node -e "const fs=require('fs'); const web=JSON.parse(fs.readFileSync('dist/cherry-ai-knowledge.json','utf8')); const mobile=JSON.parse(fs.readFileSync('../android/app/src/main/assets/cherry-ai-knowledge.json','utf8')); if(web.facts.length!==491||web.greetings.length!==17) throw new Error('Unexpected offline knowledge counts'); if(JSON.stringify(web)!==JSON.stringify(mobile)) throw new Error('Web and Android offline knowledge assets differ'); if(!fs.existsSync('dist/pairing.js')) throw new Error('QR pairing client missing from production build'); console.log('Verified 491 facts, 17 greeting groups, matching web/mobile assets, and QR pairing client');"

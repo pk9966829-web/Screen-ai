@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import ast
+import base64
 import ctypes
 import os
 import platform
 import re
 import subprocess
+import threading
 import urllib.parse
+import uuid
 import webbrowser
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +37,29 @@ APP_ALIASES = {
     "documents": (str(Path.home() / "Documents"), None),
     "pictures": (str(Path.home() / "Pictures"), None),
 }
+_last_nonzero_volume: int | None = None
+
+def _get_windows_volume() -> int:
+    volume = ctypes.c_uint32()
+    result = ctypes.windll.winmm.waveOutGetVolume(0, ctypes.byref(volume))
+    if result != 0:
+        raise OSError("Windows volume API failed.")
+    return int(volume.value)
+
+def _set_windows_volume_raw(level: int) -> None:
+    level = max(0, min(65535, int(level)))
+    result = ctypes.windll.winmm.waveOutSetVolume(0, level | (level << 16))
+    if result != 0:
+        raise OSError("Windows volume API failed.")
+
+def _set_windows_volume_percent(percent: int) -> int:
+    global _last_nonzero_volume
+    level = round(65535 * percent / 100)
+    _set_windows_volume_raw(level)
+    if level > 0:
+        _last_nonzero_volume = level
+    return level
+
 SITE_URLS = {
     "google": "https://www.google.com",
     "youtube": "https://www.youtube.com",
@@ -92,6 +119,62 @@ def _safe_eval(node: ast.AST) -> float | int:
         if isinstance(node.op, ast.Pow): return a**b
     raise ValueError("Unsupported expression.")
 
+def _show_alarm(label: str) -> None:
+    """Show an interactive Windows alarm with short audible alert pulses."""
+    if platform.system() != "Windows":
+        return
+    try:
+        for _ in range(5):
+            ctypes.windll.kernel32.Beep(1000, 500)
+            threading.Event().wait(0.25)
+        ctypes.windll.user32.MessageBoxW(0, label, "CHERRY AI", 0x00000040)
+    except Exception:
+        # The task still ran; do not leak or crash the backend on notification failure.
+        pass
+
+
+def _schedule_windows_alarm(target: datetime, label: str) -> tuple[bool, str]:
+    """Schedule an interactive alarm with Task Scheduler, or a short in-memory timer."""
+    if platform.system() != "Windows":
+        return False, "Alarms and timers are supported on Windows desktop only."
+    now = datetime.now().astimezone()
+    delay = max(0, int((target - now).total_seconds()))
+    trigger_at = target.replace(second=0, microsecond=0)
+    if trigger_at <= now:
+        timer = threading.Timer(delay, _show_alarm, args=(label,))
+        timer.daemon = True
+        timer.start()
+        return True, "A short timer was started in this backend process."
+
+    sleep_seconds = max(0, int((target - trigger_at).total_seconds()))
+    script = (
+        f"Start-Sleep -Seconds {sleep_seconds}; "
+        "for ($i = 0; $i -lt 5; $i++) { "
+        "[System.Media.SystemSounds]::Exclamation.Play(); "
+        "Start-Sleep -Milliseconds 250 }; "
+        "Add-Type -AssemblyName PresentationFramework; "
+        "[System.Windows.MessageBox]::Show('Your CHERRY AI alarm is due.', "
+        "'CHERRY AI', 'OK', 'Information') | Out-Null"
+    )
+    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    task_name = "CHERRY AI " + label + " " + uuid.uuid4().hex[:8]
+    task_command = "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand " + encoded
+    try:
+        result = subprocess.run(
+            [
+                "schtasks", "/Create", "/TN", task_name, "/TR", task_command,
+                "/SC", "ONCE", "/ST", trigger_at.strftime("%H:%M"),
+                "/SD", trigger_at.strftime("%x"), "/F", "/IT",
+            ],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False, "Windows Task Scheduler could not create the alarm."
+    if result.returncode != 0:
+        return False, "Windows Task Scheduler rejected the alarm. Check Windows task permissions."
+    return True, "Scheduled with Windows Task Scheduler."
+
+
 def route_local_command(message: str) -> dict[str, Any] | None:
     """Return a response for recognized API-free commands, otherwise None."""
     text = (message or "").strip()
@@ -145,7 +228,6 @@ def route_local_command(message: str) -> dict[str, Any] | None:
             return {"success": False, "local_command": True, "understanding": f"Calculator: {exc}"}
 
     if low in {"what time is it", "current time", "tell me the time"}:
-        from datetime import datetime
         return {"success": True, "local_command": True, "understanding": "Local time: " + datetime.now().astimezone().strftime("%I:%M %p")}
 
     if low in {"lock my pc", "lock pc", "lock computer", "lock my computer"}:
@@ -183,8 +265,7 @@ def route_local_command(message: str) -> dict[str, Any] | None:
         if platform.system() == "Windows":
             try:
                 # Windows multimedia master volume API; no shell or AI/API.
-                level = round(65535 * pct / 100)
-                ctypes.windll.winmm.waveOutSetVolume(0, level | (level << 16))
+                _set_windows_volume_percent(pct)
                 return {"success": True, "local_command": True, "understanding": f"Set Windows master volume to {pct}%."}
             except Exception as exc:
                 return {"success": False, "local_command": True, "understanding": f"Could not set volume: {exc}"}
@@ -192,12 +273,44 @@ def route_local_command(message: str) -> dict[str, Any] | None:
 
     if low in {"mute", "mute volume", "unmute", "unmute volume", "volume up", "volume down", "increase volume", "decrease volume"}:
         if platform.system() == "Windows":
-            key = {"mute":"0xAD","mute volume":"0xAD","unmute":"0xAD","unmute volume":"0xAD","volume up":"0xAF","increase volume":"0xAF","volume down":"0xAE","decrease volume":"0xAE"}[low]
-            # Windows key event; mute/unmute toggles, so cannot guarantee state.
-            ctypes.windll.user32.keybd_event(int(key, 16), 0, 0, 0)
-            ctypes.windll.user32.keybd_event(int(key, 16), 0, 2, 0)
-            return {"success": True, "local_command": True, "understanding": "Sent the Windows audio key command. Mute is a toggle, so the current state may change."}
+            try:
+                if low in {"mute", "mute volume"}:
+                    current = _get_windows_volume()
+                    if current > 0:
+                        global _last_nonzero_volume
+                        _last_nonzero_volume = current
+                    _set_windows_volume_raw(0)
+                    return {"success": True, "local_command": True, "understanding": "Muted Windows master volume."}
+                if low in {"unmute", "unmute volume"}:
+                    current = _get_windows_volume()
+                    if current == 0:
+                        target = _last_nonzero_volume or round(65535 * 0.5)
+                        _set_windows_volume_raw(target)
+                        return {"success": True, "local_command": True, "understanding": f"Unmuted Windows volume to {round(target / 65535 * 100)}%."}
+                    return {"success": True, "local_command": True, "understanding": "Windows volume is already unmuted."}
+                key = {"volume up":"0xAF","increase volume":"0xAF","volume down":"0xAE","decrease volume":"0xAE"}[low]
+                ctypes.windll.user32.keybd_event(int(key, 16), 0, 0, 0)
+                ctypes.windll.user32.keybd_event(int(key, 16), 0, 2, 0)
+                return {"success": True, "local_command": True, "understanding": "Sent the Windows volume adjustment command."}
+            except Exception as exc:
+                return {"success": False, "local_command": True, "understanding": f"Could not change Windows audio: {exc}"}
         return {"success": False, "local_command": True, "understanding": "Audio controls are supported on Windows desktop only."}
+
+    alarm_match = re.match(r"^(?:set\s+)?alarm\s+(?:(?:for|at)\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$", low)
+    if alarm_match:
+        hour, minute, meridiem = int(alarm_match.group(1)), int(alarm_match.group(2) or 0), alarm_match.group(3)
+        if minute > 59 or hour > 23 or (meridiem and not 1 <= hour <= 12):
+            return {"success": False, "local_command": True, "understanding": "That alarm time is invalid. Try a time such as 5:30 PM."}
+        if meridiem:
+            hour = (hour % 12) + (12 if meridiem == "pm" else 0)
+        elif 1 <= hour <= 12:
+            return {"success": False, "local_command": True, "understanding": "Please specify AM or PM, for example set alarm for 5 PM."}
+        now = datetime.now().astimezone()
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        ok, detail = _schedule_windows_alarm(target, "Alarm")
+        return {"success": ok, "local_command": True, "understanding": f"Alarm scheduled for {target.strftime('%I:%M %p')}." if ok else detail}
 
     timer_match = re.match(r"^(?:set\s+)?timer\s+(?:for\s+)?(\d+)\s*(seconds?|minutes?|hours?)$", low)
     if timer_match:
@@ -205,9 +318,10 @@ def route_local_command(message: str) -> dict[str, Any] | None:
         seconds = n * (60 if unit.startswith("minute") else 3600 if unit.startswith("hour") else 1)
         if not 1 <= seconds <= 86400:
             return {"success": False, "local_command": True, "understanding": "Timer length must be between 1 second and 24 hours."}
-        if platform.system() == "Windows":
-            ok = _open_target("ms-clock:")
-            return {"success": ok, "local_command": True, "understanding": f"Opened Windows Clock. Please enter {n} {unit} in its Timer tab; direct timer creation isn't supported by this Windows shortcut."}
-        return {"success": False, "local_command": True, "understanding": "Timer shortcut is Windows-only."}
+        if platform.system() != "Windows":
+            return {"success": False, "local_command": True, "understanding": "Timer shortcut is Windows-only."}
+        target = datetime.now().astimezone() + timedelta(seconds=seconds)
+        ok, detail = _schedule_windows_alarm(target, "Timer")
+        return {"success": ok, "local_command": True, "understanding": f"Timer set for {n} {unit}." if ok else detail}
 
     return None

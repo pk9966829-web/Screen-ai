@@ -10,6 +10,7 @@ BACKEND = Path(__file__).resolve().parents[1] / "backend"
 sys.path.insert(0, str(BACKEND))
 
 import identity_api  # noqa: E402
+import email_delivery  # noqa: E402
 from device_registry import DeviceRegistry  # noqa: E402
 from agent_runtime import AgentRuntimeError  # noqa: E402
 from identity_store import IdentityStore  # noqa: E402
@@ -43,13 +44,23 @@ def client(monkeypatch, tmp_path):
     identity_api.store = IdentityStore(db)
     identity_api.devices = DeviceRegistry(db)
     monkeypatch.setenv("VOSI_IDENTITY_CHALLENGE_SECRET", "test-identity-challenge-secret-32")
+    monkeypatch.setenv("VOSI_EMAIL_PROVIDER", "smtp")
     monkeypatch.setenv("VOSI_SMTP_HOST", "smtp.example.test")
     monkeypatch.setenv("VOSI_SMTP_PORT", "587")
     monkeypatch.setenv("VOSI_SMTP_USERNAME", "vosi@example.test")
     monkeypatch.setenv("VOSI_SMTP_PASSWORD", "test-password")
     monkeypatch.setenv("VOSI_SMTP_FROM", "vosi@example.test")
     FakeSMTP.sent = []
-    monkeypatch.setattr(identity_api.smtplib, "SMTP", FakeSMTP)
+    def fake_send_email(subject, recipient, body):
+        from email.message import EmailMessage
+        message = EmailMessage()
+        message["Subject"] = subject
+        message["From"] = "vosi@example.test"
+        message["To"] = recipient
+        message.set_content(body)
+        FakeSMTP.sent.append(message)
+
+    monkeypatch.setattr(email_delivery, "send_email", fake_send_email)
     app = FastAPI()
     app.include_router(identity_api.router)
     return TestClient(app)
@@ -69,6 +80,26 @@ def login(client, email="person@example.test", password="correct horse battery")
     response = client.post("/identity/login", json={"email": email, "password": password})
     assert response.status_code == 200
     return {"Authorization": "Bearer " + response.json()["access_token"]}
+
+
+def test_registration_accepts_configured_gmail_oauth_without_smtp(client, monkeypatch, tmp_path):
+    client_file = tmp_path / "gmail-client.json"
+    token_file = tmp_path / "gmail-token.json"
+    client_file.write_text("{}", encoding="utf-8")
+    token_file.write_text(
+        '{"refresh_token":"test-refresh-token","scopes":["https://www.googleapis.com/auth/gmail.send"]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VOSI_EMAIL_PROVIDER", "gmail_oauth")
+    monkeypatch.setenv("VOSI_GMAIL_OAUTH_CLIENT_FILE", str(client_file))
+    monkeypatch.setenv("VOSI_GMAIL_OAUTH_TOKEN_FILE", str(token_file))
+    monkeypatch.setenv("VOSI_GMAIL_FROM", "vosi@example.test")
+    response = client.post(
+        "/identity/register",
+        json={"email": "gmail-person@example.test", "password": "correct horse battery"},
+    )
+    assert response.status_code == 200
+    assert FakeSMTP.sent[-1]["To"] == "gmail-person@example.test"
 
 
 def test_register_requires_email_verification_before_login(client):
@@ -150,3 +181,97 @@ def test_account_can_link_only_a_valid_paired_device(client):
     assert client.get("/identity/devices", headers=headers).json()["devices"] == []
     with pytest.raises(AgentRuntimeError, match="Invalid or revoked"):
         identity_api.devices.authenticate(paired["device_token"])
+
+
+def test_google_signin_creates_verified_account_and_session(client, monkeypatch):
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "public-google-client-id")
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "google-user@example.test", "sub": "google-sub-123"},
+    )
+    response = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["account"]["email"] == "google-user@example.test"
+    assert data["account"]["email_verified"] is True
+    assert data["access_token"]
+    authenticated = client.get("/identity/me", headers={"Authorization": "Bearer " + data["access_token"]})
+    assert authenticated.status_code == 200
+    assert authenticated.json()["account"]["email"] == "google-user@example.test"
+    assert client.post("/identity/login", json={"email": "google-user@example.test", "password": "random-password"}).status_code == 401
+
+
+def test_google_signin_links_existing_verified_email_account(client, monkeypatch):
+    register_and_verify(client, email="linked-google@example.test")
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "linked-google@example.test", "sub": "google-sub-linked"},
+    )
+    response = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert response.status_code == 200
+    assert response.json()["account"]["email"] == "linked-google@example.test"
+    with identity_api.store._connect() as db:
+        row = db.execute("SELECT google_sub FROM identity_users WHERE email = ?", ("linked-google@example.test",)).fetchone()
+    assert row["google_sub"] == "google-sub-linked"
+
+
+def test_google_signin_rejects_conflicting_google_identity(client, monkeypatch):
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "conflict@example.test", "sub": "first-google-sub"},
+    )
+    first = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert first.status_code == 200
+    monkeypatch.setattr(
+        identity_api,
+        "_verify_google_credential",
+        lambda credential: {"email": "conflict@example.test", "sub": "second-google-sub"},
+    )
+    second = client.post("/identity/google-login", json={"credential": "fake-google-id-token-value"})
+    assert second.status_code == 409
+
+
+def test_identity_config_exposes_only_public_google_client_id(client, monkeypatch):
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "public-google-client-id")
+    response = client.get("/identity/config")
+    assert response.status_code == 200
+    assert response.json() == {"google_client_id": "public-google-client-id"}
+
+def test_google_id_token_verifier_checks_configured_audience_and_issuer(client, monkeypatch):
+    import google.oauth2.id_token as google_id_token
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "configured-client-id")
+    calls = []
+    payload = {
+        "iss": "https://accounts.google.com",
+        "email": "verified@example.test",
+        "email_verified": True,
+        "sub": "google-sub-verified",
+    }
+    def fake_verify(token, request, audience):
+        calls.append((token, audience))
+        return payload
+    monkeypatch.setattr(google_id_token, "verify_oauth2_token", fake_verify)
+    result = identity_api._verify_google_credential("sample-id-token")
+    assert result == payload
+    assert calls == [("sample-id-token", "configured-client-id")]
+
+
+def test_google_id_token_verifier_rejects_unverified_email(client, monkeypatch):
+    import google.oauth2.id_token as google_id_token
+    monkeypatch.setenv("VOSI_GOOGLE_CLIENT_ID", "configured-client-id")
+    monkeypatch.setattr(
+        google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, audience: {
+            "iss": "accounts.google.com",
+            "email": "unverified@example.test",
+            "email_verified": False,
+            "sub": "google-sub-unverified",
+        },
+    )
+    with pytest.raises(Exception) as exc:
+        identity_api._verify_google_credential("sample-id-token")
+    assert getattr(exc.value, "status_code", None) == 403

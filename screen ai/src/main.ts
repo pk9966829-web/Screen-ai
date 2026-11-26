@@ -311,6 +311,72 @@ function addTimelineItem(
 
 
 // =========================================================
+ // CHERRY AI OFFLINE KNOWLEDGE
+// =========================================================
+type OfflineKnowledge = {
+  facts?: Array<{ q: string; a: string }>;
+  greetings?: Array<{ t: string[]; r: string[] }>;
+};
+let offlineKnowledge: OfflineKnowledge | null = null;
+let offlineKnowledgeLoaded = false;
+
+async function loadOfflineKnowledge(): Promise<void> {
+  try {
+    const response = await fetch("/cherry-ai-knowledge.json", { cache: "no-cache" });
+    if (!response.ok) throw new Error("Offline knowledge asset is missing.");
+    const data = await response.json() as OfflineKnowledge;
+    if (!Array.isArray(data.facts) || !Array.isArray(data.greetings)) {
+      throw new Error("Offline knowledge asset has an invalid schema.");
+    }
+    offlineKnowledge = data;
+    offlineKnowledgeLoaded = true;
+  } catch (error) {
+    console.warn("CHERRY AI offline knowledge could not load:", error);
+  }
+}
+const offlineKnowledgePromise = loadOfflineKnowledge();
+
+function normalizeOfflineText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+async function findOfflineAnswer(question: string): Promise<string | null> {
+  await offlineKnowledgePromise;
+  if (!offlineKnowledgeLoaded || !offlineKnowledge) return null;
+  const query = normalizeOfflineText(question);
+  if (!query) return null;
+
+  const facts = (offlineKnowledge.facts ?? []).filter((fact) => fact?.q?.trim() && fact?.a?.trim());
+  const exact = facts.find((fact) => normalizeOfflineText(fact.q) === query);
+  if (exact) return exact.a;
+
+  for (const group of offlineKnowledge.greetings ?? []) {
+    const responses = group.r ?? [];
+    if (responses.length && (group.t ?? []).some((trigger) => normalizeOfflineText(trigger) === query)) {
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+  }
+
+  const stopwords = new Set(["what", "which", "who", "where", "when", "why", "how", "is", "are", "was", "were", "the", "a", "an", "of", "in", "on", "for", "to", "do", "does", "did", "tell", "me", "please", "can", "could", "would", "should", "about", "your", "my", "and", "or", "at", "with", "from"]);
+  const queryTokens = new Set(query.split(" ").filter((token) => token.length > 2 && !stopwords.has(token)));
+  if (queryTokens.size < 2) return null;
+  let best: { answer: string; score: number } | null = null;
+  for (const fact of facts) {
+    const key = normalizeOfflineText(fact.q);
+    if (query.length >= 12 && (query.includes(key) || key.includes(query))) {
+      const score = Math.min(query.length, key.length) / Math.max(query.length, key.length);
+      if (score >= 0.82 && (!best || score > best.score)) best = { answer: fact.a, score };
+      continue;
+    }
+    const tokens = key.split(" ").filter((token) => token.length > 2 && !stopwords.has(token));
+    const overlap = tokens.filter((token) => queryTokens.has(token)).length;
+    const score = overlap / Math.max(1, tokens.length, queryTokens.size);
+    if (score >= 0.82 && (!best || score > best.score)) best = { answer: fact.a, score };
+  }
+  return best?.answer ?? null;
+}
+
+// =========================================================
 // ASK SCREEN AI
 // =========================================================
 
@@ -321,10 +387,20 @@ async function askScreenAI(message?: string) {
     return;
   }
 
-  setStatus("THINKING...");
-  mascot?.classList.add("thinking");
   addTimelineItem("You asked CHERRY AI", question, "violet");
   if (askInput) askInput.value = "";
+
+  const offlineAnswer = await findOfflineAnswer(question);
+  if (offlineAnswer) {
+    setStatus("OFFLINE KNOWLEDGE");
+    mascot?.classList.remove("thinking");
+    addTimelineItem("CHERRY AI offline answer", offlineAnswer, "cyan");
+    setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
+    return;
+  }
+
+  setStatus("THINKING...");
+  mascot?.classList.add("thinking");
 
   try {
     const response = await fetch("http://127.0.0.1:8001/ask", {
