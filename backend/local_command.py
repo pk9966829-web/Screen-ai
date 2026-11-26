@@ -205,7 +205,6 @@ def route_local_command(message: str) -> dict[str, Any] | None:
             return {"success": False, "local_command": True, "understanding": f"Calculator: {exc}"}
 
     if low in {"what time is it", "current time", "tell me the time"}:
-        from datetime import datetime
         return {"success": True, "local_command": True, "understanding": "Local time: " + datetime.now().astimezone().strftime("%I:%M %p")}
 
     if low in {"lock my pc", "lock pc", "lock computer", "lock my computer"}:
