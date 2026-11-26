@@ -37,6 +37,10 @@ jobs:
         env:
           PYTHONPATH: backend
         run: pytest -q tests/test_fish_audio_tts.py tests/test_voice_expression.py
+      - name: Run API-free local command tests
+        env:
+          PYTHONPATH: backend
+        run: pytest -q tests/test_local_command.py
 
   android-debug-build:
     runs-on: ubuntu-latest
