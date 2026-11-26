@@ -38,6 +38,7 @@ CHERRY AI helps users understand their screens, get guided through workflows, se
 - [Chrome extension setup](screen%20ai/chrome-extension/README.md)
 - [Windows local commands and limitations](docs/CHERRY_AI_LOCAL_COMMANDS.md)
 - [Call receptionist setup](docs/cherry-ai-call-receptionist.md)
+- [End-to-end test checklist](docs/CHERRY_AI_TEST_CHECKLIST.md)
 - [Android background execution](android/BACKGROUND_EXECUTION.md)
 - [Android roadmap](docs/VOSI_ANDROID_APP_ROADMAP.md)
 
