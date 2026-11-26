@@ -8,7 +8,7 @@ These commands run locally in the Windows backend before the AI provider is call
 - Search Google, YouTube, Flipkart, and Amazon by opening the browser to a search page.
 - Basic arithmetic and current local time.
 - Lock the Windows workstation and save a screenshot.
-- Set Windows master volume from 0–100%, send mute/unmute (a toggle, so the resulting state may depend on the prior state), and volume up/down.
+- Set Windows master volume from 0–100%, mute to zero, unmute to the last non-zero level (or 50% if unknown), and volume up/down.
 - Set a timer from 1 second to 24 hours, or schedule an alarm using a time such as `5 PM` or `17:00`. Windows Task Scheduler is used for timers/alarm notifications that are at least one minute away; shorter timers are in-memory and are lost if the backend stops.
 
 ## Not directly implemented
