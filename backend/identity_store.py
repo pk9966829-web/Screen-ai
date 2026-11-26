@@ -43,6 +43,7 @@ class IdentityStore:
                 CREATE TABLE IF NOT EXISTS identity_users (
                     user_id TEXT PRIMARY KEY,
                     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    google_sub TEXT UNIQUE,
                     password_salt BLOB NOT NULL,
                     password_hash BLOB NOT NULL,
                     email_verified_at TEXT,
@@ -50,6 +51,11 @@ class IdentityStore:
                     updated_at TEXT NOT NULL
                 )
             """)
+            user_columns = {row["name"] for row in db.execute("PRAGMA table_info(identity_users)").fetchall()}
+            if "google_sub" not in user_columns:
+                db.execute("ALTER TABLE identity_users ADD COLUMN google_sub TEXT")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_users_google_sub ON identity_users(google_sub)")
+
             db.execute("""
                 CREATE TABLE IF NOT EXISTS identity_challenges (
                     user_id TEXT PRIMARY KEY,
@@ -190,6 +196,56 @@ class IdentityStore:
                 (uuid.uuid4().hex, row["user_id"], _token_hash(token), _iso(now), _iso(expires)),
             )
         return {"user_id": row["user_id"], "email": row["email"], "email_verified": True, "session_expires_at": _iso(expires)}, token
+
+    def login_google(self, email: str, google_sub: str) -> tuple[dict[str, Any], str]:
+        email = email.strip().lower()
+        google_sub = google_sub.strip()
+        if len(email) > 254 or not __import__("re").fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", email):
+            raise IdentityError("Google returned an invalid email address.", 401)
+        if not google_sub or len(google_sub) > 255:
+            raise IdentityError("Google returned an invalid account identifier.", 401)
+
+        now = _now()
+        verified_at = _iso(now)
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT user_id, email, google_sub, email_verified_at FROM identity_users WHERE email = ?", (email,)).fetchone()
+            linked = db.execute("SELECT user_id, email FROM identity_users WHERE google_sub = ?", (google_sub,)).fetchone()
+            if linked and linked["email"].lower() != email:
+                db.rollback()
+                raise IdentityError("This Google account is already linked to a different email.", 409)
+            if row:
+                if row["google_sub"] and row["google_sub"] != google_sub:
+                    db.rollback()
+                    raise IdentityError("This email is linked to another Google account.", 409)
+                db.execute(
+                    "UPDATE identity_users SET google_sub = ?, email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE user_id = ?",
+                    (google_sub, verified_at, verified_at, row["user_id"]),
+                )
+                db.execute("DELETE FROM identity_challenges WHERE user_id = ?", (row["user_id"],))
+                user_id = row["user_id"]
+            else:
+                user_id = uuid.uuid4().hex
+                salt = secrets.token_bytes(16)
+                random_password = secrets.token_urlsafe(48)
+                digest = _password_hash(random_password, salt)
+                db.execute(
+                    """INSERT INTO identity_users
+                       (user_id, email, google_sub, password_salt, password_hash, email_verified_at, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (user_id, email, google_sub, salt, digest, verified_at, verified_at, verified_at),
+                )
+            db.commit()
+
+        token = secrets.token_urlsafe(48)
+        expires = now + timedelta(days=30)
+        with self._connect() as db:
+            db.execute(
+                """INSERT INTO identity_sessions (session_id, user_id, token_hash, created_at, expires_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (uuid.uuid4().hex, user_id, _token_hash(token), _iso(now), _iso(expires)),
+            )
+        return {"user_id": user_id, "email": email, "email_verified": True, "session_expires_at": _iso(expires)}, token
 
     def authenticate(self, token: str | None) -> dict[str, Any]:
         if not token:
