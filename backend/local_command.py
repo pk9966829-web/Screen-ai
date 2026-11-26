@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import ast
+import base64
 import ctypes
 import os
 import platform
 import re
 import subprocess
+import threading
 import urllib.parse
+import uuid
 import webbrowser
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -91,6 +95,62 @@ def _safe_eval(node: ast.AST) -> float | int:
         if isinstance(node.op, ast.Mod): return a%b
         if isinstance(node.op, ast.Pow): return a**b
     raise ValueError("Unsupported expression.")
+
+def _show_alarm(label: str) -> None:
+    """Show an interactive Windows alarm with short audible alert pulses."""
+    if platform.system() != "Windows":
+        return
+    try:
+        for _ in range(5):
+            ctypes.windll.kernel32.Beep(1000, 500)
+            threading.Event().wait(0.25)
+        ctypes.windll.user32.MessageBoxW(0, label, "CHERRY AI", 0x00000040)
+    except Exception:
+        # The task still ran; do not leak or crash the backend on notification failure.
+        pass
+
+
+def _schedule_windows_alarm(target: datetime, label: str) -> tuple[bool, str]:
+    """Schedule an interactive alarm with Task Scheduler, or a short in-memory timer."""
+    if platform.system() != "Windows":
+        return False, "Alarms and timers are supported on Windows desktop only."
+    now = datetime.now().astimezone()
+    delay = max(0, int((target - now).total_seconds()))
+    trigger_at = target.replace(second=0, microsecond=0)
+    if trigger_at <= now:
+        timer = threading.Timer(delay, _show_alarm, args=(label,))
+        timer.daemon = True
+        timer.start()
+        return True, "A short timer was started in this backend process."
+
+    sleep_seconds = max(0, int((target - trigger_at).total_seconds()))
+    script = (
+        f"Start-Sleep -Seconds {sleep_seconds}; "
+        "for ($i = 0; $i -lt 5; $i++) { "
+        "[System.Media.SystemSounds]::Exclamation.Play(); "
+        "Start-Sleep -Milliseconds 250 }; "
+        "Add-Type -AssemblyName PresentationFramework; "
+        "[System.Windows.MessageBox]::Show('Your CHERRY AI alarm is due.', "
+        "'CHERRY AI', 'OK', 'Information') | Out-Null"
+    )
+    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    task_name = "CHERRY AI " + label + " " + uuid.uuid4().hex[:8]
+    task_command = "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand " + encoded
+    try:
+        result = subprocess.run(
+            [
+                "schtasks", "/Create", "/TN", task_name, "/TR", task_command,
+                "/SC", "ONCE", "/ST", trigger_at.strftime("%H:%M"),
+                "/SD", trigger_at.strftime("%m/%d/%Y"), "/F", "/IT",
+            ],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False, "Windows Task Scheduler could not create the alarm."
+    if result.returncode != 0:
+        return False, "Windows Task Scheduler rejected the alarm. Check Windows task permissions."
+    return True, "Scheduled with Windows Task Scheduler."
+
 
 def route_local_command(message: str) -> dict[str, Any] | None:
     """Return a response for recognized API-free commands, otherwise None."""
@@ -199,15 +259,32 @@ def route_local_command(message: str) -> dict[str, Any] | None:
             return {"success": True, "local_command": True, "understanding": "Sent the Windows audio key command. Mute is a toggle, so the current state may change."}
         return {"success": False, "local_command": True, "understanding": "Audio controls are supported on Windows desktop only."}
 
+    alarm_match = re.match(r"^(?:set\s+)?alarm\s+(?:(?:for|at)\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$", low)
+    if alarm_match:
+        hour, minute, meridiem = int(alarm_match.group(1)), int(alarm_match.group(2) or 0), alarm_match.group(3)
+        if minute > 59 or hour > 23 or (meridiem and not 1 <= hour <= 12):
+            return {"success": False, "local_command": True, "understanding": "That alarm time is invalid. Try a time such as 5:30 PM."}
+        if meridiem:
+            hour = (hour % 12) + (12 if meridiem == "pm" else 0)
+        elif 1 <= hour <= 12:
+            return {"success": False, "local_command": True, "understanding": "Please specify AM or PM, for example set alarm for 5 PM."}
+        now = datetime.now().astimezone()
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        ok, detail = _schedule_windows_alarm(target, "Alarm")
+        return {"success": ok, "local_command": True, "understanding": f"Alarm scheduled for {target.strftime('%I:%M %p')}." if ok else detail}
+
     timer_match = re.match(r"^(?:set\s+)?timer\s+(?:for\s+)?(\d+)\s*(seconds?|minutes?|hours?)$", low)
     if timer_match:
         n, unit = int(timer_match.group(1)), timer_match.group(2)
         seconds = n * (60 if unit.startswith("minute") else 3600 if unit.startswith("hour") else 1)
         if not 1 <= seconds <= 86400:
             return {"success": False, "local_command": True, "understanding": "Timer length must be between 1 second and 24 hours."}
-        if platform.system() == "Windows":
-            ok = _open_target("ms-clock:")
-            return {"success": ok, "local_command": True, "understanding": f"Opened Windows Clock. Please enter {n} {unit} in its Timer tab; direct timer creation isn't supported by this Windows shortcut."}
-        return {"success": False, "local_command": True, "understanding": "Timer shortcut is Windows-only."}
+        if platform.system() != "Windows":
+            return {"success": False, "local_command": True, "understanding": "Timer shortcut is Windows-only."}
+        target = datetime.now().astimezone() + timedelta(seconds=seconds)
+        ok, detail = _schedule_windows_alarm(target, "Timer")
+        return {"success": ok, "local_command": True, "understanding": f"Timer set for {n} {unit}." if ok else detail}
 
     return None
