@@ -11,6 +11,16 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetGoogleIdOption
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.lifecycle.lifecycleScope
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import androidx.activity.compose.BackHandler
@@ -110,6 +120,55 @@ class VosiAppActivity : ComponentActivity() {
                     },
                     qrPairingStatus = qrPairingStatus
                 )
+            }
+        }
+    }
+
+    private fun signInWithGoogle(backendUrl: String, onComplete: (String?, String?) -> Unit) {
+        lifecycleScope.launch {
+            try {
+                val base = backendUrl.trim().trimEnd('/')
+                val config = withContext(Dispatchers.IO) {
+                    identityRequest(base, "/identity/config", "GET", null, JSONObject())
+                }
+                val webClientId = config.optString("google_client_id").trim()
+                if (webClientId.isBlank()) {
+                    throw IllegalStateException("Google sign-in is not configured on the backend. Set VOSI_GOOGLE_CLIENT_ID and restart it.")
+                }
+                val googleOption = GetGoogleIdOption.Builder()
+                    .setServerClientId(webClientId)
+                    .setFilterByAuthorizedAccounts(false)
+                    .setAutoSelectEnabled(false)
+                    .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleOption)
+                    .build()
+                val credentialResponse = CredentialManager.create(this@VosiAppActivity)
+                    .getCredential(this@VosiAppActivity, request)
+                val custom = credentialResponse.credential as? CustomCredential
+                    ?: throw IllegalStateException("Google returned an unsupported sign-in credential.")
+                if (custom.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    throw IllegalStateException("Google returned an unexpected credential type.")
+                }
+                val googleCredential = GoogleIdTokenCredential.createFrom(custom.data)
+                val response = withContext(Dispatchers.IO) {
+                    identityRequest(
+                        base, "/identity/google-login", "POST", null,
+                        JSONObject().put("credential", googleCredential.idToken)
+                    )
+                }
+                val token = response.optString("access_token")
+                val email = response.optJSONObject("account")?.optString("email")
+                    ?.takeIf { it.isNotBlank() } ?: googleCredential.id
+                if (token.isBlank() || email.isBlank()) {
+                    throw IllegalStateException("CHERRY AI did not return a valid account session.")
+                }
+                AccountSessionStore.save(token, email)
+                onComplete(email, null)
+            } catch (error: GetCredentialException) {
+                onComplete(null, error.message ?: "Google sign-in was cancelled or unavailable.")
+            } catch (error: Exception) {
+                onComplete(null, error.message ?: "Google sign-in failed.")
             }
         }
     }
