@@ -67,7 +67,7 @@ def _verify_google_credential(credential: str) -> dict[str, Any]:
     try:
         from google.auth.transport.requests import Request
         from google.oauth2 import id_token
-        payload = id_token.verify_o2_token(credential, Request(), audience=client_id)
+        payload = id_token.verify_oauth2_token(credential, Request(), audience=client_id)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Google sign-in token is invalid or expired. Try signing in again.") from exc
     if payload.get("iss") not in {"accounts.google.com", "https://accounts.google.com"}:
