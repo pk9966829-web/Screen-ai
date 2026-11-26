@@ -37,6 +37,29 @@ APP_ALIASES = {
     "documents": (str(Path.home() / "Documents"), None),
     "pictures": (str(Path.home() / "Pictures"), None),
 }
+_last_nonzero_volume: int | None = None
+
+def _get_windows_volume() -> int:
+    volume = ctypes.c_uint32()
+    result = ctypes.windll.winmm.waveOutGetVolume(0, ctypes.byref(volume))
+    if result != 0:
+        raise OSError("Windows volume API failed.")
+    return int(volume.value)
+
+def _set_windows_volume_raw(level: int) -> None:
+    level = max(0, min(65535, int(level)))
+    result = ctypes.windll.winmm.waveOutSetVolume(0, level | (level << 16))
+    if result != 0:
+        raise OSError("Windows volume API failed.")
+
+def _set_windows_volume_percent(percent: int) -> int:
+    global _last_nonzero_volume
+    level = round(65535 * percent / 100)
+    _set_windows_volume_raw(level)
+    if level > 0:
+        _last_nonzero_volume = level
+    return level
+
 SITE_URLS = {
     "google": "https://www.google.com",
     "youtube": "https://www.youtube.com",
@@ -242,8 +265,7 @@ def route_local_command(message: str) -> dict[str, Any] | None:
         if platform.system() == "Windows":
             try:
                 # Windows multimedia master volume API; no shell or AI/API.
-                level = round(65535 * pct / 100)
-                ctypes.windll.winmm.waveOutSetVolume(0, level | (level << 16))
+                _set_windows_volume_percent(pct)
                 return {"success": True, "local_command": True, "understanding": f"Set Windows master volume to {pct}%."}
             except Exception as exc:
                 return {"success": False, "local_command": True, "understanding": f"Could not set volume: {exc}"}
@@ -251,11 +273,27 @@ def route_local_command(message: str) -> dict[str, Any] | None:
 
     if low in {"mute", "mute volume", "unmute", "unmute volume", "volume up", "volume down", "increase volume", "decrease volume"}:
         if platform.system() == "Windows":
-            key = {"mute":"0xAD","mute volume":"0xAD","unmute":"0xAD","unmute volume":"0xAD","volume up":"0xAF","increase volume":"0xAF","volume down":"0xAE","decrease volume":"0xAE"}[low]
-            # Windows key event; mute/unmute toggles, so cannot guarantee state.
-            ctypes.windll.user32.keybd_event(int(key, 16), 0, 0, 0)
-            ctypes.windll.user32.keybd_event(int(key, 16), 0, 2, 0)
-            return {"success": True, "local_command": True, "understanding": "Sent the Windows audio key command. Mute is a toggle, so the current state may change."}
+            try:
+                if low in {"mute", "mute volume"}:
+                    current = _get_windows_volume()
+                    if current > 0:
+                        global _last_nonzero_volume
+                        _last_nonzero_volume = current
+                    _set_windows_volume_raw(0)
+                    return {"success": True, "local_command": True, "understanding": "Muted Windows master volume."}
+                if low in {"unmute", "unmute volume"}:
+                    current = _get_windows_volume()
+                    if current == 0:
+                        target = _last_nonzero_volume or round(65535 * 0.5)
+                        _set_windows_volume_raw(target)
+                        return {"success": True, "local_command": True, "understanding": f"Unmuted Windows volume to {round(target / 65535 * 100)}%."}
+                    return {"success": True, "local_command": True, "understanding": "Windows volume is already unmuted."}
+                key = {"volume up":"0xAF","increase volume":"0xAF","volume down":"0xAE","decrease volume":"0xAE"}[low]
+                ctypes.windll.user32.keybd_event(int(key, 16), 0, 0, 0)
+                ctypes.windll.user32.keybd_event(int(key, 16), 0, 2, 0)
+                return {"success": True, "local_command": True, "understanding": "Sent the Windows volume adjustment command."}
+            except Exception as exc:
+                return {"success": False, "local_command": True, "understanding": f"Could not change Windows audio: {exc}"}
         return {"success": False, "local_command": True, "understanding": "Audio controls are supported on Windows desktop only."}
 
     alarm_match = re.match(r"^(?:set\s+)?alarm\s+(?:(?:for|at)\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$", low)
