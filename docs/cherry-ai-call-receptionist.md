@@ -40,6 +40,11 @@ The sample rate must be 16 kHz mono PCM16. Keep Exotel call recording disabled u
 
 After the Exotel number and flow have been tested independently, configure the SIM's conditional forwarding (such as busy or no-answer) to the Exotel virtual number using the mobile carrier's supported settings. Do not enable forwarding until you have confirmed the Exotel number, call flow, and any carrier charges.
 
-## Current implementation boundary
+## Implemented features and limits
 
-The backend bridge streams audio both ways and asks CHERRY AI to identify itself and collect the caller's name, reason, urgency and callback details. It does not record audio or persist transcripts yet, and the app does not yet send a caller-summary push notification. Those are the next implementation tasks before treating this as a finished receptionist. Real SIM testing also requires the deployed WSS endpoint, Exotel account/number, valid GPT-Live key and carrier forwarding setup.
+- Consent-gated, bidirectional audio bridge. No call audio recording is added.
+- Caller and CHERRY AI text transcript events are stored with call metadata and outcome; only caller speech is used for structured caller detail extraction.
+- Call summaries include caller name, purpose, urgency, callback request and callback time where available. Heuristic extraction is the default; optional AI summary enrichment is disabled by default and sends only caller transcript text to the configured VOSI provider chain.
+- Call history is owner-account protected. Configure `CHERRY_CALL_OWNER_USER_ID` to the verified CHERRY AI account user ID. Android has a call-history/details view and status actions, with callback/urgent notification support.
+- GPT-Live remains the default TTS. Optional Fish Audio TTS is selected by `CHERRY_TTS_PROVIDER=fish` and requires `CHERRY_FISH_API_KEY` and `CHERRY_FISH_VOICE_ID`. Contextual emotion cues can be disabled with `CHERRY_FISH_EMOTION_TAGS=false`; voice tags affect delivery, not the text.
+- This feature still requires a real Exotel account, provisioned number, public HTTPS/WSS backend, valid GPT-Live key, and a real test call before enabling SIM forwarding. Fish Audio requires separate account/voice configuration and a live quality test. Keep forwarding off until the complete call path and carrier charges are verified.
