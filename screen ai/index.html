@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -748,6 +749,8 @@
                             <input id="pair-auth-password" type="password" autocomplete="current-password" placeholder="Password (10+ characters)" class="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white">
                             <input id="pair-auth-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit email verification code" class="hidden w-full rounded-lg border border-white/15 bg-black/40 px-3 py-3 text-sm text-white">
                             <button id="pair-auth-submit" type="button" class="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white">Sign in</button>
+                            <div class="flex items-center gap-3 py-1 text-[10px] uppercase tracking-wider text-slate-500"><span class="h-px flex-1 bg-white/10"></span>or continue with Google<span class="h-px flex-1 bg-white/10"></span></div>
+                            <div id="pair-google-signin" class="min-h-10 flex justify-center"></div>
                             <p id="pair-auth-status" class="text-xs text-slate-400" role="status">Use the account that should own this Android phone.</p>
                         </div>
                         <div id="pair-account-ready" class="hidden mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-3">
