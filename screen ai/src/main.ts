@@ -852,7 +852,7 @@ async function sendVoiceAudio(audioBlob: Blob, extension: string) {
     });
     const data: any = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) {
-      throw new Error(data.error || `Voice request failed (HTTP ${response.status})`);
+      throw new Error(data.error || data.detail || `Voice request failed (HTTP ${response.status})`);
     }
 
     addTimelineItem("You said", data.transcript || "Speech received", "violet");
