@@ -1,40 +1,36 @@
 # CHERRY AI Voice Agent
 
-This is an optional, reusable voice pipeline. It does not change or replace the existing FastAPI screen-analysis API.
+This optional voice pipeline is now connected to the existing FastAPI backend and the desktop microphone button on the feature branch.
 
-## Pipeline
+## How the integrated flow works
 
-1. **Whisper** converts incoming WAV audio to text locally.
-2. **Gemini** generates a concise assistant reply using the Google Gen AI SDK.
-3. **Coqui XTTS-v2** converts the reply into a WAV file using a configured reference speaker recording.
+1. The user clicks the microphone and grants microphone permission.
+2. The desktop app records until the user clicks the microphone again.
+3. The app sends the recording to the local FastAPI `POST /voice` endpoint.
+4. Whisper transcribes the audio locally (FFmpeg handles browser WebM/Opus input).
+5. Gemini generates a concise CHERRY AI reply.
+6. Coqui XTTS-v2 generates the spoken reply.
+7. The app displays the transcript and reply, then plays the generated WAV audio.
 
-The package lives under `backend/voice_agent`; import it when the backend needs it:
-
-```python
-from voice_agent import VoiceAgent
-
-voice = VoiceAgent()
-reply_text, reply_wav_path = voice.handle_audio(raw_wav_bytes)
-```
-
-Run imports with the backend directory on Python's import path (for example, from the `backend` directory).
+The existing screen-observation and text-chat endpoints are unchanged. The voice model is initialized only when the voice endpoint is first used.
 
 ## Windows setup
 
-Use the Python environment already used by the backend. From `backend`:
+From the repository's `backend` directory, use the same Python environment as the existing backend:
 
 ```powershell
+python -m pip install -r .\requirements.txt
 python -m pip install -r .\voice_agent\requirements-voice-agent.txt
 ```
 
-Whisper requires FFmpeg. Install a Windows FFmpeg build and add the folder containing `ffmpeg.exe` to PATH, then open a new terminal and verify:
+Whisper requires FFmpeg. Install a Windows FFmpeg build, add the folder containing `ffmpeg.exe` to PATH, open a new terminal, and verify:
 
 ```powershell
 ffmpeg -version
 python -m whisper --help
 ```
 
-Set the Gemini API key and XTTS reference WAV in the environment. Do not commit API keys or private voice recordings:
+Set the Gemini API key and a reference WAV recording for the voice you are authorized to use. Do not commit API keys or private voice recordings:
 
 ```powershell
 $env:GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
@@ -43,47 +39,42 @@ $env:WHISPER_MODEL = "base.en"
 $env:GEMINI_MODEL = "gemini-2.5-flash"
 ```
 
-The reference WAV should be a clean recording of a speaker whose voice you have permission to use. XTTS-v2 requires this reference audio; the agent will return a clear configuration error if it is missing.
+XTTS-v2 requires a reference speaker WAV. Use a clear recording from a speaker whose voice you have permission to use.
 
-## CLI test
+## Run CHERRY AI
 
-```powershell
-python -m voice_agent.agent .\test.wav
-```
-
-The first run downloads model files and may take time. Model storage and compute requirements depend on the selected Whisper and XTTS models.
-
-## Optional Flask HTTP demo
-
-From `backend`:
+Start the existing backend from `backend`:
 
 ```powershell
-python -m pip install Flask
-$env:CHERRY_VOICE_DEMO_TOKEN = "replace-with-a-long-random-token"
-python -m voice_agent.demo_server
+python -m uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-The demo binds to `127.0.0.1` only, accepts WAV uploads up to 20 MB, and requires a Bearer token when `CHERRY_VOICE_DEMO_TOKEN` is set. It is a local development demo, not a production public API. Do not tunnel or expose it publicly without adding production authentication, TLS termination, request throttling, storage cleanup, and deployment hardening.
-
-Example request (PowerShell):
+Start the desktop frontend as usual from `screen ai`:
 
 ```powershell
-$headers = @{ Authorization = "Bearer $env:CHERRY_VOICE_DEMO_TOKEN" }
-Invoke-WebRequest -Uri http://127.0.0.1:8080/voice -Method Post -Headers $headers -ContentType "audio/wav" -InFile .\test.wav
+npm.cmd run tauri dev
 ```
 
-## Configuration
+Click the microphone once to start recording and again to stop and send the recording. The app will show the transcript and answer and attempt to play the generated reply.
 
-| Variable | Purpose |
-| --- | --- |
-| `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Gemini API credential |
-| `GEMINI_MODEL` | Model ID; defaults to `gemini-2.5-flash` |
-| `WHISPER_MODEL` | Whisper model; defaults to `base.en` |
-| `CHERRY_XTTS_SPEAKER_WAV` | Required reference WAV for XTTS-v2 |
-| `CHERRY_XTTS_LANGUAGE` | XTTS language code; defaults to `en` |
-| `CHERRY_XTTS_MODEL` | XTTS model identifier |
-| `CHERRY_VOICE_DEMO_TOKEN` | Optional Bearer token for the demo server |
+## API behavior and safeguards
 
-## Important integration note
+- `POST /voice` accepts a multipart field named `file`, up to 20 MB.
+- Supported browser audio formats include WebM, WAV, OGG, and MP4/M4A.
+- `GET /voice/audio/{filename}` serves a generated WAV reply.
+- Audio output is stored in the operating system temporary directory and stale files older than 30 minutes are cleaned up on the next voice request.
+- Requests require an allowed desktop-app Origin. Add a development origin, if necessary, through `CHERRY_VOICE_ALLOWED_ORIGINS` as a comma-separated list.
+- Keep the backend bound to `127.0.0.1`. Do not expose this local API through ngrok or bind it to `0.0.0.0` without a production authentication design, TLS, rate limiting, and deployment hardening.
+- Microphone access starts only after the user clicks the microphone; the user stops recording with a second click.
 
-The plugin manifest is metadata; it does not automatically register the package with the existing FastAPI application or the desktop UI. The current commit adds the reusable engine and isolated demo only. A later integration step should add authenticated audio endpoints, streaming/audio playback, user consent, retention controls, and frontend controls after the existing app's auth and API patterns are reviewed.
+## Troubleshooting
+
+- **FFmpeg not found:** install FFmpeg and add its `bin` directory to PATH, then restart the terminal.
+- **Gemini key missing:** set `GEMINI_API_KEY` in the same terminal that starts the backend.
+- **XTTS reference missing:** set `CHERRY_XTTS_SPEAKER_WAV` to an authorized WAV file.
+- **Voice dependencies missing:** install `voice_agent/requirements-voice-agent.txt` in the backend's active virtual environment.
+- **403 from /voice:** confirm the desktop app Origin is listed above or add it to `CHERRY_VOICE_ALLOWED_ORIGINS`.
+
+## Optional standalone demo
+
+`demo_server.py` remains available for local development only. It is not used by the integrated desktop app and should not be publicly exposed.
