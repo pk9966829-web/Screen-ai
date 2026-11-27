@@ -311,6 +311,96 @@ function addTimelineItem(
 
 
 // =========================================================
+// NATIVE WINDOWS COMMAND BRIDGE
+// =========================================================
+
+type NativeSystemCommand =
+  | { kind: "open"; target: string }
+  | { kind: "launch"; target: string }
+  | { kind: "volume"; action: "up" | "down" | "mute" | "unmute" }
+  | { kind: "volume-set"; percent: number }
+  | { kind: "clarify-volume" };
+
+function parseNativeSystemCommand(question: string): NativeSystemCommand | null {
+  const value = question.toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ").trim();
+
+  const setVolume = value.match(/^(?:please\s+)?(?:set|change)\s+(?:the\s+)?volume\s+(?:to\s+)?(\d{1,3})\s*%?$/)
+    || value.match(/^volume\s+(\d{1,3})\s*%?$/);
+  if (setVolume) {
+    const percent = Number(setVolume[1]);
+    return percent <= 100 ? { kind: "volume-set", percent } : { kind: "clarify-volume" };
+  }
+  if (/^(?:please\s+)?(?:set|change|adjust)\s+(?:the\s+)?volume$/.test(value)) {
+    return { kind: "clarify-volume" };
+  }
+  if (/^(?:please\s+)?(?:increase|raise|turn up)\s+(?:the\s+)?volume$/.test(value) || value === "volume up" || value === "increase volume" || value === "adjust volume up") {
+    return { kind: "volume", action: "up" };
+  }
+  if (/^(?:please\s+)?(?:decrease|lower|turn down)\s+(?:the\s+)?volume$/.test(value) || value === "volume down" || value === "decrease volume" || value === "adjust volume down") {
+    return { kind: "volume", action: "down" };
+  }
+  if (/^(?:please\s+)?mute(?:\s+(?:the\s+)?volume)?$/.test(value)) {
+    return { kind: "volume", action: "mute" };
+  }
+  if (/^(?:please\s+)?unmute(?:\s+(?:the\s+)?volume)?$/.test(value)) {
+    return { kind: "volume", action: "unmute" };
+  }
+
+  const openMatch = value.match(/^(?:please\s+)?(?:open|launch|go to)\s+(youtube|google|gmail|github|outlook|calendar|chrome|calculator|notepad|file explorer|task manager|paint|settings)(?:\s+in\s+(?:chrome|the browser))?$/);
+  if (openMatch) {
+    const target = openMatch[1].replace(/ /g, "-");
+    if (["chrome", "calculator", "notepad", "file-explorer", "task-manager", "paint"].includes(target)) {
+      return { kind: "launch", target };
+    }
+    return { kind: "open", target: target === "settings" ? "windows-settings" : target };
+  }
+  return null;
+}
+
+async function handleNativeSystemCommand(question: string): Promise<boolean> {
+  const command = parseNativeSystemCommand(question);
+  if (!command) return false;
+
+  if (command.kind === "clarify-volume") {
+    addTimelineItem("Volume level needed", "Say volume up, volume down, mute, unmute, or set volume to a number from 0 to 100.", "violet");
+    return true;
+  }
+
+  const invoke = window.__TAURI__?.core?.invoke;
+  if (typeof invoke !== "function") {
+    addTimelineItem(
+      "Desktop app required",
+      "This browser tab cannot control Windows volume or launch desktop actions. Open the CHERRY AI Windows desktop app to run this command.",
+      "violet"
+    );
+    return true;
+  }
+
+  try {
+    let result: string | undefined;
+    if (command.kind === "open") {
+      await invoke("open_device_target", { target: command.target });
+      result = command.target === "youtube"
+        ? "YouTube opened in your default browser."
+        : `Opened ${command.target.replace(/-/g, " ")}.`;
+    } else if (command.kind === "launch") {
+      await invoke("launch_device_app", { target: command.target });
+      result = `Opened ${command.target.replace(/-/g, " ")}.`;
+    } else if (command.kind === "volume") {
+      result = await invoke("control_volume", { action: command.action });
+    } else {
+      result = await invoke("set_volume", { percent: command.percent });
+    }
+    addTimelineItem("System command completed", result || "The desktop command was sent successfully.", "green");
+  } catch (error) {
+    console.error("Native system command failed:", error);
+    addTimelineItem("System command failed", String(error), "violet");
+  }
+  return true;
+}
+
+
+// =========================================================
 // ASK SCREEN AI
 // =========================================================
 
@@ -327,6 +417,12 @@ async function askScreenAI(message?: string) {
   if (askInput) askInput.value = "";
 
   try {
+    // Route supported Windows actions to the Tauri native layer instead of
+    // asking the text/vision model to pretend a browser can control the OS.
+    if (await handleNativeSystemCommand(question)) {
+      return;
+    }
+
     const response = await fetch("http://127.0.0.1:8001/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

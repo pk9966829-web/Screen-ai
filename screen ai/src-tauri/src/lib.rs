@@ -153,6 +153,99 @@ fn control_volume(action: String) -> Result<String,String> {
     #[cfg(not(target_os = "windows"))] { let _=action; Err("Volume controls are supported in the Windows VOSI app.".into()) }
 }
 
+/// Set the Windows default playback endpoint volume using the Core Audio API.
+#[tauri::command]
+fn set_volume(percent: u8) -> Result<String, String> {
+    if percent > 100 {
+        return Err("Choose a volume between 0 and 100.".into());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Use the Windows Core Audio endpoint API so an absolute percentage can
+        // be set directly; do not approximate it with repeated media-key presses.
+        let script = String::from(r#"
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace CherryNativeAudio {
+    [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IAudioEndpointVolume {
+        [PreserveSig] int RegisterControlChangeNotify(IntPtr pNotify);
+        [PreserveSig] int UnregisterControlChangeNotify(IntPtr pNotify);
+        [PreserveSig] int GetChannelCount(out uint channels);
+        [PreserveSig] int SetMasterVolumeLevel(float level, ref Guid context);
+        [PreserveSig] int SetMasterVolumeLevelScalar(float level, ref Guid context);
+        [PreserveSig] int GetMasterVolumeLevel(out float level);
+        [PreserveSig] int GetMasterVolumeLevelScalar(out float level);
+        [PreserveSig] int SetChannelVolumeLevel(uint channel, float level, ref Guid context);
+        [PreserveSig] int SetChannelVolumeLevelScalar(uint channel, float level, ref Guid context);
+        [PreserveSig] int GetChannelVolumeLevel(uint channel, out float level);
+        [PreserveSig] int GetChannelVolumeLevelScalar(uint channel, out float level);
+        [PreserveSig] int SetMute(bool mute, ref Guid context);
+        [PreserveSig] int GetMute(out bool mute);
+        [PreserveSig] int GetVolumeStepInfo(out uint step, out uint stepCount);
+        [PreserveSig] int VolumeStepUp(ref Guid context);
+        [PreserveSig] int VolumeStepDown(ref Guid context);
+        [PreserveSig] int QueryHardwareSupport(out uint support);
+        [PreserveSig] int GetVolumeRange(out float minDb, out float maxDb, out float incrementDb);
+    }
+
+    [Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IMMDevice {
+        [PreserveSig] int Activate(ref Guid iid, int clsctx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object instance);
+        [PreserveSig] int OpenPropertyStore(int access, out IntPtr properties);
+        [PreserveSig] int GetId(out IntPtr id);
+        [PreserveSig] int GetState(out int state);
+    }
+
+    [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IMMDeviceEnumerator {
+        [PreserveSig] int EnumAudioEndpoints(int flow, int stateMask, out IntPtr devices);
+        [PreserveSig] int GetDefaultAudioEndpoint(int flow, int role, out IMMDevice device);
+        [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, out IMMDevice device);
+        [PreserveSig] int RegisterEndpointNotificationCallback(IntPtr client);
+        [PreserveSig] int UnregisterEndpointNotificationCallback(IntPtr client);
+    }
+
+    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+    public class MMDeviceEnumerator { }
+
+    public static class AudioControl {
+        public static void SetMasterVolume(float level) {
+            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            IMMDevice device;
+            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out device));
+            Guid iid = typeof(IAudioEndpointVolume).GUID;
+            object endpointObject;
+            Marshal.ThrowExceptionForHR(device.Activate(ref iid, 23, IntPtr.Zero, out endpointObject));
+            var endpoint = (IAudioEndpointVolume)endpointObject;
+            Guid context = Guid.Empty;
+            Marshal.ThrowExceptionForHR(endpoint.SetMasterVolumeLevelScalar(level, ref context));
+        }
+    }
+}
+'@
+[CherryNativeAudio.AudioControl]::SetMasterVolume(__LEVEL__)
+"#).replace("__LEVEL__", &format!("{:.2}", percent as f32 / 100.0));
+        let output = Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", &script])
+            .output()
+            .map_err(|error| format!("Could not set Windows volume: {error}"))?;
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(if message.is_empty() { "Windows could not set the master volume.".into() } else { message });
+        }
+        return Ok(format!("Windows master volume set to {percent}%."));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = percent;
+        Err("Absolute volume control is supported in the Windows CHERRY AI app.".into())
+    }
+}
+
 /// Schedule a one-time Windows alarm through Task Scheduler.
 #[tauri::command]
 fn set_alarm(hour: u32, minute: u32) -> Result<String, String> {
@@ -359,7 +452,7 @@ async fn hide_voice_companion(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide, show_voice_companion, hide_voice_companion, save_agent_device_credential, load_agent_device_credential, clear_agent_device_credential])
+        .invoke_handler(tauri::generate_handler![greet, open_device_target, search_device_web, play_youtube_video, launch_device_app, control_volume, set_volume, set_alarm, set_timer, lock_pc, shutdown_pc, restart_pc, show_companion, hide_companion, show_guide, hide_guide, show_voice_companion, hide_voice_companion, save_agent_device_credential, load_agent_device_credential, clear_agent_device_credential])
         .setup(|app| {
             #[cfg(desktop)]
             {
