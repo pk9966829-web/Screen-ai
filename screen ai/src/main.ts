@@ -859,8 +859,12 @@ async function sendVoiceAudio(audioBlob: Blob, extension: string) {
     addTimelineItem("CHERRY AI replied", data.text || "No response text returned.", "cyan");
 
     if (data.audio_url) {
-      const audio = new Audio(`http://127.0.0.1:8001${data.audio_url}`);
-      audio.addEventListener("error", () => addTimelineItem("Audio playback failed", "The reply text is available, but the generated audio could not be played.", "violet"), { once: true });
+      const audioResponse = await fetch(`http://127.0.0.1:8001${data.audio_url}`);
+      if (!audioResponse.ok) throw new Error(`Generated audio could not be loaded (HTTP ${audioResponse.status})`);
+      const playbackUrl = URL.createObjectURL(await audioResponse.blob());
+      const audio = new Audio(playbackUrl);
+      audio.addEventListener("ended", () => URL.revokeObjectURL(playbackUrl), { once: true });
+      audio.addEventListener("error", () => URL.revokeObjectURL(playbackUrl), { once: true });
       await audio.play();
     }
     setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
