@@ -574,7 +574,7 @@ def read_browser_results(request_id: str):
 
 
 _cors_origins = [
-    origin.strip() for origin in os.getenv("VOSI_CORS_ORIGINS", "*").split(",")
+    origin.strip() for origin in os.getenv("VOSI_CORS_ORIGINS", "http://localhost:1420,http://127.0.0.1:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost").split(",")
     if origin.strip()
 ]
 _cors_origins = _cors_origins or ["*"]
