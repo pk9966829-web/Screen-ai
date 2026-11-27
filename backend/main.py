@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -574,7 +573,7 @@ def read_browser_results(request_id: str):
 
 
 _cors_origins = [
-    origin.strip() for origin in os.getenv("VOSI_CORS_ORIGINS", "*").split(",")
+    origin.strip() for origin in os.getenv("VOSI_CORS_ORIGINS", "http://localhost:1420,http://127.0.0.1:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost").split(",")
     if origin.strip()
 ]
 _cors_origins = _cors_origins or ["*"]
@@ -590,7 +589,6 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 LETTER_DIR = Path.home() / "Documents" / "VOSI" / "Letters"
 LETTER_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 pipeline = ScreenPipeline()
 _account_pipelines = {}
 _account_pipelines_lock = threading.Lock()

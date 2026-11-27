@@ -1663,7 +1663,7 @@
                 closeDeviceActionDialog();
                 if (action?.target === 'shutdown-pc' || action?.target === 'restart-pc') {
                     const invoke=window.__TAURI__?.core?.invoke;
-                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc').then(message=>{showResponse('Device action started',message);speakVosi(message);}).catch(error=>showResponse('Action failed',String(error)));
+                    if(invoke) void invoke(action.target==='shutdown-pc'?'shutdown_pc':'restart_pc',{confirmed:true}).then(message=>{showResponse('Device action started',message);speakVosi(message);}).catch(error=>showResponse('Action failed',String(error)));
                 } else if (action) void launchDeviceTarget(action.target, action.query);
             });
             sidebarToggle?.addEventListener('click', () => {
@@ -2900,9 +2900,9 @@
                         await invoke("open_device_target", { target: "wifi-settings" });
                         message = "Opened Windows Wi-Fi settings. Change the switch there; VOSI has not toggled Wi-Fi.";
                     } else if (step.capability === "device.pc.shutdown") {
-                        message = await invoke("shutdown_pc");
+                        message = await invoke("shutdown_pc", { confirmed: true });
                     } else if (step.capability === "device.pc.restart") {
-                        message = await invoke("restart_pc");
+                        message = await invoke("restart_pc", { confirmed: true });
                     }
                     await postStepResult(credential, task.task_id, step.step_id, {
                         success: true,
