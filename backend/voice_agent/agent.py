@@ -38,14 +38,17 @@ class VoiceAgent:
         self._tts = None
         self._model_lock = threading.Lock()
 
-    def transcribe(self, wav_bytes: bytes) -> str:
-        if not wav_bytes:
+    def transcribe(self, audio_bytes: bytes, audio_suffix: str = ".wav") -> str:
+        """Transcribe browser-recorded audio; Whisper/FFmpeg handles supported formats."""
+        if not audio_bytes:
             raise VoiceAgentError("Audio input is empty.")
+        if audio_suffix not in {".wav", ".webm", ".ogg", ".mp4", ".m4a"}:
+            audio_suffix = ".wav"
         with tempfile.TemporaryDirectory(prefix="cherry-asr-") as temp_dir:
-            wav_path = Path(temp_dir) / "input.wav"
-            wav_path.write_bytes(wav_bytes)
+            audio_path = Path(temp_dir) / f"input{audio_suffix}"
+            audio_path.write_bytes(audio_bytes)
             command = [
-                "whisper", str(wav_path), "--model", self.whisper_model,
+                "whisper", str(audio_path), "--model", self.whisper_model,
                 "--output_format", "txt", "--language", "en", "--fp16", "False",
                 "--verbose", "False",
             ]
@@ -58,7 +61,7 @@ class VoiceAgent:
             except subprocess.CalledProcessError as exc:
                 detail = (exc.stderr or "").strip()[-1000:]
                 raise VoiceAgentError("Whisper transcription failed." + (f" {detail}" if detail else "")) from exc
-            transcript_path = wav_path.with_suffix(".txt")
+            transcript_path = audio_path.with_suffix(".txt")
             if not transcript_path.is_file():
                 raise VoiceAgentError("Whisper completed without creating a transcript.")
             return transcript_path.read_text(encoding="utf-8").strip()
@@ -120,9 +123,9 @@ class VoiceAgent:
                 raise VoiceAgentError(f"XTTS-v2 synthesis failed: {exc}") from exc
         return output_path
 
-    def handle_audio(self, wav_bytes: bytes) -> tuple[str, Path]:
-        """Return (assistant_text, generated_wav_path) for a WAV byte payload."""
-        transcript = self.transcribe(wav_bytes)
+    def handle_audio(self, audio_bytes: bytes, audio_suffix: str = ".wav") -> tuple[str, Path]:
+        """Return (assistant_text, generated_wav_path) for supported audio bytes."""
+        transcript = self.transcribe(audio_bytes, audio_suffix)
         if not transcript:
             raise VoiceAgentError("Whisper did not detect any speech.")
         reply = self.respond(transcript)
