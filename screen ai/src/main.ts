@@ -330,13 +330,13 @@ function parseNativeSystemCommand(question: string): NativeSystemCommand | null 
     const percent = Number(setVolume[1]);
     return percent <= 100 ? { kind: "volume-set", percent } : { kind: "clarify-volume" };
   }
-  if (/^(?:please\s+)?(?:set|change)\s+(?:the\s+)?volume$/.test(value)) {
+  if (/^(?:please\s+)?(?:set|change|adjust)\s+(?:the\s+)?volume$/.test(value)) {
     return { kind: "clarify-volume" };
   }
-  if (/^(?:please\s+)?(?:increase|raise|turn up)\s+(?:the\s+)?volume$/.test(value) || value === "volume up" || value === "increase volume") {
+  if (/^(?:please\s+)?(?:increase|raise|turn up)\s+(?:the\s+)?volume$/.test(value) || value === "volume up" || value === "increase volume" || value === "adjust volume up") {
     return { kind: "volume", action: "up" };
   }
-  if (/^(?:please\s+)?(?:decrease|lower|turn down)\s+(?:the\s+)?volume$/.test(value) || value === "volume down" || value === "decrease volume") {
+  if (/^(?:please\s+)?(?:decrease|lower|turn down)\s+(?:the\s+)?volume$/.test(value) || value === "volume down" || value === "decrease volume" || value === "adjust volume down") {
     return { kind: "volume", action: "down" };
   }
   if (/^(?:please\s+)?mute(?:\s+(?:the\s+)?volume)?$/.test(value)) {
@@ -362,7 +362,7 @@ async function handleNativeSystemCommand(question: string): Promise<boolean> {
   if (!command) return false;
 
   if (command.kind === "clarify-volume") {
-    addTimelineItem("Volume level needed", "Tell me a number from 0 to 100, for example: set volume to 70%.", "violet");
+    addTimelineItem("Volume level needed", "Say volume up, volume down, mute, unmute, or set volume to a number from 0 to 100.", "violet");
     return true;
   }
 
