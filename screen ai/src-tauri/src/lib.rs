@@ -216,9 +216,9 @@ fn set_timer(seconds: u64) -> Result<String,String> {
 #[tauri::command]
 fn lock_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("rundll32.exe").args(["user32.dll,LockWorkStation"]).spawn().map_err(|e|e.to_string())?;return Ok("Locking your Windows device.".into());}#[cfg(not(target_os="windows"))]{Err("Locking is supported in the Windows VOSI app.".into())}}
 #[tauri::command]
-fn shutdown_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("shutdown.exe").args(["/s","/t","10"]).spawn().map_err(|e|e.to_string())?;return Ok("Windows will shut down in 10 seconds. Run shutdown /a to cancel.".into());}#[cfg(not(target_os="windows"))]{Err("Shutdown is supported in Windows.".into())}}
+fn shutdown_pc(confirmed: bool)->Result<String,String>{if !confirmed{return Err("Shutdown requires explicit user confirmation.".into());}#[cfg(target_os="windows")]{Command::new("shutdown.exe").args(["/s","/t","10"]).spawn().map_err(|e|e.to_string())?;return Ok("Windows will shut down in 10 seconds. Run shutdown /a to cancel.".into());}#[cfg(not(target_os="windows"))]{Err("Shutdown is supported in Windows.".into())}}
 #[tauri::command]
-fn restart_pc()->Result<String,String>{#[cfg(target_os="windows")]{Command::new("shutdown.exe").args(["/r","/t","10"]).spawn().map_err(|e|e.to_string())?;return Ok("Windows will restart in 10 seconds. Run shutdown /a to cancel.".into());}#[cfg(not(target_os="windows"))]{Err("Restart is supported in Windows.".into())}}
+fn restart_pc(confirmed: bool)->Result<String,String>{if !confirmed{return Err("Restart requires explicit user confirmation.".into());}#[cfg(target_os="windows")]{Command::new("shutdown.exe").args(["/r","/t","10"]).spawn().map_err(|e|e.to_string())?;return Ok("Windows will restart in 10 seconds. Run shutdown /a to cancel.".into());}#[cfg(not(target_os="windows"))]{Err("Restart is supported in Windows.".into())}}
 
 /// Force the floating companion character to appear on top of everything
 #[tauri::command]
