@@ -322,31 +322,31 @@ type NativeSystemCommand =
   | { kind: "clarify-volume" };
 
 function parseNativeSystemCommand(question: string): NativeSystemCommand | null {
-  const value = question.toLowerCase().replace(/[.!?]+$/g, "").replace(/\\s+/g, " ").trim();
+  const value = question.toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ").trim();
 
-  const setVolume = value.match(/^(?:please\\s+)?(?:set|change)\\s+(?:the\\s+)?volume\\s+(?:to\\s+)?(\\d{1,3})\\s*%?$/)
-    || value.match(/^volume\\s+(\\d{1,3})\\s*%?$/);
+  const setVolume = value.match(/^(?:please\s+)?(?:set|change)\s+(?:the\s+)?volume\s+(?:to\s+)?(\d{1,3})\s*%?$/)
+    || value.match(/^volume\s+(\d{1,3})\s*%?$/);
   if (setVolume) {
     const percent = Number(setVolume[1]);
     return percent <= 100 ? { kind: "volume-set", percent } : { kind: "clarify-volume" };
   }
-  if (/^(?:please\\s+)?(?:set|change)\\s+(?:the\\s+)?volume$/.test(value)) {
+  if (/^(?:please\s+)?(?:set|change)\s+(?:the\s+)?volume$/.test(value)) {
     return { kind: "clarify-volume" };
   }
-  if (/^(?:please\\s+)?(?:increase|raise|turn up)\\s+(?:the\\s+)?volume$/.test(value) || value === "volume up" || value === "increase volume") {
+  if (/^(?:please\s+)?(?:increase|raise|turn up)\s+(?:the\s+)?volume$/.test(value) || value === "volume up" || value === "increase volume") {
     return { kind: "volume", action: "up" };
   }
-  if (/^(?:please\\s+)?(?:decrease|lower|turn down)\\s+(?:the\\s+)?volume$/.test(value) || value === "volume down" || value === "decrease volume") {
+  if (/^(?:please\s+)?(?:decrease|lower|turn down)\s+(?:the\s+)?volume$/.test(value) || value === "volume down" || value === "decrease volume") {
     return { kind: "volume", action: "down" };
   }
-  if (/^(?:please\\s+)?mute(?:\\s+(?:the\\s+)?volume)?$/.test(value)) {
+  if (/^(?:please\s+)?mute(?:\s+(?:the\s+)?volume)?$/.test(value)) {
     return { kind: "volume", action: "mute" };
   }
-  if (/^(?:please\\s+)?unmute(?:\\s+(?:the\\s+)?volume)?$/.test(value)) {
+  if (/^(?:please\s+)?unmute(?:\s+(?:the\s+)?volume)?$/.test(value)) {
     return { kind: "volume", action: "unmute" };
   }
 
-  const openMatch = value.match(/^(?:please\\s+)?(?:open|launch|go to)\\s+(youtube|google|gmail|github|outlook|calendar|chrome|calculator|notepad|file explorer|task manager|paint|settings)(?:\\s+in\\s+(?:chrome|the browser))?$/);
+  const openMatch = value.match(/^(?:please\s+)?(?:open|launch|go to)\s+(youtube|google|gmail|github|outlook|calendar|chrome|calculator|notepad|file explorer|task manager|paint|settings)(?:\s+in\s+(?:chrome|the browser))?$/);
   if (openMatch) {
     const target = openMatch[1].replace(/ /g, "-");
     if (["chrome", "calculator", "notepad", "file-explorer", "task-manager", "paint"].includes(target)) {
