@@ -1,0 +1,7 @@
+{
+  "name": "cherry-voice-agent",
+  "description": "CHERRY AI speech pipeline using local Whisper speech recognition, Gemini dialogue, and Coqui XTTS-v2 speech synthesis.",
+  "version": "0.2.0",
+  "enabled": false,
+  "entrypoint": "voice_agent/agent.py"
+}
