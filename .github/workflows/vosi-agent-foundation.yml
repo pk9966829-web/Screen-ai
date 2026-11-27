@@ -28,6 +28,7 @@ on:
       - feature/vosi-production-backup-recovery
   pull_request:
     branches:
+      - integration/vosi-unified-main
       - main
       - feature/vosi-account-scoped-task-runtime
       - feature/vosi-verified-retry-execution
