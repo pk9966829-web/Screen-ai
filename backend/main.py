@@ -14,8 +14,10 @@ from docx.shared import Inches, Pt
 from pipeline import ScreenPipeline
 from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
+from voice_agent.api import router as voice_router
 
 app = FastAPI(title="VOSI Screen AI")
+app.include_router(voice_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 UPLOAD_DIR = Path("uploads")
@@ -56,7 +58,7 @@ def root():
         "message": "VOSI backend is running",
         "version": "0.4.0",
         "ai": "OpenAI Responses API",
-        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness"],
+        "endpoints": ["GET /", "GET /state", "GET /workflow", "GET /history", "POST /screen", "POST /ask", "POST /voice", "GET /voice/audio/{filename}", "POST /letter/draft", "GET /letter/file/{filename}", "POST /task", "POST /awareness"],
     }
 
 
