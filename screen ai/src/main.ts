@@ -782,48 +782,110 @@ taskBtn?.addEventListener(
 
 
 // =========================================================
-// MICROPHONE BUTTON
+// MICROPHONE BUTTON — REAL SPEECH PIPELINE
 // =========================================================
 
-micBtn?.addEventListener(
-  "click",
-  () => {
+let voiceRecorder: MediaRecorder | null = null;
+let voiceChunks: Blob[] = [];
+let voiceStream: MediaStream | null = null;
 
-    recording =
-      !recording;
+async function startVoiceRecording() {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    throw new Error("Microphone recording is not supported in this environment.");
+  }
 
+  voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const preferredType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+    ? "audio/webm;codecs=opus"
+    : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "";
+  voiceRecorder = preferredType
+    ? new MediaRecorder(voiceStream, { mimeType: preferredType })
+    : new MediaRecorder(voiceStream);
+  voiceChunks = [];
 
-    micBtn.classList.toggle(
-      "recording",
-      recording
-    );
+  voiceRecorder.addEventListener("dataavailable", (event) => {
+    if (event.data.size > 0) voiceChunks.push(event.data);
+  });
 
+  voiceRecorder.addEventListener("stop", () => {
+    const mimeType = voiceRecorder?.mimeType || "audio/webm";
+    const extension = mimeType.includes("ogg") ? "ogg" :
+      mimeType.includes("mp4") ? "m4a" : "webm";
+    const audioBlob = new Blob(voiceChunks, { type: mimeType });
+    voiceStream?.getTracks().forEach((track) => track.stop());
+    voiceStream = null;
+    voiceRecorder = null;
+    recording = false;
+    micBtn?.classList.remove("recording");
+    setStatus("PROCESSING VOICE...");
+    if (audioBlob.size > 0) void sendVoiceAudio(audioBlob, extension);
+    else setStatus("NO SPEECH RECORDED");
+  });
 
-    if (recording) {
+  voiceRecorder.addEventListener("error", () => {
+    voiceStream?.getTracks().forEach((track) => track.stop());
+    voiceStream = null;
+    voiceRecorder = null;
+    recording = false;
+    micBtn?.classList.remove("recording");
+    setStatus("MICROPHONE ERROR");
+  });
 
-      setStatus(
-        "LISTENING..."
-      );
+  voiceRecorder.start();
+  recording = true;
+  micBtn?.classList.add("recording");
+  setStatus("LISTENING — CLICK TO STOP");
+  addTimelineItem("Voice input", "CHERRY AI is listening. Click the microphone again when you finish speaking.", "cyan");
+}
 
+async function sendVoiceAudio(audioBlob: Blob, extension: string) {
+  addTimelineItem("Voice processing", "Transcribing your speech and preparing a spoken response.", "violet");
+  const form = new FormData();
+  form.append("file", audioBlob, `recording.${extension}`);
 
-      addTimelineItem(
-        "Voice input",
-        "Screen AI is listening.",
-        "cyan"
-      );
-
-    } else {
-
-      setStatus(
-        awarenessEnabled
-          ? "SCREEN AWARENESS ACTIVE"
-          : "READY TO HELP"
-      );
-
+  try {
+    const response = await fetch("http://127.0.0.1:8001/voice", {
+      method: "POST",
+      body: form
+    });
+    const data: any = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || `Voice request failed (HTTP ${response.status})`);
     }
 
+    addTimelineItem("You said", data.transcript || "Speech received", "violet");
+    addTimelineItem("CHERRY AI replied", data.text || "No response text returned.", "cyan");
+
+    if (data.audio_url) {
+      const audio = new Audio(`http://127.0.0.1:8001${data.audio_url}`);
+      audio.addEventListener("error", () => addTimelineItem("Audio playback failed", "The reply text is available, but the generated audio could not be played.", "violet"), { once: true });
+      await audio.play();
+    }
+    setStatus(awarenessEnabled ? "SCREEN AWARENESS ACTIVE" : "READY TO HELP");
+  } catch (error) {
+    console.error("CHERRY AI voice request failed:", error);
+    addTimelineItem("Voice request failed", String(error), "violet");
+    setStatus("VOICE REQUEST FAILED");
   }
-);
+}
+
+micBtn?.addEventListener("click", () => {
+  if (recording) {
+    voiceRecorder?.stop();
+    setStatus("PROCESSING VOICE...");
+    return;
+  }
+  void startVoiceRecording().catch((error) => {
+    voiceStream?.getTracks().forEach((track) => track.stop());
+    voiceStream = null;
+    recording = false;
+    micBtn?.classList.remove("recording");
+    setStatus("MICROPHONE UNAVAILABLE");
+    addTimelineItem("Microphone unavailable", String(error), "violet");
+  });
+});
 
 
 // =========================================================
