@@ -7,16 +7,16 @@ internet deployment. Keep the backend bound to 127.0.0.1.
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
-from starlette.background import BackgroundTask
-
 from .agent import VoiceAgent, VoiceAgentError
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,39 @@ MAX_AUDIO_BYTES = 20 * 1024 * 1024
 VOICE_OUTPUT_DIR = Path(tempfile.gettempdir()) / "cherry_ai_voice"
 VOICE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 _voice_agent: VoiceAgent | None = None
+
+ALLOWED_ORIGINS = {
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "http://localhost:1420",
+    "http://127.0.0.1:1420",
+}
+
+
+def require_trusted_origin(request: Request) -> None:
+    """Reject browser-originated calls from unrelated websites."""
+    origin = request.headers.get("origin")
+    configured = {
+        item.strip()
+        for item in os.getenv("CHERRY_VOICE_ALLOWED_ORIGINS", "").split(",")
+        if item.strip()
+    }
+    allowed = ALLOWED_ORIGINS | configured
+    if not origin or origin not in allowed:
+        raise HTTPException(status_code=403, detail="Voice access is allowed only from the CHERRY AI desktop app.")
+
+
+def cleanup_old_audio() -> None:
+    """Remove generated replies older than 30 minutes."""
+    cutoff = time.time() - 30 * 60
+    for item in VOICE_OUTPUT_DIR.glob("*.wav"):
+        try:
+            if item.stat().st_mtime < cutoff:
+                item.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not clean up an expired voice response: %s", item.name)
+
 
 SUPPORTED_AUDIO_TYPES = {
     "audio/wav": ".wav",
@@ -44,8 +77,10 @@ def get_voice_agent() -> VoiceAgent:
 
 
 @router.post("/voice")
-async def process_voice(file: UploadFile = File(...)):
+async def process_voice(request: Request, file: UploadFile = File(...)):
     """Accept a short user-recorded audio clip and return text plus generated speech."""
+    require_trusted_origin(request)
+    cleanup_old_audio()
     suffix = SUPPORTED_AUDIO_TYPES.get((file.content_type or "").split(";")[0].lower())
     if not suffix:
         raise HTTPException(status_code=415, detail="Unsupported audio format. Record audio as WAV, WebM, OGG, or MP4.")
@@ -91,8 +126,9 @@ async def process_voice(file: UploadFile = File(...)):
 
 
 @router.get("/voice/audio/{filename}")
-def get_voice_audio(filename: str):
-    """Serve one generated response, then remove it after the client finishes downloading."""
+def get_voice_audio(filename: str, request: Request):
+    """Serve a generated response; stale files are removed by the next voice request."""
+    require_trusted_origin(request)
     if not filename.endswith(".wav") or len(filename) != 36 or not all(
         char in "0123456789abcdef" for char in filename[:-4]
     ):
@@ -104,5 +140,4 @@ def get_voice_audio(filename: str):
         audio_path,
         media_type="audio/wav",
         filename=filename,
-        background=BackgroundTask(lambda: audio_path.unlink(missing_ok=True)),
     )
