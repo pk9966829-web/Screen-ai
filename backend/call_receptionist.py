@@ -10,6 +10,7 @@ import base64
 import binascii
 import hmac
 import json
+import logging
 import os
 from typing import Any
 from datetime import datetime, timezone
@@ -17,6 +18,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(prefix="/call-receptionist", tags=["CHERRY AI Call Receptionist"])
+logger = logging.getLogger(__name__)
 EXOTEL_SAMPLE_RATE = 16000
 EXOTEL_FRAME_BYTES = 3200  # 100 ms of mono PCM16 at 16 kHz.
 MAX_MEDIA_BYTES = 128_000
@@ -46,6 +48,12 @@ def _authorized_websocket(websocket: WebSocket) -> bool:
     supplied = websocket.headers.get("authorization", "")
     expected = "Basic " + base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
     return bool(username and password) and hmac.compare_digest(supplied, expected)
+
+
+def normalize_call_outcome(value: str) -> str:
+    """Return one of the stable outcomes used by call history."""
+    allowed = {"completed", "caller_disconnected", "ai_ended", "ai_error", "bridge_error"}
+    return value if value in allowed else "bridge_error"
 
 
 def _exotel_stream_id(message: dict[str, Any]) -> str:
@@ -137,12 +145,16 @@ def live_session_start(model: str, voice: str, caller: str, destination: str) ->
 @router.get("/status")
 def receptionist_status():
     username, password, api_key, model, voice = _configuration()
+    from fish_audio_tts import fish_tts_configured
     return {
         "success": True,
         "enabled": _enabled(),
         "configured": _configured(),
         "telephony_provider": "exotel",
         "voice_provider": "gpt-live",
+        "tts_provider": "fish-audio" if fish_tts_configured() else "gpt-live",
+        "call_summary_ai_enabled": os.getenv("CHERRY_CALL_SUMMARY_AI_ENABLED", "").strip().lower() in {"1", "true", "yes"},
+        "call_summary_ai_provider_routing": "VOSI_PROVIDER_CHAIN",
         "missing": [
             name for name, ready in (
                 ("CHERRY_CALL_RECEPTIONIST_ENABLED", _enabled()),
@@ -165,6 +177,12 @@ async def exotel_media_bridge(websocket: WebSocket):
         return
 
     await websocket.accept()
+    call_started: datetime | None = None
+    start: dict[str, Any] | None = None
+    caller = destination = ""
+    transcript_parts: list[str] = []
+    call_outcome = "bridge_error"
+    summary_saved = False
     try:
         # Exotel sends connected and then start before media. Do not open a model
         # session until the call metadata and configured media format are known.
@@ -184,6 +202,10 @@ async def exotel_media_bridge(websocket: WebSocket):
         if not has_caller_consent(start):
             await websocket.close(code=4403)
             return
+        caller = str(start.get("from") or start.get("callfrom") or "")
+        destination = str(start.get("to") or start.get("callto") or "")
+        call_started = datetime.now(timezone.utc)
+        call_outcome = "completed"
         media_format = start.get("media_format") or start.get("media format") or {}
         sample_rate = int(media_format.get("sample_rate") or media_format.get("sample rate") or 0)
         encoding = str(media_format.get("encoding") or "").lower()
@@ -194,6 +216,8 @@ async def exotel_media_bridge(websocket: WebSocket):
         # Imported lazily so backend text/API features work without the optional
         # telephony dependency being loaded at module import time.
         from websockets.asyncio.client import connect as websocket_connect
+        from fish_audio_tts import fish_tts_configured, synthesize_pcm
+        fish_tts_enabled = fish_tts_configured()
 
         async with websocket_connect(
             "wss://api.openai.com/v1/live/sessions",
@@ -202,11 +226,6 @@ async def exotel_media_bridge(websocket: WebSocket):
             open_timeout=15,
             close_timeout=3,
         ) as live:
-            caller = str(start.get("from") or start.get("callfrom") or "")
-            destination = str(start.get("to") or start.get("callto") or "")
-            call_started = datetime.now(timezone.utc)
-            call_outcome = "completed"
-            transcript_parts: list[str] = []
             await live.send(json.dumps(live_session_start(model, voice, caller, destination)))
             ready = False
             for _ in range(12):
@@ -215,15 +234,18 @@ async def exotel_media_bridge(websocket: WebSocket):
                     ready = True
                     break
                 if event.get("type") == "error":
+                    call_outcome = "ai_error"
                     await websocket.close(code=1011)
                     return
             if not ready:
+                call_outcome = "bridge_error"
                 await websocket.close(code=1011)
                 return
 
             if not stream_sid:
                 stream_sid = str(start.get("stream_sid") or start.get("stream sid") or "")
             if not stream_sid:
+                call_outcome = "bridge_error"
                 await websocket.close(code=4400)
                 return
 
@@ -234,7 +256,11 @@ async def exotel_media_bridge(websocket: WebSocket):
             async def caller_to_model():
                 nonlocal stream_sid, call_outcome
                 while True:
-                    incoming = json.loads(await websocket.receive_text())
+                    try:
+                        incoming = json.loads(await websocket.receive_text())
+                    except WebSocketDisconnect:
+                        call_outcome = "caller_disconnected"
+                        return
                     event_type = incoming.get("event")
                     if event_type == "stop":
                         call_outcome = "completed"
@@ -252,9 +278,38 @@ async def exotel_media_bridge(websocket: WebSocket):
 
             async def model_to_caller():
                 nonlocal sequence
+                fish_tts_handled = False
+
+                async def send_pcm_audio(pcm: bytes):
+                    nonlocal sequence
+                    if not pcm:
+                        return
+                    padded = bytearray(pcm)
+                    remainder = len(padded) % EXOTEL_FRAME_BYTES
+                    if remainder:
+                        padded.extend(b"\x00" * (EXOTEL_FRAME_BYTES - remainder))
+                    while padded:
+                        chunk = bytes(padded[:EXOTEL_FRAME_BYTES])
+                        del padded[:EXOTEL_FRAME_BYTES]
+                        outgoing = {
+                            "event": "media",
+                            "sequence_number": sequence,
+                            "stream_sid": stream_sid,
+                            "media": {
+                                "chunk": sequence,
+                                "timestamp": (sequence - 1) * 100,
+                                "payload": base64.b64encode(chunk).decode("ascii"),
+                            },
+                        }
+                        await websocket.send_text(json.dumps(outgoing))
+                        sequence += 1
+
                 while True:
                     message = json.loads(await live.recv())
                     event_type = message.get("type")
+                    if event_type == "response.created":
+                        fish_tts_handled = False
+
                     # Collect text-only transcript events for the call record; never save audio.
                     transcript = message.get("transcript")
                     if isinstance(transcript, str) and transcript.strip() and event_type in {
@@ -266,29 +321,59 @@ async def exotel_media_bridge(websocket: WebSocket):
                     }:
                         speaker = "Caller" if event_type.startswith("session.input_audio") else "CHERRY AI"
                         transcript_parts.append(f"{speaker}: {transcript.strip()}")
+
                     if event_type == "session.output_audio.delta":
                         try:
-                            output_buffer.extend(base64.b64decode(message.get("delta", ""), validate=True))
+                            audio_delta = base64.b64decode(message.get("delta", ""), validate=True)
                         except (binascii.Error, ValueError):
                             continue
-                        while len(output_buffer) >= EXOTEL_FRAME_BYTES:
-                            chunk = bytes(output_buffer[:EXOTEL_FRAME_BYTES])
-                            del output_buffer[:EXOTEL_FRAME_BYTES]
-                            outgoing = {
-                                "event": "media",
-                                "sequence_number": sequence,
-                                "stream_sid": stream_sid,
-                                "media": {
-                                    "chunk": sequence,
-                                    "timestamp": (sequence - 1) * 100,
-                                    "payload": base64.b64encode(chunk).decode("ascii"),
-                                },
-                            }
-                            await websocket.send_text(json.dumps(outgoing))
-                            sequence += 1
+                        if fish_tts_enabled:
+                            # Hold GPT-Live audio as a fallback while Fish Audio renders.
+                            if not fish_tts_handled and len(output_buffer) < 2_000_000:
+                                output_buffer.extend(audio_delta[:2_000_000 - len(output_buffer)])
+                        else:
+                            output_buffer.extend(audio_delta)
+                            while len(output_buffer) >= EXOTEL_FRAME_BYTES:
+                                chunk = bytes(output_buffer[:EXOTEL_FRAME_BYTES])
+                                del output_buffer[:EXOTEL_FRAME_BYTES]
+                                outgoing = {
+                                    "event": "media",
+                                    "sequence_number": sequence,
+                                    "stream_sid": stream_sid,
+                                    "media": {
+                                        "chunk": sequence,
+                                        "timestamp": (sequence - 1) * 100,
+                                        "payload": base64.b64encode(chunk).decode("ascii"),
+                                    },
+                                }
+                                await websocket.send_text(json.dumps(outgoing))
+                                sequence += 1
+
+                    elif event_type == "session.output_audio_transcription.done" and fish_tts_enabled:
+                        spoken_text = str(transcript or "").strip()
+                        if spoken_text and not fish_tts_handled:
+                            fish_tts_handled = True
+                            try:
+                                caller_context = "\n".join(
+                                    part[7:] for part in transcript_parts if part.startswith("Caller:")
+                                )[-1500:]
+                                fish_pcm = await asyncio.to_thread(synthesize_pcm, spoken_text, caller_context)
+                                if fish_pcm:
+                                    await send_pcm_audio(fish_pcm)
+                                    output_buffer.clear()
+                            except Exception:
+                                logger.warning("Fish Audio TTS failed; falling back to GPT-Live audio")
+                                if output_buffer:
+                                    await send_pcm_audio(bytes(output_buffer))
+                                    output_buffer.clear()
+
                     elif event_type == "session.input_audio.speech_started":
                         await websocket.send_text(json.dumps({"event": "clear", "stream_sid": stream_sid}))
-                    elif event_type in {"session.closed", "error"}:
+                    elif event_type == "session.closed":
+                        call_outcome = "ai_ended"
+                        return
+                    elif event_type == "error":
+                        call_outcome = "ai_error"
                         return
 
             inbound = asyncio.create_task(caller_to_model())
@@ -300,13 +385,9 @@ async def exotel_media_bridge(websocket: WebSocket):
             for task in done:
                 exception = task.exception()
                 if exception:
-                    raise exception
-            try:
-                from call_summary_store import store_call
-                call_ended = datetime.now(timezone.utc)
-                store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination, call_outcome, int((call_ended-call_started).total_seconds()), '\n'.join(transcript_parts))
-            except Exception:
-                pass
+                    call_outcome = "bridge_error"
+                    logger.warning("Call bridge task failed; saving call outcome without exception details")
+            call_outcome = normalize_call_outcome(call_outcome)
             if output_buffer:
                 # Exotel's voicebot stream expects at least 100 ms (3.2 KB) per frame.
                 output_buffer.extend(b"\x00" * (EXOTEL_FRAME_BYTES - len(output_buffer) % EXOTEL_FRAME_BYTES))
@@ -319,11 +400,26 @@ async def exotel_media_bridge(websocket: WebSocket):
                                   "payload": base64.b64encode(chunk).decode("ascii")},
                     }))
                     sequence += 1
-    except (WebSocketDisconnect, asyncio.TimeoutError, json.JSONDecodeError, ValueError):
-        return
+    except WebSocketDisconnect:
+        call_outcome = "caller_disconnected"
+    except (asyncio.TimeoutError, json.JSONDecodeError, ValueError):
+        call_outcome = "bridge_error"
     except Exception:
         # Do not leak provider keys, caller audio, or exception text to the phone.
+        call_outcome = "bridge_error"
         try:
             await websocket.close(code=1011)
         except Exception:
             pass
+    finally:
+        # Save a summary even if the bridge fails before a live session starts.
+        if call_started is not None and not summary_saved:
+            try:
+                from call_summary_store import store_call
+                call_ended = datetime.now(timezone.utc)
+                store_call(call_started.isoformat(), call_ended.isoformat(), caller, destination,
+                           normalize_call_outcome(call_outcome), int((call_ended-call_started).total_seconds()),
+                           '\n'.join(transcript_parts))
+                summary_saved = True
+            except Exception:
+                logger.warning("Call summary could not be persisted; error details intentionally omitted")
