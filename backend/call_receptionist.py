@@ -155,6 +155,9 @@ def receptionist_status():
         "tts_provider": "fish-audio" if fish_tts_configured() else "gpt-live",
         "call_summary_ai_enabled": os.getenv("CHERRY_CALL_SUMMARY_AI_ENABLED", "").strip().lower() in {"1", "true", "yes"},
         "call_summary_ai_provider_routing": "VOSI_PROVIDER_CHAIN",
+        "call_history_configured": bool(os.getenv("CHERRY_CALL_OWNER_USER_ID", "").strip()),
+        "call_management_ready": _configured() and bool(os.getenv("CHERRY_CALL_OWNER_USER_ID", "").strip()),
+        "call_history_missing": [] if os.getenv("CHERRY_CALL_OWNER_USER_ID", "").strip() else ["CHERRY_CALL_OWNER_USER_ID"],
         "missing": [
             name for name, ready in (
                 ("CHERRY_CALL_RECEPTIONIST_ENABLED", _enabled()),
