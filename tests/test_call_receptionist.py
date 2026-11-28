@@ -24,6 +24,9 @@ def test_status_does_not_expose_secrets(monkeypatch):
     monkeypatch.delenv("CHERRY_FISH_VOICE_ID", raising=False)
     result = call_receptionist.receptionist_status()
     assert result["configured"] is True
+    assert result["call_history_configured"] is True
+    assert result["call_management_ready"] is True
+    assert result["call_history_missing"] == []
     assert result["call_recording"] is False
     assert result["call_summary_ai_enabled"] is False
     assert result["call_summary_ai_provider_routing"] == "VOSI_PROVIDER_CHAIN"
@@ -37,8 +40,11 @@ def test_status_is_disabled_by_default(monkeypatch):
     monkeypatch.delenv("CHERRY_EXOTEL_STREAM_PASSWORD", raising=False)
     monkeypatch.delenv("CHERRY_LIVE_API_KEY", raising=False)
     monkeypatch.delenv("CHERRY_CALL_SUMMARY_AI_ENABLED", raising=False)
+    monkeypatch.delenv("CHERRY_CALL_OWNER_USER_ID", raising=False)
     result = call_receptionist.receptionist_status()
     assert result["configured"] is False
+    assert result["call_management_ready"] is False
+    assert result["call_history_configured"] is False
     assert result["call_summary_ai_enabled"] is False
 
 
