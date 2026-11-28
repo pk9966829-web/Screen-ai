@@ -46,7 +46,7 @@ CHERRY_FISH_EMOTION_TAGS=true
 
 Generate the Exotel streaming password with a secure password generator. Never commit `.env`, API keys, call transcripts, caller numbers, OAuth files, or speaker samples.
 
-Restart the backend after configuration. Check `GET /call-receptionist/status`; it returns configuration state and missing-variable names, but never secret values. The receptionist stays disabled unless the enable flag is true and all required streaming/API settings are present.
+Restart the backend after configuration. Check `GET /call-receptionist/status`; it returns configuration state and missing-variable names, but never secret values. `configured` reflects the live voice bridge; `call_management_ready` also requires `CHERRY_CALL_OWNER_USER_ID` so call history can be safely owned and accessed. The receptionist stays disabled unless the enable flag is true and all required streaming/API settings are present.
 
 ## Exotel deployment
 
