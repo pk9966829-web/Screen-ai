@@ -18,7 +18,7 @@ def test_status_does_not_expose_secrets(monkeypatch):
     monkeypatch.setenv("CHERRY_CALL_RECEPTIONIST_ENABLED", "true")
     monkeypatch.setenv("CHERRY_EXOTEL_STREAM_USER", "cherry")
     monkeypatch.setenv("CHERRY_EXOTEL_STREAM_PASSWORD", "p" * 40)
-    monkeypatch.setenv("CHERRY_LIVE_API_KEY", "private-api-key")
+    monkeypatch.setenv("CHERRY_LIVE_API_KEY", "private-api-key")\n    monkeypatch.setenv("CHERRY_CALL_OWNER_USER_ID", "owner-1")
     monkeypatch.delenv("CHERRY_TTS_PROVIDER", raising=False)
     monkeypatch.delenv("CHERRY_FISH_API_KEY", raising=False)
     monkeypatch.delenv("CHERRY_FISH_VOICE_ID", raising=False)
