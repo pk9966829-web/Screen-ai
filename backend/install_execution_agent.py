@@ -34,7 +34,16 @@ def main() -> int:
                 raise RuntimeError(f"Unsafe archive path rejected: {member.filename}")
         archive.extractall(HERE)
 
-    print("VOSI execution agent files extracted successfully.")
+    # The supplied archive's top-level agent.py has a stray closing parenthesis
+    # after its module docstring. Normalize that exact typo before it is imported.
+    entrypoint = HERE / "agent.py"
+    source = entrypoint.read_text(encoding="utf-8")
+    source = source.replace('\\n""")\\n\\nfrom vosi_agent.router import router', '\\n"""\\n\\nfrom vosi_agent.router import router', 1)
+    entrypoint.write_text(source, encoding="utf-8")
+
+    import py_compile
+    py_compile.compile(str(entrypoint), doraise=True)
+    print("VOSI execution agent files extracted and entrypoint syntax-checked.")
     print("Restart the Cherry AI backend and check GET /execution-agent/status.")
     return 0
 
