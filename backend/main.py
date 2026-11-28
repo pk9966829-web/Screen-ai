@@ -15,8 +15,39 @@ from pipeline import ScreenPipeline
 from brain import analyze_screen_question, draft_letter
 from database import save_interaction, get_recent_interactions, get_recent_tasks, get_recent_observations, save_task_state
 
-app = FastAPI(title="VOSI Screen AI")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="CHERRY AI / VOSI Screen AI")
+
+# Optional execution-agent integration. The app remains bootable while the
+# agent package is being installed; the status endpoint makes this explicit.
+EXECUTION_AGENT_AVAILABLE = False
+EXECUTION_AGENT_IMPORT_ERROR = None
+try:
+    from agent import router as execution_agent_router
+    app.include_router(execution_agent_router)
+    EXECUTION_AGENT_AVAILABLE = True
+except Exception as exc:  # fail closed; do not break the existing screen assistant
+    EXECUTION_AGENT_IMPORT_ERROR = type(exc).__name__
+
+@app.get("/execution-agent/status")
+def execution_agent_status():
+    return {
+        "success": True,
+        "available": EXECUTION_AGENT_AVAILABLE,
+        "message": "Execution agent router loaded." if EXECUTION_AGENT_AVAILABLE else "Execution agent package is not installed or failed to load.",
+        "error_type": EXECUTION_AGENT_IMPORT_ERROR,
+    }
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:1420",
+        "http://127.0.0.1:1420",
+        "tauri://localhost",
+        "http://tauri.localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-VOSI-Token"],
+)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
