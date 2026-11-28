@@ -144,18 +144,84 @@ def store_call(started_at, ended_at, caller, destination, outcome, duration, tra
         return cur.lastrowid
 
 
+@router.get("/calls/stats")
+def call_stats(authorization: str | None = Header(default=None)):
+    """Account-scoped dashboard metrics. Never returns caller transcript text."""
+    owner = _require_owner(authorization)
+    init_db()
+    with sqlite3.connect(DB_PATH) as db:
+        db.row_factory = sqlite3.Row
+        counts = db.execute(
+            """SELECT COUNT(*) AS total,
+               SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS new_count,
+               SUM(CASE WHEN status='reviewed' THEN 1 ELSE 0 END) AS reviewed_count,
+               SUM(CASE WHEN status='callback_done' THEN 1 ELSE 0 END) AS callback_done_count,
+               SUM(CASE WHEN urgency='urgent' THEN 1 ELSE 0 END) AS urgent_count,
+               SUM(CASE WHEN callback_requested=1 THEN 1 ELSE 0 END) AS callback_requested_count
+               FROM call_summaries WHERE owner_user_id=?""",
+            (owner,),
+        ).fetchone()
+        outcomes = db.execute(
+            "SELECT outcome, COUNT(*) AS count FROM call_summaries WHERE owner_user_id=? GROUP BY outcome",
+            (owner,),
+        ).fetchall()
+    return {
+        "success": True,
+        "stats": {key: int(counts[key] or 0) for key in counts.keys()},
+        "outcomes": {row["outcome"]: int(row["count"]) for row in outcomes},
+    }
+
+
 @router.get("/calls")
-def history(limit: int = 25, authorization: str | None = Header(default=None)):
+def history(
+    limit: int = 25,
+    offset: int = 0,
+    status: str | None = None,
+    urgency: str | None = None,
+    outcome: str | None = None,
+    callback_only: bool = False,
+    q: str | None = None,
+    authorization: str | None = Header(default=None),
+):
+    """Filterable account-scoped history with stable pagination."""
     owner = _require_owner(authorization)
     init_db()
     limit = max(1, min(limit, 100))
+    offset = max(0, min(offset, 10000))
+    if status and status not in {"new", "reviewed", "callback_done"}:
+        raise HTTPException(status_code=400, detail="Invalid call status filter.")
+    if urgency and urgency not in {"urgent", "normal", "unknown"}:
+        raise HTTPException(status_code=400, detail="Invalid urgency filter.")
+    if outcome and outcome not in {"completed", "caller_disconnected", "ai_ended", "ai_error", "bridge_error"}:
+        raise HTTPException(status_code=400, detail="Invalid outcome filter.")
+    filters = ["owner_user_id=?"]
+    params: list[object] = [owner]
+    if status:
+        filters.append("status=?")
+        params.append(status)
+    if urgency:
+        filters.append("urgency=?")
+        params.append(urgency)
+    if outcome:
+        filters.append("outcome=?")
+        params.append(outcome)
+    if callback_only:
+        filters.append("callback_requested=1")
+    if q and q.strip():
+        term = "%" + q.strip().replace("%", "\\%").replace("_", "\\_")[:120] + "%"
+        filters.append("(caller_number LIKE ? ESCAPE '\\' OR destination_number LIKE ? ESCAPE '\\' OR caller_name LIKE ? ESCAPE '\\' OR purpose LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')")
+        params.extend([term] * 5)
+    where = " AND ".join(filters)
     with sqlite3.connect(DB_PATH) as db:
         db.row_factory = sqlite3.Row
-        rows = db.execute("""SELECT id,started_at,ended_at,caller_number,outcome,duration_seconds,
-            summary,caller_name,purpose,urgency,callback_requested,callback_time,status
-            FROM call_summaries WHERE owner_user_id=? ORDER BY id DESC LIMIT ?""",
-            (owner, limit)).fetchall()
-    return {"success": True, "calls": [dict(row) for row in rows]}
+        total = db.execute("SELECT COUNT(*) FROM call_summaries WHERE " + where, params).fetchone()[0]
+        rows = db.execute(
+            """SELECT id,started_at,ended_at,caller_number,destination_number,outcome,duration_seconds,
+               summary,caller_name,purpose,urgency,callback_requested,callback_time,status
+               FROM call_summaries WHERE """ + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
+            params + [limit, offset],
+        ).fetchall()
+    return {"success": True, "calls": [dict(row) for row in rows], "total": int(total), "limit": limit, "offset": offset}
 
 
 @router.get("/calls/{call_id}")
@@ -183,3 +249,15 @@ def update_status(call_id: int, status: str, authorization: str | None = Header(
     if cur.rowcount == 0:
         raise HTTPException(status_code=404, detail="Call record not found")
     return {"success": True, "id": call_id, "status": status}
+
+
+@router.delete("/calls/{call_id}")
+def delete_call(call_id: int, authorization: str | None = Header(default=None)):
+    """Delete an individual call record (including its transcript) for the owner."""
+    owner = _require_owner(authorization)
+    init_db()
+    with sqlite3.connect(DB_PATH) as db:
+        cur = db.execute("DELETE FROM call_summaries WHERE id=? AND owner_user_id=?", (call_id, owner))
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Call record not found")
+    return {"success": True, "deleted": True, "id": call_id}
