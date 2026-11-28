@@ -8,6 +8,10 @@ import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.widget.Button
+import android.widget.EditText
+import android.widget.Spinner
+import android.widget.ArrayAdapter
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -23,6 +27,16 @@ import kotlin.concurrent.thread
 class CherryCallHistoryActivity : Activity() {
     private lateinit var list: LinearLayout
     private lateinit var status: TextView
+    private lateinit var metrics: TextView
+    private lateinit var search: EditText
+    private lateinit var statusFilter: Spinner
+    private lateinit var urgencyFilter: Spinner
+    private lateinit var callbackFilter: CheckBox
+    private lateinit var previousButton: Button
+    private lateinit var nextButton: Button
+    private var pageOffset = 0
+    private var currentTotal = 0
+    private val pageSize = 25
     private val prefs by lazy { getSharedPreferences("vosi_companion_settings", Context.MODE_PRIVATE) }
     private val backendBase by lazy { prefs.getString("device_backend_url", "http://127.0.0.1:8001")!!.trimEnd('/') }
 
@@ -41,13 +55,34 @@ class CherryCallHistoryActivity : Activity() {
         super.onCreate(savedInstanceState)
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24,24,24,24) }
         root.addView(TextView(this).apply { text="CHERRY AI Call History"; textSize=24f })
-        status = TextView(this).apply { text="Loading calls…"; setPadding(0,12,0,12) }
+        metrics = TextView(this).apply { text="Call dashboard loading…"; setPadding(0,12,0,8); textSize=14f }
+        root.addView(metrics)
+        status = TextView(this).apply { text="Loading calls…"; setPadding(0,8,0,8) }
         root.addView(status)
-        root.addView(Button(this).apply { text="Refresh"; setOnClickListener { loadCalls() } })
+        search = EditText(this).apply { hint="Search caller, purpose or summary"; singleLine=true }
+        root.addView(search)
+        statusFilter = Spinner(this).apply {
+            adapter = ArrayAdapter(this@CherryCallHistoryActivity, android.R.layout.simple_spinner_dropdown_item, listOf("All statuses","New","Reviewed","Callback complete"))
+        }
+        urgencyFilter = Spinner(this).apply {
+            adapter = ArrayAdapter(this@CherryCallHistoryActivity, android.R.layout.simple_spinner_dropdown_item, listOf("All urgency","Urgent","Normal","Unknown"))
+        }
+        root.addView(statusFilter)
+        root.addView(urgencyFilter)
+        callbackFilter = CheckBox(this).apply { text="Only calls requesting a callback" }
+        root.addView(callbackFilter)
+        root.addView(Button(this).apply { text="Apply filters"; setOnClickListener { pageOffset=0; loadCalls() } })
+        root.addView(Button(this).apply { text="Refresh"; setOnClickListener { pageOffset=0; loadCalls() } })
         val scroll=ScrollView(this)
         list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(0,12,0,0) }
         scroll.addView(list)
         root.addView(scroll, LinearLayout.LayoutParams(-1,0,1f))
+        val pagination=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        previousButton=Button(this).apply { text="Previous"; setOnClickListener { if(pageOffset>=pageSize){pageOffset-=pageSize;loadCalls()} } }
+        nextButton=Button(this).apply { text="Next"; setOnClickListener { if(pageOffset+pageSize<currentTotal){pageOffset+=pageSize;loadCalls()} } }
+        pagination.addView(previousButton,LinearLayout.LayoutParams(0,-2,1f))
+        pagination.addView(nextButton,LinearLayout.LayoutParams(0,-2,1f))
+        root.addView(pagination)
         setContentView(root)
         requestNotificationPermissionIfNeeded()
         loadCalls()
@@ -61,26 +96,51 @@ class CherryCallHistoryActivity : Activity() {
 
     private fun loadCalls() {
         status.text="Connecting to CHERRY AI backend…"
+        val query=StringBuilder("limit=$pageSize&offset=$pageOffset")
+        val selectedStatus=when(statusFilter.selectedItemPosition) {
+            1 -> "new"; 2 -> "reviewed"; 3 -> "callback_done"; else -> ""
+        }
+        val selectedUrgency=when(urgencyFilter.selectedItemPosition) {
+            1 -> "urgent"; 2 -> "normal"; 3 -> "unknown"; else -> ""
+        }
+        if(selectedStatus.isNotEmpty()) query.append("&status=$selectedStatus")
+        if(selectedUrgency.isNotEmpty()) query.append("&urgency=$selectedUrgency")
+        if(callbackFilter.isChecked) query.append("&callback_only=true")
+        val q=search.text.toString().trim()
+        if(q.isNotEmpty()) query.append("&q=").append(java.net.URLEncoder.encode(q,"UTF-8"))
         thread {
             try {
-                val conn=authenticatedConnection("/call-receptionist/calls?limit=50")
+                val statsConn=authenticatedConnection("/call-receptionist/calls/stats")
+                val statsCode=statsConn.responseCode
+                val statsStream=if(statsCode in 200..299) statsConn.inputStream else statsConn.errorStream
+                val statsRaw=statsStream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                statsConn.disconnect()
+                if(statsCode !in 200..299) throw IllegalStateException("Dashboard metrics request failed (HTTP $statsCode)")
+                val stats=JSONObject(statsRaw).optJSONObject("stats") ?: JSONObject()
+                val conn=authenticatedConnection("/call-receptionist/calls?$query")
                 val code=conn.responseCode
                 val stream=if(code in 200..299) conn.inputStream else conn.errorStream
                 val response=stream?.bufferedReader()?.use { it.readText() } ?: "{}"
                 conn.disconnect()
                 if(code !in 200..299) throw IllegalStateException("Call history request failed (HTTP $code)")
-                val calls=JSONObject(response).optJSONArray("calls") ?: JSONArray()
+                val data=JSONObject(response)
+                val calls=data.optJSONArray("calls") ?: JSONArray()
+                val total=data.optInt("total",calls.length())
                 runOnUiThread {
                     list.removeAllViews()
-                    status.text=if(calls.length()==0) "No receptionist calls saved yet." else "Showing ${calls.length()} recent call(s)."
+                    currentTotal=total
+                    metrics.text="Total ${stats.optInt("total")}  •  New ${stats.optInt("new_count")}  •  Urgent ${stats.optInt("urgent_count")}  •  Callbacks ${stats.optInt("callback_requested_count")}"
+                    status.text=if(total==0) "No calls match these filters." else "Showing ${pageOffset+1}–${minOf(pageOffset+calls.length(),total)} of $total call(s)."
+                    previousButton.isEnabled=pageOffset>0
+                    nextButton.isEnabled=pageOffset+pageSize<total
                     for(i in 0 until calls.length()) {
-                        val c=calls.getJSONObject(i)
-                        addCallCard(c)
-                        notifyCallbackOrUrgent(c)
+                        val item=calls.getJSONObject(i)
+                        addCallCard(item)
+                        notifyCallbackOrUrgent(item)
                     }
                 }
             } catch(e:Exception) {
-                runOnUiThread { status.text="Could not load call history. Check backend URL and connection.\n${e.message ?: "Network error"}" }
+                runOnUiThread { status.text="Could not load call history or dashboard. Check backend URL and account.\n${e.message ?: "Network error"}" }
             }
         }
     }
@@ -105,6 +165,17 @@ class CherryCallHistoryActivity : Activity() {
         if(c.optString("status")=="new") card.addView(Button(this).apply {
             text="Mark reviewed"
             setOnClickListener { updateStatus(id,"reviewed") }
+        })
+        card.addView(Button(this).apply {
+            text="Delete call record and transcript"
+            setOnClickListener {
+                AlertDialog.Builder(this@CherryCallHistoryActivity)
+                    .setTitle("Delete call #$id?")
+                    .setMessage("This permanently deletes the saved call details and transcript.")
+                    .setNegativeButton("Cancel",null)
+                    .setPositiveButton("Delete") { _, _ -> deleteCall(id) }
+                    .show()
+            }
         })
         list.addView(card)
         list.addView(android.view.View(this).apply { setBackgroundColor(0x22000000) }, LinearLayout.LayoutParams(-1,1))
@@ -142,6 +213,22 @@ class CherryCallHistoryActivity : Activity() {
                 if(code !in 200..299) throw IllegalStateException("Call update failed (HTTP $code)")
                 runOnUiThread { Toast.makeText(this,"Call updated",Toast.LENGTH_SHORT).show(); loadCalls() }
             } catch(e:Exception) { runOnUiThread { Toast.makeText(this,"Could not update call status.",Toast.LENGTH_SHORT).show() } }
+        }
+    }
+
+    private fun deleteCall(id:Int) {
+        thread {
+            try {
+                val conn=authenticatedConnection("/call-receptionist/calls/$id","DELETE")
+                val code=conn.responseCode
+                val stream=if(code in 200..299) conn.inputStream else conn.errorStream
+                stream?.close()
+                conn.disconnect()
+                if(code !in 200..299) throw IllegalStateException("Delete failed (HTTP $code)")
+                runOnUiThread { Toast.makeText(this,"Call record deleted",Toast.LENGTH_SHORT).show(); loadCalls() }
+            } catch(e:Exception) {
+                runOnUiThread { Toast.makeText(this,"Could not delete call record.",Toast.LENGTH_SHORT).show() }
+            }
         }
     }
 
