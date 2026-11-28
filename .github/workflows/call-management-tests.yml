@@ -1,0 +1,32 @@
+name: Call Management Tests
+
+on:
+  pull_request:
+    branches:
+      - integration/cherry-call-management
+  push:
+    branches:
+      - feature/cherry-call-management-complete
+
+jobs:
+  backend-call-management:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest
+      - name: Run call-management tests
+        run: |
+          pytest -q \
+            tests/test_call_receptionist.py \
+            tests/test_call_summary_store.py \
+            tests/test_fish_audio_tts.py \
+            tests/test_voice_expression.py \
+            tests/test_call_manager_dashboard_api.py
