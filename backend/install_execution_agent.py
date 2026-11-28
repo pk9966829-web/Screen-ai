@@ -38,7 +38,7 @@ def main() -> int:
     # after its module docstring. Normalize that exact typo before it is imported.
     entrypoint = HERE / "agent.py"
     source = entrypoint.read_text(encoding="utf-8")
-    source = source.replace('\\n""")\\n\\nfrom vosi_agent.router import router', '\\n"""\\n\\nfrom vosi_agent.router import router', 1)
+    source = source.replace('\n""")\n\nfrom vosi_agent.router import router', '\n"""\n\nfrom vosi_agent.router import router', 1)
     entrypoint.write_text(source, encoding="utf-8")
 
     import py_compile
