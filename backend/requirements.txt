@@ -5,3 +5,7 @@ pillow
 openai
 python-dotenv
 python-docx
+
+# VOSI execution agent runtime
+httpx>=0.27
+pydantic>=2.6
