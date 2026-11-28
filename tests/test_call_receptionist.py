@@ -19,9 +19,18 @@ def test_status_does_not_expose_secrets(monkeypatch):
     monkeypatch.setenv("CHERRY_EXOTEL_STREAM_USER", "cherry")
     monkeypatch.setenv("CHERRY_EXOTEL_STREAM_PASSWORD", "p" * 40)
     monkeypatch.setenv("CHERRY_LIVE_API_KEY", "private-api-key")
+    monkeypatch.setenv("CHERRY_CALL_OWNER_USER_ID", "owner-1")
+    monkeypatch.delenv("CHERRY_TTS_PROVIDER", raising=False)
+    monkeypatch.delenv("CHERRY_FISH_API_KEY", raising=False)
+    monkeypatch.delenv("CHERRY_FISH_VOICE_ID", raising=False)
     result = call_receptionist.receptionist_status()
     assert result["configured"] is True
+    assert result["call_history_configured"] is True
+    assert result["call_management_ready"] is True
+    assert result["call_history_missing"] == []
     assert result["call_recording"] is False
+    assert result["call_summary_ai_enabled"] is False
+    assert result["call_summary_ai_provider_routing"] == "VOSI_PROVIDER_CHAIN"
     assert "private-api-key" not in str(result)
     assert "p" * 40 not in str(result)
 
@@ -31,7 +40,13 @@ def test_status_is_disabled_by_default(monkeypatch):
     monkeypatch.delenv("CHERRY_EXOTEL_STREAM_USER", raising=False)
     monkeypatch.delenv("CHERRY_EXOTEL_STREAM_PASSWORD", raising=False)
     monkeypatch.delenv("CHERRY_LIVE_API_KEY", raising=False)
-    assert call_receptionist.receptionist_status()["configured"] is False
+    monkeypatch.delenv("CHERRY_CALL_SUMMARY_AI_ENABLED", raising=False)
+    monkeypatch.delenv("CHERRY_CALL_OWNER_USER_ID", raising=False)
+    result = call_receptionist.receptionist_status()
+    assert result["configured"] is False
+    assert result["call_management_ready"] is False
+    assert result["call_history_configured"] is False
+    assert result["call_summary_ai_enabled"] is False
 
 
 def test_exotel_media_parser_rejects_invalid_and_oversized_payloads():
@@ -81,3 +96,12 @@ def test_caller_consent_requires_exotel_flow_grant():
     assert call_receptionist.has_caller_consent({"custom parameters": {"consent": "GRANTED"}})
     assert not call_receptionist.has_caller_consent({"custom_parameters": {"consent": "denied"}})
     assert not call_receptionist.has_caller_consent({})
+
+
+def test_status_reports_fish_tts_only_when_fully_configured(monkeypatch):
+    monkeypatch.setenv("CHERRY_TTS_PROVIDER", "fish")
+    monkeypatch.setenv("CHERRY_FISH_API_KEY", "fish-private-key")
+    monkeypatch.setenv("CHERRY_FISH_VOICE_ID", "voice-123")
+    result = call_receptionist.receptionist_status()
+    assert result["tts_provider"] == "fish-audio"
+    assert "fish-private-key" not in str(result)
