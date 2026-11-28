@@ -26,6 +26,34 @@ from googleapiclient.discovery import build
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
+# Optional standalone VOSI execution-agent package.
+# Namespace it to avoid collisions with Cherry AI's existing /agent API.
+EXECUTION_AGENT_AVAILABLE = False
+EXECUTION_AGENT_IMPORT_ERROR = None
+try:
+    from agent import router as standalone_execution_agent_router
+    app.include_router(standalone_execution_agent_router, prefix="/vosi-execution")
+    EXECUTION_AGENT_AVAILABLE = True
+except Exception as exc:
+    # Keep the existing Cherry AI app bootable if the optional package is absent.
+    EXECUTION_AGENT_IMPORT_ERROR = type(exc).__name__
+
+
+@app.get("/execution-agent/status")
+def execution_agent_status():
+    return {
+        "success": True,
+        "available": EXECUTION_AGENT_AVAILABLE,
+        "message": (
+            "Standalone VOSI execution agent loaded under /vosi-execution."
+            if EXECUTION_AGENT_AVAILABLE
+            else "Standalone VOSI execution agent is not loaded."
+        ),
+        "error_type": EXECUTION_AGENT_IMPORT_ERROR,
+        "api_prefix": "/vosi-execution",
+    }
+
+
 from companion import router as companion_router
 app.include_router(companion_router)
 from companion_core_api import router as companion_core_router
