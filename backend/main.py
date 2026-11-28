@@ -36,7 +36,18 @@ def execution_agent_status():
         "message": "Execution agent router loaded." if EXECUTION_AGENT_AVAILABLE else "Execution agent package is not installed or failed to load.",
         "error_type": EXECUTION_AGENT_IMPORT_ERROR,
     }
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:1420",
+        "http://127.0.0.1:1420",
+        "tauri://localhost",
+        "http://tauri.localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-VOSI-Token"],
+)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
