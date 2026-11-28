@@ -26,6 +26,77 @@ from googleapiclient.discovery import build
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
+# Optional standalone VOSI execution-agent package.
+# Namespace it to avoid collisions with Cherry AI's existing /agent API.
+EXECUTION_AGENT_AVAILABLE = False
+EXECUTION_AGENT_IMPORT_ERROR = None
+try:
+    from agent import router as standalone_execution_agent_router
+    app.include_router(standalone_execution_agent_router, prefix="/vosi-execution")
+    EXECUTION_AGENT_AVAILABLE = True
+except Exception as exc:
+    # Keep the existing Cherry AI app bootable if the optional package is absent.
+    EXECUTION_AGENT_IMPORT_ERROR = type(exc).__name__
+
+
+def _standalone_execution_agent_paths():
+    """Return the effective mounted paths without inspecting FastAPI's private route objects.
+
+    FastAPI 0.137+ stores included routers as lazy _IncludedRouter objects in
+    app.routes. Those objects do not expose .path; app.openapi() resolves the
+    effective paths and remains compatible with both old and new FastAPI.
+    """
+    if not EXECUTION_AGENT_AVAILABLE:
+        return []
+    try:
+        paths = app.openapi().get("paths", {})
+        return sorted(
+            path for path in paths
+            if path.startswith("/vosi-execution/")
+        )
+    except Exception:
+        return []
+
+
+@app.get("/execution-agent/status")
+def execution_agent_status():
+    return {
+        "success": True,
+        "available": EXECUTION_AGENT_AVAILABLE,
+        "message": (
+            "Standalone VOSI execution agent loaded under /vosi-execution."
+            if EXECUTION_AGENT_AVAILABLE
+            else "Standalone VOSI execution agent is not loaded."
+        ),
+        "error_type": EXECUTION_AGENT_IMPORT_ERROR,
+        "api_prefix": "/vosi-execution",
+        "credentials": {
+            "execution_token_configured": bool(os.getenv("VOSI_API_TOKEN", "").strip()),
+            "model_api_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+            "model_base_url_configured": bool(os.getenv("OPENAI_BASE_URL", "").strip()),
+        },
+        "registered_routes": _standalone_execution_agent_paths(),
+    }
+
+
+@app.get("/execution-agent/routes")
+def execution_agent_routes():
+    """Expose actual mounted agent paths for diagnostics; never expose credentials."""
+    paths = _standalone_execution_agent_paths()
+    return {
+        "success": EXECUTION_AGENT_AVAILABLE,
+        "api_prefix": "/vosi-execution",
+        "routes": paths,
+        "count": len(paths),
+        "message": (
+            "These are the effective OpenAPI paths. Use the exact listed path; "
+            "FastAPI 0.137+ does not expose included-router paths through app.routes."
+            if paths
+            else "No standalone execution-agent routes are currently registered."
+        ),
+    }
+
+
 from companion import router as companion_router
 app.include_router(companion_router)
 from companion_core_api import router as companion_core_router

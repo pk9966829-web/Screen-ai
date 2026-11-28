@@ -9,3 +9,7 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 requests>=2.31.0
+
+# Standalone VOSI execution-agent runtime
+httpx>=0.27
+pydantic>=2.6
